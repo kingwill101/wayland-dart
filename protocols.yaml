@@ -1,0 +1,140 @@
+protocols:
+  - name: wayland.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland/-/raw/main/protocol/wayland.xml"
+    output: "wayland.dart"
+  - name: linux-dmabuf-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/stable/linux-dmabuf/linux-dmabuf-v1.xml"
+    output: "stable/linux-dmabuf/linux_dmabuf_v1.dart"
+  - name: presentation-time.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/stable/presentation-time/presentation-time.xml"
+    output: "stable/presentation-time/presentation_time.dart"
+  - name: tablet-v2.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/stable/tablet/tablet-v2.xml"
+    output: "stable/tablet/tablet_v2.dart"
+  - name: viewporter.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/stable/viewporter/viewporter.xml"
+    output: "stable/viewporter/viewporter.dart"
+  - name: xdg-shell.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/stable/xdg-shell/xdg-shell.xml"
+    output: "stable/xdg-shell/xdg_shell.dart"
+  - name: alpha-modifier-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/alpha-modifier/alpha-modifier-v1.xml"
+    output: "staging/alpha-modifier/alpha_modifier_v1.dart"
+  - name: content-type-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/content-type/content-type-v1.xml"
+    output: "staging/content-type/content_type_v1.dart"
+  - name: cursor-shape-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/cursor-shape/cursor-shape-v1.xml"
+    output: "staging/cursor-shape/cursor_shape_v1.dart"
+    dependencies:
+      - stable/tablet/tablet_v2.dart
+  - name: drm-lease-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/drm-lease/drm-lease-v1.xml"
+    output: "staging/drm-lease/drm_lease_v1.dart"
+  - name: ext-foreign-toplevel-list-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/ext-foreign-toplevel-list/ext-foreign-toplevel-list-v1.xml"
+    output: "staging/ext-foreign-toplevel-list/ext_foreign_toplevel_list_v1.dart"
+  - name: ext-idle-notify-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/ext-idle-notify/ext-idle-notify-v1.xml"
+    output: "staging/ext-idle-notify/ext_idle_notify_v1.dart"
+  - name: ext-session-lock-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/ext-session-lock/ext-session-lock-v1.xml"
+    output: "staging/ext-session-lock/ext_session_lock_v1.dart"
+  - name: ext-transient-seat-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/ext-transient-seat/ext-transient-seat-v1.xml"
+    output: "staging/ext-transient-seat/ext_transient_seat_v1.dart"
+  - name: fractional-scale-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/fractional-scale/fractional-scale-v1.xml"
+    output: "staging/fractional-scale/fractional_scale_v1.dart"
+  - name: linux-drm-syncobj-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/linux-drm-syncobj/linux-drm-syncobj-v1.xml"
+    output: "staging/linux-drm-syncobj/linux_drm_syncobj_v1.dart"
+  - name: security-context-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/security-context/security-context-v1.xml"
+    output: "staging/security-context/security_context_v1.dart"
+  - name: single-pixel-buffer-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/single-pixel-buffer/single-pixel-buffer-v1.xml"
+    output: "staging/single-pixel-buffer/single_pixel_buffer_v1.dart"
+  - name: tearing-control-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/tearing-control/tearing-control-v1.xml"
+    output: "staging/tearing-control/tearing_control_v1.dart"
+  - name: xdg-activation-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/xdg-activation/xdg-activation-v1.xml"
+    output: "staging/xdg-activation/xdg_activation_v1.dart"
+  - name: xdg-dialog-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/xdg-dialog/xdg-dialog-v1.xml"
+    output: "staging/xdg-dialog/xdg_dialog_v1.dart"
+    dependencies:
+      - stable/xdg-shell/xdg_shell.dart
+  - name: xdg-toplevel-drag-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/xdg-toplevel-drag/xdg-toplevel-drag-v1.xml"
+    output: "staging/xdg-toplevel-drag/xdg_toplevel_drag_v1.dart"
+    dependencies:
+      - stable/xdg-shell/xdg_shell.dart
+  - name: xdg-toplevel-icon-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/xdg-toplevel-icon/xdg-toplevel-icon-v1.xml"
+    output: staging/xdg-toplevel-icon/xdg_toplevel_icon_v1.dart
+    dependencies:
+      - stable/xdg-shell/xdg_shell.dart
+  - name: xwayland-shell-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/staging/xwayland-shell/xwayland-shell-v1.xml"
+    output: "staging/xwayland-shell/xwayland_shell_v1.dart"
+  - name: fullscreen-shell-unstable-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/fullscreen-shell/fullscreen-shell-unstable-v1.xml"
+    output: "unstable/fullscreen-shell/fullscreen_shell_unstable_v1.dart"
+  - name: idle-inhibit-unstable-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/idle-inhibit/idle-inhibit-unstable-v1.xml"
+    output: "unstable/idle-inhibit/idle_inhibit_unstable_v1.dart"
+  - name: input-method-unstable-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/input-method/input-method-unstable-v1.xml"
+    output: "unstable/input-method/input_method_unstable_v1.dart"
+  - name: input-timestamps-unstable-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/input-timestamps/input-timestamps-unstable-v1.xml"
+    output: "unstable/input-timestamps/input_timestamps_unstable_v1.dart"
+  - name: keyboard-shortcuts-inhibit-unstable-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/keyboard-shortcuts-inhibit/keyboard-shortcuts-inhibit-unstable-v1.xml"
+    output: "unstable/keyboard-shortcuts-inhibit/keyboard_shortcuts_inhibit_unstable_v1.dart"
+  - name: linux-dmabuf-unstable-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/linux-dmabuf/linux-dmabuf-unstable-v1.xml"
+    output: "unstable/linux-dmabuf/linux_dmabuf_unstable_v1.dart"
+  - name: linux-explicit-synchronization-unstable-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/linux-explicit-synchronization/linux-explicit-synchronization-unstable-v1.xml"
+    output: "unstable/linux-explicit-synchronization/linux_explicit_synchronization_unstable_v1.dart"
+  - name: pointer-constraints-unstable-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/pointer-constraints/pointer-constraints-unstable-v1.xml"
+    output: "unstable/pointer-constraints/pointer_constraints_unstable_v1.dart"
+  - name: pointer-gestures-unstable-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/pointer-gestures/pointer-gestures-unstable-v1.xml"
+    output: "unstable/pointer-gestures/pointer_gestures_unstable_v1.dart"
+  - name: primary-selection-unstable-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/primary-selection/primary-selection-unstable-v1.xml"
+    output: "unstable/primary-selection/primary_selection_unstable_v1.dart"
+  - name: relative-pointer-unstable-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/relative-pointer/relative-pointer-unstable-v1.xml"
+    output: "unstable/relative-pointer/relative_pointer_unstable_v1.dart"
+  - name: tablet-unstable-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/tablet/tablet-unstable-v1.xml"
+    output: "unstable/tablet/tablet_unstable_v1.dart"
+  - name: text-input-unstable-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/text-input/text-input-unstable-v1.xml"
+    output: "unstable/text-input/text_input_unstable_v1.dart"
+  - name: xdg-decoration-unstable-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml"
+    output: "unstable/xdg-decoration/xdg_decoration_unstable_v1.dart"
+    dependencies:
+      - stable/xdg-shell/xdg_shell.dart
+  - name: xdg-foreign-unstable-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/xdg-foreign/xdg-foreign-unstable-v1.xml"
+    output: "unstable/xdg-foreign/xdg_foreign_unstable_v1.dart"
+  - name: xdg-output-unstable-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/xdg-output/xdg-output-unstable-v1.xml"
+    output: "unstable/xdg-output/xdg_output_unstable_v1.dart"
+  - name: xdg-shell-unstable-v5.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/xdg-shell/xdg-shell-unstable-v5.xml"
+    output: "unstable/xdg-shell/xdg_shell_unstable_v5.dart"
+  - name: xdg-shell-unstable-v6.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/xdg-shell/xdg-shell-unstable-v6.xml"
+    output: "unstable/xdg-shell/xdg_shell_unstable_v6.dart"
+  - name: xwayland-keyboard-grab-unstable-v1.xml
+    input: "https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/unstable/xwayland-keyboard-grab/xwayland-keyboard-grab-unstable-v1.xml"
+    output: "unstable/xwayland-keyboard-grab/xwayland_keyboard_grab_unstable_v1.dart"
