@@ -1,0 +1,30 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "wayland",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "scanner",
+            "request": "launch",
+            "type": "dart",
+            "program": "${workspaceFolder}/bin/scanner.dart",
+            "args": [
+                "scan",
+                // "--i=https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/stable/xdg-shell/xdg-shell.xml",
+                // "--i=https://gitlab.freedesktop.org/wayland/wayland/-/raw/main/protocol/wayland.xml",
+                // "--o=xdg_shell.dart",
+                // "--o=wayland.dart",
+                "--prefix=wl",
+                "--pkg=client",
+                "--protocols=protocols.yaml",
+                "--clean=true"
+            ]
+        }
+    ]
+}
