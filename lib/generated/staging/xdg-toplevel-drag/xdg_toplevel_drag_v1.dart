@@ -31,7 +31,10 @@ library client;
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
 import 'package:wayland/generated/stable/xdg-shell/xdg_shell.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// Move a window during a drag
 /// 
 /// This protocol enhances normal drag and drop with the ability to move a
@@ -71,24 +74,49 @@ import 'dart:typed_data';
 class XdgToplevelDragManagerV1 extends Proxy{
   final Context context;
 
-  XdgToplevelDragManagerV1(this.context) : super(context.allocateClientId());
+  XdgToplevelDragManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the xdg_toplevel_drag_manager_v1 object
+/// 
+/// Destroy this xdg_toplevel_drag_manager_v1 object. Other objects,
+/// including xdg_toplevel_drag_v1 objects created by this factory, are not
+/// affected by this request.
+/// 
   Future<void> destroy() async {
+    print("XdgToplevelDragManagerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getXdgToplevelDrag(DataSource dataSource) async {
-  var id =  XdgToplevelDragManagerV1(context);
+/// get an xdg_toplevel_drag for a wl_data_source
+/// 
+/// Create an xdg_toplevel_drag for a drag and drop operation that is going
+/// to be started with data_source.
+/// 
+/// This request can only be made on sources used in drag-and-drop, so it
+/// must be performed before wl_data_device.start_drag. Attempting to use
+/// the source other than for drag-and-drop such as in
+/// wl_data_device.set_selection will raise an invalid_source error.
+/// 
+/// Destroying data_source while a toplevel is attached to the
+/// xdg_toplevel_drag is undefined.
+/// 
+/// [id]:
+/// [data_source]:
+  Future<XdgToplevelDragV1> getXdgToplevelDrag(DataSource dataSource) async {
+  var id =  XdgToplevelDragV1(context);
+    print("XdgToplevelDragManagerV1::getXdgToplevelDrag  id: $id dataSource: $dataSource");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -99,7 +127,8 @@ class XdgToplevelDragManagerV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
@@ -108,9 +137,11 @@ class XdgToplevelDragManagerV1 extends Proxy{
 /// 
 
 enum XdgToplevelDragManagerV1error {
-  /// data_source already used for toplevel drag
+/// data_source already used for toplevel drag
   invalidSource,
 }
+
+
 
 /// Object representing a toplevel move during a drag
 /// 
@@ -118,23 +149,54 @@ enum XdgToplevelDragManagerV1error {
 class XdgToplevelDragV1 extends Proxy{
   final Context context;
 
-  XdgToplevelDragV1(this.context) : super(context.allocateClientId());
+  XdgToplevelDragV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy an xdg_toplevel_drag_v1 object
+/// 
+/// Destroy this xdg_toplevel_drag_v1 object. This request must only be
+/// called after the underlying wl_data_source drag has ended, as indicated
+/// by the dnd_drop_performed or cancelled events. In any other case an
+/// ongoing_drag error is raised.
+/// 
   Future<void> destroy() async {
+    print("XdgToplevelDragV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// Move a toplevel with the drag operation
+/// 
+/// Request that the window will be moved with the cursor during the drag
+/// operation. The offset is a hint to the compositor how the toplevel
+/// should be positioned relative to the cursor hotspot in surface local
+/// coordinates. For example it might only be used when an unmapped window
+/// is attached. The attached window does not participate in the selection
+/// of the drag target.
+/// 
+/// If the toplevel is unmapped while it is attached, it is automatically
+/// detached from the drag. In this case this request has to be called again
+/// if the window should be attached after it is remapped.
+/// 
+/// This request can be called multiple times but issuing it while a
+/// toplevel with an active role is attached raises a toplevel_attached
+/// error.
+/// 
+/// [toplevel]:
+/// [x_offset]: dragged surface x offset
+/// [y_offset]: dragged surface y offset
   Future<void> attach(XdgToplevel toplevel, int xOffset, int yOffset) async {
+    print("XdgToplevelDragV1::attach  toplevel: $toplevel xOffset: $xOffset yOffset: $yOffset");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         toplevel,
@@ -147,7 +209,7 @@ class XdgToplevelDragV1 extends Proxy{
         WaylandType.int,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }
@@ -156,9 +218,9 @@ class XdgToplevelDragV1 extends Proxy{
 /// 
 
 enum XdgToplevelDragV1error {
-  /// valid toplevel already attached
+/// valid toplevel already attached
   toplevelAttached,
-  /// drag has not ended
+/// drag has not ended
   ongoingDrag,
 }
 

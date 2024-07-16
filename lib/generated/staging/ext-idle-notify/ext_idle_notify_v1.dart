@@ -31,7 +31,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// idle notification manager
 /// 
 /// This interface allows clients to monitor user idle status.
@@ -42,24 +45,47 @@ import 'dart:typed_data';
 class ExtIdleNotifierV1 extends Proxy{
   final Context context;
 
-  ExtIdleNotifierV1(this.context) : super(context.allocateClientId());
+  ExtIdleNotifierV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the manager
+/// 
+/// Destroy the manager object. All objects created via this interface
+/// remain valid.
+/// 
   Future<void> destroy() async {
+    print("ExtIdleNotifierV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getIdleNotification(int timeout, Seat seat) async {
-  var id =  ExtIdleNotifierV1(context);
+/// create a notification object
+/// 
+/// Create a new idle notification object.
+/// 
+/// The notification object has a minimum timeout duration and is tied to a
+/// seat. The client will be notified if the seat is inactive for at least
+/// the provided timeout. See ext_idle_notification_v1 for more details.
+/// 
+/// A zero timeout is valid and means the client wants to be notified as
+/// soon as possible when the seat is inactive.
+/// 
+/// [id]:
+/// [timeout]: minimum idle timeout in msec
+/// [seat]:
+  Future<ExtIdleNotificationV1> getIdleNotification(int timeout, Seat seat) async {
+  var id =  ExtIdleNotificationV1(context);
+    print("ExtIdleNotifierV1::getIdleNotification  id: $id timeout: $timeout seat: $seat");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -72,10 +98,56 @@ class ExtIdleNotifierV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
+
+
+/// notification object is idle
+/// 
+/// This event is sent when the notification object becomes idle.
+/// 
+/// It's a compositor protocol error to send this event twice without a
+/// resumed event in-between.
+/// 
+class ExtIdleNotificationV1IdledEvent {
+  ExtIdleNotificationV1IdledEvent(
+);
+
+@override
+String toString(){
+  return """ExtIdleNotificationV1IdledEvent: {
+  }""";
+}
+
+}
+
+typedef ExtIdleNotificationV1IdledEventHandler = void Function(ExtIdleNotificationV1IdledEvent);
+
+/// notification object is no longer idle
+/// 
+/// This event is sent when the notification object stops being idle.
+/// 
+/// It's a compositor protocol error to send this event twice without an
+/// idled event in-between. It's a compositor protocol error to send this
+/// event prior to any idled event.
+/// 
+class ExtIdleNotificationV1ResumedEvent {
+  ExtIdleNotificationV1ResumedEvent(
+);
+
+@override
+String toString(){
+  return """ExtIdleNotificationV1ResumedEvent: {
+  }""";
+}
+
+}
+
+typedef ExtIdleNotificationV1ResumedEventHandler = void Function(ExtIdleNotificationV1ResumedEvent);
+
 
 /// idle notification
 /// 
@@ -97,34 +169,42 @@ class ExtIdleNotifierV1 extends Proxy{
 class ExtIdleNotificationV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  ExtIdleNotificationV1(this.context) : super(context.allocateClientId());
+  ExtIdleNotificationV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the notification object
+/// 
+/// Destroy the notification object.
+/// 
   Future<void> destroy() async {
+    print("ExtIdleNotificationV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// notification object is idle
+/// notification object is idle
 /// 
 /// This event is sent when the notification object becomes idle.
 /// 
 /// It's a compositor protocol error to send this event twice without a
 /// resumed event in-between.
 /// 
- void onidled(void Function() handler) {
+/// Event handler for Idled
+ void onIdled(ExtIdleNotificationV1IdledEventHandler handler) {
    _idledHandler = handler;
  }
 
- void Function()? _idledHandler;
+ ExtIdleNotificationV1IdledEventHandler? _idledHandler;
 
- /// notification object is no longer idle
+/// notification object is no longer idle
 /// 
 /// This event is sent when the notification object stops being idle.
 /// 
@@ -132,25 +212,28 @@ class ExtIdleNotificationV1 extends Proxy implements Dispatcher{
 /// idled event in-between. It's a compositor protocol error to send this
 /// event prior to any idled event.
 /// 
- void onresumed(void Function() handler) {
+/// Event handler for Resumed
+ void onResumed(ExtIdleNotificationV1ResumedEventHandler handler) {
    _resumedHandler = handler;
  }
 
- void Function()? _resumedHandler;
+ ExtIdleNotificationV1ResumedEventHandler? _resumedHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_idledHandler != null) {
-         _idledHandler!(
-         );
+var event = ExtIdleNotificationV1IdledEvent(
+        );
+         _idledHandler!(event);
        }
        break;
      case 1:
        if (_resumedHandler != null) {
-         _resumedHandler!(
-         );
+var event = ExtIdleNotificationV1ResumedEvent(
+        );
+         _resumedHandler!(event);
        }
        break;
    }

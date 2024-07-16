@@ -31,7 +31,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// surface content type manager
 /// 
 /// This interface allows a client to describe the kind of content a surface
@@ -45,24 +48,42 @@ import 'dart:typed_data';
 class WpContentTypeManagerV1 extends Proxy{
   final Context context;
 
-  WpContentTypeManagerV1(this.context) : super(context.allocateClientId());
+  WpContentTypeManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the content type manager object
+/// 
+/// Destroy the content type manager. This doesn't destroy objects created
+/// with the manager.
+/// 
   Future<void> destroy() async {
+    print("WpContentTypeManagerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getSurfaceContentType(Surface surface) async {
-  var id =  WpContentTypeManagerV1(context);
+/// create a new toplevel decoration object
+/// 
+/// Create a new content type object associated with the given surface.
+/// 
+/// Creating a wp_content_type_v1 from a wl_surface which already has one
+/// attached is a client error: already_constructed.
+/// 
+/// [id]:
+/// [surface]:
+  Future<WpContentTypeV1> getSurfaceContentType(Surface surface) async {
+  var id =  WpContentTypeV1(context);
+    print("WpContentTypeManagerV1::getSurfaceContentType  id: $id surface: $surface");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -73,7 +94,8 @@ class WpContentTypeManagerV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
@@ -82,9 +104,11 @@ class WpContentTypeManagerV1 extends Proxy{
 /// 
 
 enum WpContentTypeManagerV1error {
-  /// wl_surface already has a content type object
+/// wl_surface already has a content type object
   alreadyConstructed,
 }
+
+
 
 /// content type object for a surface
 /// 
@@ -99,23 +123,45 @@ enum WpContentTypeManagerV1error {
 class WpContentTypeV1 extends Proxy{
   final Context context;
 
-  WpContentTypeV1(this.context) : super(context.allocateClientId());
+  WpContentTypeV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the content type object
+/// 
+/// Switch back to not specifying the content type of this surface. This is
+/// equivalent to setting the content type to none, including double
+/// buffering semantics. See set_content_type for details.
+/// 
   Future<void> destroy() async {
+    print("WpContentTypeV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// specify the content type
+/// 
+/// Set the surface content type. This informs the compositor that the
+/// client believes it is displaying buffers matching this content type.
+/// 
+/// This is purely a hint for the compositor, which can be used to adjust
+/// its behavior or hardware settings to fit the presented content best.
+/// 
+/// The content type is double-buffered state, see wl_surface.commit for
+/// details.
+/// 
+/// [content_type]: the content type
   Future<void> setContentType(int contentType) async {
+    print("WpContentTypeV1::setContentType  contentType: $contentType");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         contentType,
@@ -124,7 +170,7 @@ class WpContentTypeV1 extends Proxy{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }
@@ -135,13 +181,13 @@ class WpContentTypeV1 extends Proxy{
 /// 
 
 enum WpContentTypeV1type {
-  /// 
+/// 
   none,
-  /// 
+/// 
   photo,
-  /// 
+/// 
   video,
-  /// 
+/// 
   game,
 }
 

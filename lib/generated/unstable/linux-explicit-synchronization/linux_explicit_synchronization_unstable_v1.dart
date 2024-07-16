@@ -32,7 +32,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// protocol for providing explicit synchronization
 /// 
 /// This global is a factory interface, allowing clients to request
@@ -57,24 +60,50 @@ import 'dart:typed_data';
 class ZwpLinuxExplicitSynchronizationV1 extends Proxy{
   final Context context;
 
-  ZwpLinuxExplicitSynchronizationV1(this.context) : super(context.allocateClientId());
+  ZwpLinuxExplicitSynchronizationV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy explicit synchronization factory object
+/// 
+/// Destroy this explicit synchronization factory object. Other objects,
+/// including zwp_linux_surface_synchronization_v1 objects created by this
+/// factory, shall not be affected by this request.
+/// 
   Future<void> destroy() async {
+    print("ZwpLinuxExplicitSynchronizationV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getSynchronization(Surface surface) async {
-  var id =  ZwpLinuxExplicitSynchronizationV1(context);
+/// extend surface interface for explicit synchronization
+/// 
+/// Instantiate an interface extension for the given wl_surface to provide
+/// explicit synchronization.
+/// 
+/// If the given wl_surface already has an explicit synchronization object
+/// associated, the synchronization_exists protocol error is raised.
+/// 
+/// Graphics APIs, like EGL or Vulkan, that manage the buffer queue and
+/// commits of a wl_surface themselves, are likely to be using this
+/// extension internally. If a client is using such an API for a
+/// wl_surface, it should not directly use this extension on that surface,
+/// to avoid raising a synchronization_exists protocol error.
+/// 
+/// [id]: the new synchronization interface id
+/// [surface]: the surface
+  Future<ZwpLinuxSurfaceSynchronizationV1> getSynchronization(Surface surface) async {
+  var id =  ZwpLinuxSurfaceSynchronizationV1(context);
+    print("ZwpLinuxExplicitSynchronizationV1::getSynchronization  id: $id surface: $surface");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -85,7 +114,8 @@ class ZwpLinuxExplicitSynchronizationV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
@@ -94,9 +124,11 @@ class ZwpLinuxExplicitSynchronizationV1 extends Proxy{
 /// 
 
 enum ZwpLinuxExplicitSynchronizationV1error {
-  /// the surface already has a synchronization object associated
+/// the surface already has a synchronization object associated
   synchronizationExists,
 }
+
+
 
 /// per-surface explicit synchronization support
 /// 
@@ -134,23 +166,65 @@ enum ZwpLinuxExplicitSynchronizationV1error {
 class ZwpLinuxSurfaceSynchronizationV1 extends Proxy{
   final Context context;
 
-  ZwpLinuxSurfaceSynchronizationV1(this.context) : super(context.allocateClientId());
+  ZwpLinuxSurfaceSynchronizationV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy synchronization object
+/// 
+/// Destroy this explicit synchronization object.
+/// 
+/// Any fence set by this object with set_acquire_fence since the last
+/// commit will be discarded by the server. Any fences set by this object
+/// before the last commit are not affected.
+/// 
+/// zwp_linux_buffer_release_v1 objects created by this object are not
+/// affected by this request.
+/// 
   Future<void> destroy() async {
+    print("ZwpLinuxSurfaceSynchronizationV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set the acquire fence
+/// 
+/// Set the acquire fence that must be signaled before the compositor
+/// may sample from the buffer attached with wl_surface.attach. The fence
+/// is a dma_fence kernel object.
+/// 
+/// The acquire fence is double-buffered state, and will be applied on the
+/// next wl_surface.commit request for the associated surface. Thus, it
+/// applies only to the buffer that is attached to the surface at commit
+/// time.
+/// 
+/// If the provided fd is not a valid dma_fence fd, then an INVALID_FENCE
+/// error is raised.
+/// 
+/// If a fence has already been attached during the same commit cycle, a
+/// DUPLICATE_FENCE error is raised.
+/// 
+/// If the associated wl_surface was destroyed, a NO_SURFACE error is
+/// raised.
+/// 
+/// If at surface commit time the attached buffer does not support explicit
+/// synchronization, an UNSUPPORTED_BUFFER error is raised.
+/// 
+/// If at surface commit time there is no buffer attached, a NO_BUFFER
+/// error is raised.
+/// 
+/// [fd]: acquire fence fd
   Future<void> setAcquireFence(int fd) async {
+    print("ZwpLinuxSurfaceSynchronizationV1::setAcquireFence  fd: $fd");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         fd,
@@ -159,13 +233,35 @@ class ZwpLinuxSurfaceSynchronizationV1 extends Proxy{
         WaylandType.fd,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getRelease() async {
-  var release =  ZwpLinuxSurfaceSynchronizationV1(context);
+/// release fence for last-attached buffer
+/// 
+/// Create a listener for the release of the buffer attached by the
+/// client with wl_surface.attach. See zwp_linux_buffer_release_v1
+/// documentation for more information.
+/// 
+/// The release object is double-buffered state, and will be associated
+/// with the buffer that is attached to the surface at wl_surface.commit
+/// time.
+/// 
+/// If a zwp_linux_buffer_release_v1 object has already been requested for
+/// the surface in the same commit cycle, a DUPLICATE_RELEASE error is
+/// raised.
+/// 
+/// If the associated wl_surface was destroyed, a NO_SURFACE error
+/// is raised.
+/// 
+/// If at surface commit time there is no buffer attached, a NO_BUFFER
+/// error is raised.
+/// 
+/// [release]: new zwp_linux_buffer_release_v1 object
+  Future<ZwpLinuxBufferReleaseV1> getRelease() async {
+  var release =  ZwpLinuxBufferReleaseV1(context);
+    print("ZwpLinuxSurfaceSynchronizationV1::getRelease  release: $release");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
         release,
@@ -174,7 +270,8 @@ class ZwpLinuxSurfaceSynchronizationV1 extends Proxy{
         WaylandType.newId,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return release;
   }
 
 }
@@ -183,19 +280,83 @@ class ZwpLinuxSurfaceSynchronizationV1 extends Proxy{
 /// 
 
 enum ZwpLinuxSurfaceSynchronizationV1error {
-  /// the fence specified by the client could not be imported
+/// the fence specified by the client could not be imported
   invalidFence,
-  /// multiple fences added for a single surface commit
+/// multiple fences added for a single surface commit
   duplicateFence,
-  /// multiple releases added for a single surface commit
+/// multiple releases added for a single surface commit
   duplicateRelease,
-  /// the associated wl_surface was destroyed
+/// the associated wl_surface was destroyed
   noSurface,
-  /// the buffer does not support explicit synchronization
+/// the buffer does not support explicit synchronization
   unsupportedBuffer,
-  /// no buffer was attached
+/// no buffer was attached
   noBuffer,
 }
+
+
+/// release buffer with fence
+/// 
+/// Sent when the compositor has finalised its usage of the associated
+/// buffer for the relevant commit, providing a dma_fence which will be
+/// signaled when all operations by the compositor on that buffer for that
+/// commit have finished.
+/// 
+/// Once the fence has signaled, and assuming the associated buffer is not
+/// pending release from other wl_surface.commit requests, no additional
+/// explicit or implicit synchronization is required to safely reuse or
+/// destroy the buffer.
+/// 
+/// This event destroys the zwp_linux_buffer_release_v1 object.
+/// 
+class ZwpLinuxBufferReleaseV1FencedReleaseEvent {
+/// fence for last operation on buffer
+  final int fence;
+
+  ZwpLinuxBufferReleaseV1FencedReleaseEvent(
+this.fence,
+
+);
+
+@override
+String toString(){
+  return """ZwpLinuxBufferReleaseV1FencedReleaseEvent: {
+    fence: $fence,
+  }""";
+}
+
+}
+
+typedef ZwpLinuxBufferReleaseV1FencedReleaseEventHandler = void Function(ZwpLinuxBufferReleaseV1FencedReleaseEvent);
+
+/// release buffer immediately
+/// 
+/// Sent when the compositor has finalised its usage of the associated
+/// buffer for the relevant commit, and either performed no operations
+/// using it, or has a guarantee that all its operations on that buffer for
+/// that commit have finished.
+/// 
+/// Once this event is received, and assuming the associated buffer is not
+/// pending release from other wl_surface.commit requests, no additional
+/// explicit or implicit synchronization is required to safely reuse or
+/// destroy the buffer.
+/// 
+/// This event destroys the zwp_linux_buffer_release_v1 object.
+/// 
+class ZwpLinuxBufferReleaseV1ImmediateReleaseEvent {
+  ZwpLinuxBufferReleaseV1ImmediateReleaseEvent(
+);
+
+@override
+String toString(){
+  return """ZwpLinuxBufferReleaseV1ImmediateReleaseEvent: {
+  }""";
+}
+
+}
+
+typedef ZwpLinuxBufferReleaseV1ImmediateReleaseEventHandler = void Function(ZwpLinuxBufferReleaseV1ImmediateReleaseEvent);
+
 
 /// buffer release explicit synchronization
 /// 
@@ -220,9 +381,11 @@ enum ZwpLinuxSurfaceSynchronizationV1error {
 class ZwpLinuxBufferReleaseV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  ZwpLinuxBufferReleaseV1(this.context) : super(context.allocateClientId());
+  ZwpLinuxBufferReleaseV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
- /// release buffer with fence
+/// release buffer with fence
 /// 
 /// Sent when the compositor has finalised its usage of the associated
 /// buffer for the relevant commit, providing a dma_fence which will be
@@ -236,13 +399,15 @@ class ZwpLinuxBufferReleaseV1 extends Proxy implements Dispatcher{
 /// 
 /// This event destroys the zwp_linux_buffer_release_v1 object.
 /// 
- void onfencedRelease(void Function(int fence) handler) {
+/// Event handler for FencedRelease
+/// - [fence]: fence for last operation on buffer
+ void onFencedRelease(ZwpLinuxBufferReleaseV1FencedReleaseEventHandler handler) {
    _fencedReleaseHandler = handler;
  }
 
- void Function(int fence)? _fencedReleaseHandler;
+ ZwpLinuxBufferReleaseV1FencedReleaseEventHandler? _fencedReleaseHandler;
 
- /// release buffer immediately
+/// release buffer immediately
 /// 
 /// Sent when the compositor has finalised its usage of the associated
 /// buffer for the relevant commit, and either performed no operations
@@ -256,26 +421,29 @@ class ZwpLinuxBufferReleaseV1 extends Proxy implements Dispatcher{
 /// 
 /// This event destroys the zwp_linux_buffer_release_v1 object.
 /// 
- void onimmediateRelease(void Function() handler) {
+/// Event handler for ImmediateRelease
+ void onImmediateRelease(ZwpLinuxBufferReleaseV1ImmediateReleaseEventHandler handler) {
    _immediateReleaseHandler = handler;
  }
 
- void Function()? _immediateReleaseHandler;
+ ZwpLinuxBufferReleaseV1ImmediateReleaseEventHandler? _immediateReleaseHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_fencedReleaseHandler != null) {
-         _fencedReleaseHandler!(
+var event = ZwpLinuxBufferReleaseV1FencedReleaseEvent(
            fd,
-         );
+        );
+         _fencedReleaseHandler!(event);
        }
        break;
      case 1:
        if (_immediateReleaseHandler != null) {
-         _immediateReleaseHandler!(
-         );
+var event = ZwpLinuxBufferReleaseV1ImmediateReleaseEvent(
+        );
+         _immediateReleaseHandler!(event);
        }
        break;
    }

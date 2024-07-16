@@ -29,7 +29,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// used to lock the session
 /// 
 /// This interface is used to request that the session be locked.
@@ -37,24 +40,42 @@ import 'dart:typed_data';
 class ExtSessionLockManagerV1 extends Proxy{
   final Context context;
 
-  ExtSessionLockManagerV1(this.context) : super(context.allocateClientId());
+  ExtSessionLockManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the session lock manager object
+/// 
+/// This informs the compositor that the session lock manager object will
+/// no longer be used. Existing objects created through this interface
+/// remain valid.
+/// 
   Future<void> destroy() async {
+    print("ExtSessionLockManagerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> lock() async {
-  var id =  ExtSessionLockManagerV1(context);
+/// attempt to lock the session
+/// 
+/// This request creates a session lock and asks the compositor to lock the
+/// session. The compositor will send either the ext_session_lock_v1.locked
+/// or ext_session_lock_v1.finished event on the created object in
+/// response to this request.
+/// 
+/// [id]:
+  Future<ExtSessionLockV1> lock() async {
+  var id =  ExtSessionLockV1(context);
+    print("ExtSessionLockManagerV1::lock  id: $id");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -63,10 +84,78 @@ class ExtSessionLockManagerV1 extends Proxy{
         WaylandType.newId,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
+
+
+/// session successfully locked
+/// 
+/// This client is now responsible for displaying graphics while the
+/// session is locked and deciding when to unlock the session.
+/// 
+/// The locked event must not be sent until a new "locked" frame has been
+/// presented on all outputs and no security sensitive normal/unlocked
+/// content is possibly visible.
+/// 
+/// If this event is sent, making the destroy request is a protocol error,
+/// the lock object must be destroyed using the unlock_and_destroy request.
+/// 
+class ExtSessionLockV1LockedEvent {
+  ExtSessionLockV1LockedEvent(
+);
+
+@override
+String toString(){
+  return """ExtSessionLockV1LockedEvent: {
+  }""";
+}
+
+}
+
+typedef ExtSessionLockV1LockedEventHandler = void Function(ExtSessionLockV1LockedEvent);
+
+/// the session lock object should be destroyed
+/// 
+/// The compositor has decided that the session lock should be destroyed
+/// as it will no longer be used by the compositor. Exactly when this
+/// event is sent is compositor policy, but it must never be sent more
+/// than once for a given session lock object.
+/// 
+/// This might be sent because there is already another ext_session_lock_v1
+/// object held by a client, or the compositor has decided to deny the
+/// request to lock the session for some other reason. This might also
+/// be sent because the compositor implements some alternative, secure
+/// way to authenticate and unlock the session.
+/// 
+/// The finished event should be sent immediately on creation of this
+/// object if the compositor decides that the locked event will not
+/// be sent.
+/// 
+/// If the locked event is sent on creation of this object the finished
+/// event may still be sent at some later time in this object's
+/// lifetime. This is compositor policy.
+/// 
+/// Upon receiving this event, the client should make either the destroy
+/// request or the unlock_and_destroy request, depending on whether or
+/// not the locked event was received on this object.
+/// 
+class ExtSessionLockV1FinishedEvent {
+  ExtSessionLockV1FinishedEvent(
+);
+
+@override
+String toString(){
+  return """ExtSessionLockV1FinishedEvent: {
+  }""";
+}
+
+}
+
+typedef ExtSessionLockV1FinishedEventHandler = void Function(ExtSessionLockV1FinishedEvent);
+
 
 /// manage lock state and create lock surfaces
 /// 
@@ -122,24 +211,57 @@ class ExtSessionLockManagerV1 extends Proxy{
 class ExtSessionLockV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  ExtSessionLockV1(this.context) : super(context.allocateClientId());
+  ExtSessionLockV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the session lock
+/// 
+/// This informs the compositor that the lock object will no longer be
+/// used. Existing objects created through this interface remain valid.
+/// 
+/// After this request is made, lock surfaces created through this object
+/// should be destroyed by the client as they will no longer be used by
+/// the compositor.
+/// 
+/// It is a protocol error to make this request if the locked event was
+/// sent, the unlock_and_destroy request must be used instead.
+/// 
   Future<void> destroy() async {
+    print("ExtSessionLockV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getLockSurface(Surface surface, Output output) async {
-  var id =  ExtSessionLockV1(context);
+/// create a lock surface for a given output
+/// 
+/// The client is expected to create lock surfaces for all outputs
+/// currently present and any new outputs as they are advertised. These
+/// won't be displayed by the compositor unless the lock is successful
+/// and the locked event is sent.
+/// 
+/// Providing a wl_surface which already has a role or already has a buffer
+/// attached or committed is a protocol error, as is attaching/committing
+/// a buffer before the first ext_session_lock_surface_v1.configure event.
+/// 
+/// Attempting to create more than one lock surface for a given output
+/// is a duplicate_output protocol error.
+/// 
+/// [id]:
+/// [surface]:
+/// [output]:
+  Future<ExtSessionLockSurfaceV1> getLockSurface(Surface surface, Output output) async {
+  var id =  ExtSessionLockSurfaceV1(context);
+    print("ExtSessionLockV1::getLockSurface  id: $id surface: $surface output: $output");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -152,22 +274,50 @@ class ExtSessionLockV1 extends Proxy implements Dispatcher{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
+/// unlock the session, destroying the object
+/// 
+/// This request indicates that the session should be unlocked, for
+/// example because the user has entered their password and it has been
+/// verified by the client.
+/// 
+/// This request also informs the compositor that the lock object will
+/// no longer be used and should be destroyed. Existing objects created
+/// through this interface remain valid.
+/// 
+/// After this request is made, lock surfaces created through this object
+/// should be destroyed by the client as they will no longer be used by
+/// the compositor.
+/// 
+/// It is a protocol error to make this request if the locked event has
+/// not been sent. In that case, the lock object must be destroyed using
+/// the destroy request.
+/// 
+/// Note that a correct client that wishes to exit directly after unlocking
+/// the session must use the wl_display.sync request to ensure the server
+/// receives and processes the unlock_and_destroy request. Otherwise
+/// there is no guarantee that the server has unlocked the session due
+/// to the asynchronous nature of the Wayland protocol. For example,
+/// the server might terminate the client with a protocol error before
+/// it processes the unlock_and_destroy request.
+/// 
   Future<void> unlockAndDestroy() async {
+    print("ExtSessionLockV1::unlockAndDestroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// session successfully locked
+/// session successfully locked
 /// 
 /// This client is now responsible for displaying graphics while the
 /// session is locked and deciding when to unlock the session.
@@ -179,13 +329,14 @@ class ExtSessionLockV1 extends Proxy implements Dispatcher{
 /// If this event is sent, making the destroy request is a protocol error,
 /// the lock object must be destroyed using the unlock_and_destroy request.
 /// 
- void onlocked(void Function() handler) {
+/// Event handler for Locked
+ void onLocked(ExtSessionLockV1LockedEventHandler handler) {
    _lockedHandler = handler;
  }
 
- void Function()? _lockedHandler;
+ ExtSessionLockV1LockedEventHandler? _lockedHandler;
 
- /// the session lock object should be destroyed
+/// the session lock object should be destroyed
 /// 
 /// The compositor has decided that the session lock should be destroyed
 /// as it will no longer be used by the compositor. Exactly when this
@@ -210,25 +361,28 @@ class ExtSessionLockV1 extends Proxy implements Dispatcher{
 /// request or the unlock_and_destroy request, depending on whether or
 /// not the locked event was received on this object.
 /// 
- void onfinished(void Function() handler) {
+/// Event handler for Finished
+ void onFinished(ExtSessionLockV1FinishedEventHandler handler) {
    _finishedHandler = handler;
  }
 
- void Function()? _finishedHandler;
+ ExtSessionLockV1FinishedEventHandler? _finishedHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_lockedHandler != null) {
-         _lockedHandler!(
-         );
+var event = ExtSessionLockV1LockedEvent(
+        );
+         _lockedHandler!(event);
        }
        break;
      case 1:
        if (_finishedHandler != null) {
-         _finishedHandler!(
-         );
+var event = ExtSessionLockV1FinishedEvent(
+        );
+         _finishedHandler!(event);
        }
        break;
    }
@@ -239,17 +393,60 @@ class ExtSessionLockV1 extends Proxy implements Dispatcher{
 /// 
 
 enum ExtSessionLockV1error {
-  /// attempted to destroy session lock while locked
+/// attempted to destroy session lock while locked
   invalidDestroy,
-  /// unlock requested but locked event was never sent
+/// unlock requested but locked event was never sent
   invalidUnlock,
-  /// given wl_surface already has a role
+/// given wl_surface already has a role
   role,
-  /// given output already has a lock surface
+/// given output already has a lock surface
   duplicateOutput,
-  /// given wl_surface has a buffer attached or committed
+/// given wl_surface has a buffer attached or committed
   alreadyConstructed,
 }
+
+
+/// the client should resize its surface
+/// 
+/// This event is sent once on binding the interface and may be sent again
+/// at the compositor's discretion, for example if output geometry changes.
+/// 
+/// The width and height are in surface-local coordinates and are exact
+/// requirements. Failing to match these surface dimensions in the next
+/// commit after acking a configure is a protocol error.
+/// 
+class ExtSessionLockSurfaceV1ConfigureEvent {
+/// serial for use in ack_configure
+  final int serial;
+
+/// 
+  final int width;
+
+/// 
+  final int height;
+
+  ExtSessionLockSurfaceV1ConfigureEvent(
+this.serial,
+
+this.width,
+
+this.height,
+
+);
+
+@override
+String toString(){
+  return """ExtSessionLockSurfaceV1ConfigureEvent: {
+    serial: $serial,
+    width: $width,
+    height: $height,
+  }""";
+}
+
+}
+
+typedef ExtSessionLockSurfaceV1ConfigureEventHandler = void Function(ExtSessionLockSurfaceV1ConfigureEvent);
+
 
 /// a surface displayed while the session is locked
 /// 
@@ -272,23 +469,67 @@ enum ExtSessionLockV1error {
 class ExtSessionLockSurfaceV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  ExtSessionLockSurfaceV1(this.context) : super(context.allocateClientId());
+  ExtSessionLockSurfaceV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the lock surface object
+/// 
+/// This informs the compositor that the lock surface object will no
+/// longer be used.
+/// 
+/// It is recommended for a lock client to destroy lock surfaces if
+/// their corresponding wl_output global is removed.
+/// 
+/// If a lock surface on an active output is destroyed before the
+/// ext_session_lock_v1.unlock_and_destroy event is sent, the compositor
+/// must fall back to rendering a solid color.
+/// 
   Future<void> destroy() async {
+    print("ExtSessionLockSurfaceV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// ack a configure event
+/// 
+/// When a configure event is received, if a client commits the surface
+/// in response to the configure event, then the client must make an
+/// ack_configure request sometime before the commit request, passing
+/// along the serial of the configure event.
+/// 
+/// If the client receives multiple configure events before it can
+/// respond to one, it only has to ack the last configure event.
+/// 
+/// A client is not required to commit immediately after sending an
+/// ack_configure request - it may even ack_configure several times
+/// before its next surface commit.
+/// 
+/// A client may send multiple ack_configure requests before committing,
+/// but only the last request sent before a commit indicates which
+/// configure event the client really is responding to.
+/// 
+/// Sending an ack_configure request consumes the configure event
+/// referenced by the given serial, as well as all older configure events
+/// sent on this object.
+/// 
+/// It is a protocol error to issue multiple ack_configure requests
+/// referencing the same configure event or to issue an ack_configure
+/// request referencing a configure event older than the last configure
+/// event acked for a given lock surface.
+/// 
+/// [serial]: serial from the configure event
   Future<void> ackConfigure(int serial) async {
+    print("ExtSessionLockSurfaceV1::ackConfigure  serial: $serial");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         serial,
@@ -297,10 +538,10 @@ class ExtSessionLockSurfaceV1 extends Proxy implements Dispatcher{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// the client should resize its surface
+/// the client should resize its surface
 /// 
 /// This event is sent once on binding the interface and may be sent again
 /// at the compositor's discretion, for example if output geometry changes.
@@ -309,22 +550,27 @@ class ExtSessionLockSurfaceV1 extends Proxy implements Dispatcher{
 /// requirements. Failing to match these surface dimensions in the next
 /// commit after acking a configure is a protocol error.
 /// 
- void onconfigure(void Function(int serial, int width, int height) handler) {
+/// Event handler for Configure
+/// - [serial]: serial for use in ack_configure
+/// - [width]:
+/// - [height]:
+ void onConfigure(ExtSessionLockSurfaceV1ConfigureEventHandler handler) {
    _configureHandler = handler;
  }
 
- void Function(int serial, int width, int height)? _configureHandler;
+ ExtSessionLockSurfaceV1ConfigureEventHandler? _configureHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_configureHandler != null) {
-         _configureHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-           ByteData.view(data.buffer).getInt32(4, Endian.host),
-           ByteData.view(data.buffer).getInt32(8, Endian.host),
-         );
+var event = ExtSessionLockSurfaceV1ConfigureEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+           ByteData.view(data.buffer).getUint32(4, Endian.little),
+           ByteData.view(data.buffer).getUint32(8, Endian.little),
+        );
+         _configureHandler!(event);
        }
        break;
    }
@@ -335,13 +581,13 @@ class ExtSessionLockSurfaceV1 extends Proxy implements Dispatcher{
 /// 
 
 enum ExtSessionLockSurfaceV1error {
-  /// surface committed before first ack_configure request
+/// surface committed before first ack_configure request
   commitBeforeFirstAck,
-  /// surface committed with a null buffer
+/// surface committed with a null buffer
   nullBuffer,
-  /// failed to match ack'd width/height
+/// failed to match ack'd width/height
   dimensionsMismatch,
-  /// serial provided in ack_configure is invalid
+/// serial provided in ack_configure is invalid
   invalidSerial,
 }
 

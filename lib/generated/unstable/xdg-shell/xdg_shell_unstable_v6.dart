@@ -33,78 +33,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
-/// create desktop-style surfaces
-/// 
-/// xdg_shell allows clients to turn a wl_surface into a "real window"
-/// which can be dragged, resized, stacked, and moved around by the
-/// user. Everything about this interface is suited towards traditional
-/// desktop environments.
-/// 
-class ZxdgShellV6 extends Proxy implements Dispatcher{
-  final Context context;
 
-  ZxdgShellV6(this.context) : super(context.allocateClientId());
-
-  Future<void> destroy() async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      0,
-      [
-      ],
-      [
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> createPositioner() async {
-  var id =  ZxdgShellV6(context);
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      1,
-      [
-        id,
-      ],
-      [
-        WaylandType.newId,
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> getXdgSurface(Surface surface) async {
-  var id =  ZxdgShellV6(context);
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      2,
-      [
-        id,
-        surface,
-      ],
-      [
-        WaylandType.newId,
-        WaylandType.object,
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> pong(int serial) async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      3,
-      [
-        serial,
-      ],
-      [
-        WaylandType.uint,
-      ],
-    );
-    context.sendMessage(message);
-  }
-
- /// check if the client is alive
+/// check if the client is alive
 /// 
 /// The ping event asks the client if it's still alive. Pass the
 /// serial specified in the event back to the compositor by sending
@@ -118,20 +50,173 @@ class ZxdgShellV6 extends Proxy implements Dispatcher{
 /// A compositor is free to ping in any way it wants, but a client must
 /// always respond to any xdg_shell object it created.
 /// 
- void onping(void Function(int serial) handler) {
+class ZxdgShellV6PingEvent {
+/// pass this to the pong request
+  final int serial;
+
+  ZxdgShellV6PingEvent(
+this.serial,
+
+);
+
+@override
+String toString(){
+  return """ZxdgShellV6PingEvent: {
+    serial: $serial,
+  }""";
+}
+
+}
+
+typedef ZxdgShellV6PingEventHandler = void Function(ZxdgShellV6PingEvent);
+
+
+/// create desktop-style surfaces
+/// 
+/// xdg_shell allows clients to turn a wl_surface into a "real window"
+/// which can be dragged, resized, stacked, and moved around by the
+/// user. Everything about this interface is suited towards traditional
+/// desktop environments.
+/// 
+class ZxdgShellV6 extends Proxy implements Dispatcher{
+  final Context context;
+
+  ZxdgShellV6(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
+
+/// destroy xdg_shell
+/// 
+/// Destroy this xdg_shell object.
+/// 
+/// Destroying a bound xdg_shell object while there are surfaces
+/// still alive created by this xdg_shell object instance is illegal
+/// and will result in a protocol error.
+/// 
+  Future<void> destroy() async {
+    print("ZxdgShellV6::destroy ");
+    final message = WaylandMessage(
+      objectId,
+      0,
+      [
+      ],
+      [
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// create a positioner object
+/// 
+/// Create a positioner object. A positioner object is used to position
+/// surfaces relative to some parent surface. See the interface description
+/// and xdg_surface.get_popup for details.
+/// 
+/// [id]:
+  Future<ZxdgPositionerV6> createPositioner() async {
+  var id =  ZxdgPositionerV6(context);
+    print("ZxdgShellV6::createPositioner  id: $id");
+    final message = WaylandMessage(
+      objectId,
+      1,
+      [
+        id,
+      ],
+      [
+        WaylandType.newId,
+      ],
+    );
+    await context.sendMessage(message);
+    return id;
+  }
+
+/// create a shell surface from a surface
+/// 
+/// This creates an xdg_surface for the given surface. While xdg_surface
+/// itself is not a role, the corresponding surface may only be assigned
+/// a role extending xdg_surface, such as xdg_toplevel or xdg_popup.
+/// 
+/// This creates an xdg_surface for the given surface. An xdg_surface is
+/// used as basis to define a role to a given surface, such as xdg_toplevel
+/// or xdg_popup. It also manages functionality shared between xdg_surface
+/// based surface roles.
+/// 
+/// See the documentation of xdg_surface for more details about what an
+/// xdg_surface is and how it is used.
+/// 
+/// [id]:
+/// [surface]:
+  Future<ZxdgSurfaceV6> getXdgSurface(Surface surface) async {
+  var id =  ZxdgSurfaceV6(context);
+    print("ZxdgShellV6::getXdgSurface  id: $id surface: $surface");
+    final message = WaylandMessage(
+      objectId,
+      2,
+      [
+        id,
+        surface,
+      ],
+      [
+        WaylandType.newId,
+        WaylandType.object,
+      ],
+    );
+    await context.sendMessage(message);
+    return id;
+  }
+
+/// respond to a ping event
+/// 
+/// A client must respond to a ping event with a pong request or
+/// the client may be deemed unresponsive. See xdg_shell.ping.
+/// 
+/// [serial]: serial of the ping event
+  Future<void> pong(int serial) async {
+    print("ZxdgShellV6::pong  serial: $serial");
+    final message = WaylandMessage(
+      objectId,
+      3,
+      [
+        serial,
+      ],
+      [
+        WaylandType.uint,
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// check if the client is alive
+/// 
+/// The ping event asks the client if it's still alive. Pass the
+/// serial specified in the event back to the compositor by sending
+/// a "pong" request back with the specified serial. See xdg_shell.ping.
+/// 
+/// Compositors can use this to determine if the client is still
+/// alive. It's unspecified what will happen if the client doesn't
+/// respond to the ping request, or in what timeframe. Clients should
+/// try to respond in a reasonable amount of time.
+/// 
+/// A compositor is free to ping in any way it wants, but a client must
+/// always respond to any xdg_shell object it created.
+/// 
+/// Event handler for Ping
+/// - [serial]: pass this to the pong request
+ void onPing(ZxdgShellV6PingEventHandler handler) {
    _pingHandler = handler;
  }
 
- void Function(int serial)? _pingHandler;
+ ZxdgShellV6PingEventHandler? _pingHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_pingHandler != null) {
-         _pingHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZxdgShellV6PingEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _pingHandler!(event);
        }
        break;
    }
@@ -142,19 +227,21 @@ class ZxdgShellV6 extends Proxy implements Dispatcher{
 /// 
 
 enum ZxdgShellV6error {
-  /// given wl_surface has another role
+/// given wl_surface has another role
   role,
-  /// xdg_shell was destroyed before children
+/// xdg_shell was destroyed before children
   defunctSurfaces,
-  /// the client tried to map or destroy a non-topmost popup
+/// the client tried to map or destroy a non-topmost popup
   notTheTopmostPopup,
-  /// the client specified an invalid popup parent surface
+/// the client specified an invalid popup parent surface
   invalidPopupParent,
-  /// the client provided an invalid surface state
+/// the client provided an invalid surface state
   invalidSurfaceState,
-  /// the client provided an invalid positioner
+/// the client provided an invalid positioner
   invalidPositioner,
 }
+
+
 
 /// child surface positioner
 /// 
@@ -181,23 +268,41 @@ enum ZxdgShellV6error {
 class ZxdgPositionerV6 extends Proxy{
   final Context context;
 
-  ZxdgPositionerV6(this.context) : super(context.allocateClientId());
+  ZxdgPositionerV6(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the xdg_positioner object
+/// 
+/// Notify the compositor that the xdg_positioner will no longer be used.
+/// 
   Future<void> destroy() async {
+    print("ZxdgPositionerV6::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set the size of the to-be positioned rectangle
+/// 
+/// Set the size of the surface that is to be positioned with the positioner
+/// object. The size is in surface-local coordinates and corresponds to the
+/// window geometry. See xdg_surface.set_window_geometry.
+/// 
+/// If a zero or negative size is set the invalid_input error is raised.
+/// 
+/// [width]: width of positioned rectangle
+/// [height]: height of positioned rectangle
   Future<void> setSize(int width, int height) async {
+    print("ZxdgPositionerV6::setSize  width: $width height: $height");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         width,
@@ -208,12 +313,30 @@ class ZxdgPositionerV6 extends Proxy{
         WaylandType.int,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set the anchor rectangle within the parent surface
+/// 
+/// Specify the anchor rectangle within the parent surface that the child
+/// surface will be placed relative to. The rectangle is relative to the
+/// window geometry as defined by xdg_surface.set_window_geometry of the
+/// parent surface. The rectangle must be at least 1x1 large.
+/// 
+/// When the xdg_positioner object is used to position a child surface, the
+/// anchor rectangle may not extend outside the window geometry of the
+/// positioned child's parent surface.
+/// 
+/// If a zero or negative size is set the invalid_input error is raised.
+/// 
+/// [x]: x position of anchor rectangle
+/// [y]: y position of anchor rectangle
+/// [width]: width of anchor rectangle
+/// [height]: height of anchor rectangle
   Future<void> setAnchorRect(int x, int y, int width, int height) async {
+    print("ZxdgPositionerV6::setAnchorRect  x: $x y: $y width: $width height: $height");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
         x,
@@ -228,12 +351,27 @@ class ZxdgPositionerV6 extends Proxy{
         WaylandType.int,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set anchor rectangle anchor edges
+/// 
+/// Defines a set of edges for the anchor rectangle. These are used to
+/// derive an anchor point that the child surface will be positioned
+/// relative to. If two orthogonal edges are specified (e.g. 'top' and
+/// 'left'), then the anchor point will be the intersection of the edges
+/// (e.g. the top left position of the rectangle); otherwise, the derived
+/// anchor point will be centered on the specified edge, or in the center of
+/// the anchor rectangle if no edge is specified.
+/// 
+/// If two parallel anchor edges are specified (e.g. 'left' and 'right'),
+/// the invalid_input error is raised.
+/// 
+/// [anchor]: bit mask of anchor edges
   Future<void> setAnchor(int anchor) async {
+    print("ZxdgPositionerV6::setAnchor  anchor: $anchor");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       3,
       [
         anchor,
@@ -242,12 +380,26 @@ class ZxdgPositionerV6 extends Proxy{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set child surface gravity
+/// 
+/// Defines in what direction a surface should be positioned, relative to
+/// the anchor point of the parent surface. If two orthogonal gravities are
+/// specified (e.g. 'bottom' and 'right'), then the child surface will be
+/// placed in the specified direction; otherwise, the child surface will be
+/// centered over the anchor point on any axis that had no gravity
+/// specified.
+/// 
+/// If two parallel gravities are specified (e.g. 'left' and 'right'), the
+/// invalid_input error is raised.
+/// 
+/// [gravity]: bit mask of gravity directions
   Future<void> setGravity(int gravity) async {
+    print("ZxdgPositionerV6::setGravity  gravity: $gravity");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       4,
       [
         gravity,
@@ -256,12 +408,30 @@ class ZxdgPositionerV6 extends Proxy{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set the adjustment to be done when constrained
+/// 
+/// Specify how the window should be positioned if the originally intended
+/// position caused the surface to be constrained, meaning at least
+/// partially outside positioning boundaries set by the compositor. The
+/// adjustment is set by constructing a bitmask describing the adjustment to
+/// be made when the surface is constrained on that axis.
+/// 
+/// If no bit for one axis is set, the compositor will assume that the child
+/// surface should not change its position on that axis when constrained.
+/// 
+/// If more than one bit for one axis is set, the order of how adjustments
+/// are applied is specified in the corresponding adjustment descriptions.
+/// 
+/// The default adjustment is none.
+/// 
+/// [constraint_adjustment]: bit mask of constraint adjustments
   Future<void> setConstraintAdjustment(int constraintAdjustment) async {
+    print("ZxdgPositionerV6::setConstraintAdjustment  constraintAdjustment: $constraintAdjustment");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       5,
       [
         constraintAdjustment,
@@ -270,12 +440,29 @@ class ZxdgPositionerV6 extends Proxy{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set surface position offset
+/// 
+/// Specify the surface position offset relative to the position of the
+/// anchor on the anchor rectangle and the anchor on the surface. For
+/// example if the anchor of the anchor rectangle is at (x, y), the surface
+/// has the gravity bottom|right, and the offset is (ox, oy), the calculated
+/// surface position will be (x + ox, y + oy). The offset position of the
+/// surface is the one used for constraint testing. See
+/// set_constraint_adjustment.
+/// 
+/// An example use case is placing a popup menu on top of a user interface
+/// element, while aligning the user interface element of the parent surface
+/// with some user interface element placed somewhere in the popup surface.
+/// 
+/// [x]: surface position x offset
+/// [y]: surface position y offset
   Future<void> setOffset(int x, int y) async {
+    print("ZxdgPositionerV6::setOffset  x: $x y: $y");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       6,
       [
         x,
@@ -286,7 +473,7 @@ class ZxdgPositionerV6 extends Proxy{
         WaylandType.int,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }
@@ -295,7 +482,7 @@ class ZxdgPositionerV6 extends Proxy{
 /// 
 
 enum ZxdgPositionerV6error {
-  /// invalid input provided
+/// invalid input provided
   invalidInput,
 }
 
@@ -303,15 +490,15 @@ enum ZxdgPositionerV6error {
 /// 
 
 enum ZxdgPositionerV6anchor {
-  /// the center of the anchor rectangle
+/// the center of the anchor rectangle
   none,
-  /// the top edge of the anchor rectangle
+/// the top edge of the anchor rectangle
   top,
-  /// the bottom edge of the anchor rectangle
+/// the bottom edge of the anchor rectangle
   bottom,
-  /// the left edge of the anchor rectangle
+/// the left edge of the anchor rectangle
   left,
-  /// the right edge of the anchor rectangle
+/// the right edge of the anchor rectangle
   right,
 }
 
@@ -319,15 +506,15 @@ enum ZxdgPositionerV6anchor {
 /// 
 
 enum ZxdgPositionerV6gravity {
-  /// center over the anchor edge
+/// center over the anchor edge
   none,
-  /// position above the anchor edge
+/// position above the anchor edge
   top,
-  /// position below the anchor edge
+/// position below the anchor edge
   bottom,
-  /// position to the left of the anchor edge
+/// position to the left of the anchor edge
   left,
-  /// position to the right of the anchor edge
+/// position to the right of the anchor edge
   right,
 }
 
@@ -347,21 +534,62 @@ enum ZxdgPositionerV6gravity {
 /// 
 
 enum ZxdgPositionerV6constraintAdjustment {
-  /// 
+/// 
   none,
-  /// 
+/// 
   slideX,
-  /// 
+/// 
   slideY,
-  /// 
+/// 
   flipX,
-  /// 
+/// 
   flipY,
-  /// 
+/// 
   resizeX,
-  /// 
+/// 
   resizeY,
 }
+
+
+/// suggest a surface change
+/// 
+/// The configure event marks the end of a configure sequence. A configure
+/// sequence is a set of one or more events configuring the state of the
+/// xdg_surface, including the final xdg_surface.configure event.
+/// 
+/// Where applicable, xdg_surface surface roles will during a configure
+/// sequence extend this event as a latched state sent as events before the
+/// xdg_surface.configure event. Such events should be considered to make up
+/// a set of atomically applied configuration states, where the
+/// xdg_surface.configure commits the accumulated state.
+/// 
+/// Clients should arrange their surface for the new states, and then send
+/// an ack_configure request with the serial sent in this configure event at
+/// some point before committing the new surface.
+/// 
+/// If the client receives multiple configure events before it can respond
+/// to one, it is free to discard all but the last event it received.
+/// 
+class ZxdgSurfaceV6ConfigureEvent {
+/// serial of the configure event
+  final int serial;
+
+  ZxdgSurfaceV6ConfigureEvent(
+this.serial,
+
+);
+
+@override
+String toString(){
+  return """ZxdgSurfaceV6ConfigureEvent: {
+    serial: $serial,
+  }""";
+}
+
+}
+
+typedef ZxdgSurfaceV6ConfigureEventHandler = void Function(ZxdgSurfaceV6ConfigureEvent);
+
 
 /// desktop user interface surface base interface
 /// 
@@ -399,24 +627,45 @@ enum ZxdgPositionerV6constraintAdjustment {
 class ZxdgSurfaceV6 extends Proxy implements Dispatcher{
   final Context context;
 
-  ZxdgSurfaceV6(this.context) : super(context.allocateClientId());
+  ZxdgSurfaceV6(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the xdg_surface
+/// 
+/// Destroy the xdg_surface object. An xdg_surface must only be destroyed
+/// after its role object has been destroyed. If the role object still
+/// exists when this request is issued, the zxdg_shell_v6.defunct_surfaces
+/// is raised.
+/// 
   Future<void> destroy() async {
+    print("ZxdgSurfaceV6::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getToplevel() async {
-  var id =  ZxdgSurfaceV6(context);
+/// assign the xdg_toplevel surface role
+/// 
+/// This creates an xdg_toplevel object for the given xdg_surface and gives
+/// the associated wl_surface the xdg_toplevel role. If the surface already
+/// had a role, the zxdg_shell_v6.role error is raised.
+/// 
+/// See the documentation of xdg_toplevel for more details about what an
+/// xdg_toplevel is and how it is used.
+/// 
+/// [id]:
+  Future<ZxdgToplevelV6> getToplevel() async {
+  var id =  ZxdgToplevelV6(context);
+    print("ZxdgSurfaceV6::getToplevel  id: $id");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -425,13 +674,27 @@ class ZxdgSurfaceV6 extends Proxy implements Dispatcher{
         WaylandType.newId,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
-  Future<void> getPopup(ZxdgSurfaceV6 parent, ZxdgPositionerV6 positioner) async {
-  var id =  ZxdgSurfaceV6(context);
+/// assign the xdg_popup surface role
+/// 
+/// This creates an xdg_popup object for the given xdg_surface and gives the
+/// associated wl_surface the xdg_popup role. If the surface already
+/// had a role, the zxdg_shell_v6.role error is raised.
+/// 
+/// See the documentation of xdg_popup for more details about what an
+/// xdg_popup is and how it is used.
+/// 
+/// [id]:
+/// [parent]:
+/// [positioner]:
+  Future<ZxdgPopupV6> getPopup(ZxdgSurfaceV6 parent, ZxdgPositionerV6 positioner) async {
+  var id =  ZxdgPopupV6(context);
+    print("ZxdgSurfaceV6::getPopup  id: $id parent: $parent positioner: $positioner");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
         id,
@@ -444,12 +707,44 @@ class ZxdgSurfaceV6 extends Proxy implements Dispatcher{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
+/// set the new window geometry
+/// 
+/// The window geometry of a surface is its "visible bounds" from the
+/// user's perspective. Client-side decorations often have invisible
+/// portions like drop-shadows which should be ignored for the
+/// purposes of aligning, placing and constraining windows.
+/// 
+/// The window geometry is double-buffered state, see wl_surface.commit.
+/// 
+/// Once the window geometry of the surface is set, it is not possible to
+/// unset it, and it will remain the same until set_window_geometry is
+/// called again, even if a new subsurface or buffer is attached.
+/// 
+/// If never set, the value is the full bounds of the surface,
+/// including any subsurfaces. This updates dynamically on every
+/// commit. This unset is meant for extremely simple clients.
+/// 
+/// The arguments are given in the surface-local coordinate space of
+/// the wl_surface associated with this xdg_surface.
+/// 
+/// The width and height must be greater than zero. Setting an invalid size
+/// will raise an error. When applied, the effective window geometry will be
+/// the set window geometry clamped to the bounding rectangle of the
+/// combined geometry of the surface of the xdg_surface and the associated
+/// subsurfaces.
+/// 
+/// [x]:
+/// [y]:
+/// [width]:
+/// [height]:
   Future<void> setWindowGeometry(int x, int y, int width, int height) async {
+    print("ZxdgSurfaceV6::setWindowGeometry  x: $x y: $y width: $width height: $height");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       3,
       [
         x,
@@ -464,12 +759,39 @@ class ZxdgSurfaceV6 extends Proxy implements Dispatcher{
         WaylandType.int,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// ack a configure event
+/// 
+/// When a configure event is received, if a client commits the
+/// surface in response to the configure event, then the client
+/// must make an ack_configure request sometime before the commit
+/// request, passing along the serial of the configure event.
+/// 
+/// For instance, for toplevel surfaces the compositor might use this
+/// information to move a surface to the top left only when the client has
+/// drawn itself for the maximized or fullscreen state.
+/// 
+/// If the client receives multiple configure events before it
+/// can respond to one, it only has to ack the last configure event.
+/// 
+/// A client is not required to commit immediately after sending
+/// an ack_configure request - it may even ack_configure several times
+/// before its next surface commit.
+/// 
+/// A client may send multiple ack_configure requests before committing, but
+/// only the last request sent before a commit indicates which configure
+/// event the client really is responding to.
+/// 
+/// If an invalid serial is used, the zxdg_shell_v6.invalid_surface_state
+/// error is raised.
+/// 
+/// [serial]: the serial from the configure event
   Future<void> ackConfigure(int serial) async {
+    print("ZxdgSurfaceV6::ackConfigure  serial: $serial");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       4,
       [
         serial,
@@ -478,10 +800,10 @@ class ZxdgSurfaceV6 extends Proxy implements Dispatcher{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// suggest a surface change
+/// suggest a surface change
 /// 
 /// The configure event marks the end of a configure sequence. A configure
 /// sequence is a set of one or more events configuring the state of the
@@ -500,20 +822,23 @@ class ZxdgSurfaceV6 extends Proxy implements Dispatcher{
 /// If the client receives multiple configure events before it can respond
 /// to one, it is free to discard all but the last event it received.
 /// 
- void onconfigure(void Function(int serial) handler) {
+/// Event handler for Configure
+/// - [serial]: serial of the configure event
+ void onConfigure(ZxdgSurfaceV6ConfigureEventHandler handler) {
    _configureHandler = handler;
  }
 
- void Function(int serial)? _configureHandler;
+ ZxdgSurfaceV6ConfigureEventHandler? _configureHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_configureHandler != null) {
-         _configureHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZxdgSurfaceV6ConfigureEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _configureHandler!(event);
        }
        break;
    }
@@ -524,230 +849,16 @@ class ZxdgSurfaceV6 extends Proxy implements Dispatcher{
 /// 
 
 enum ZxdgSurfaceV6error {
-  /// 
+/// 
   notConstructed,
-  /// 
+/// 
   alreadyConstructed,
-  /// 
+/// 
   unconfiguredBuffer,
 }
 
-/// toplevel surface
-/// 
-/// This interface defines an xdg_surface role which allows a surface to,
-/// among other things, set window-like properties such as maximize,
-/// fullscreen, and minimize, set application-specific metadata like title and
-/// id, and well as trigger user interactive operations such as interactive
-/// resize and move.
-/// 
-class ZxdgToplevelV6 extends Proxy implements Dispatcher{
-  final Context context;
 
-  ZxdgToplevelV6(this.context) : super(context.allocateClientId());
-
-  Future<void> destroy() async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      0,
-      [
-      ],
-      [
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> setParent(ZxdgToplevelV6 parent) async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      1,
-      [
-        parent,
-      ],
-      [
-        WaylandType.object,
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> setTitle(String title) async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      2,
-      [
-        title,
-      ],
-      [
-        WaylandType.string,
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> setAppId(String appId) async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      3,
-      [
-        appId,
-      ],
-      [
-        WaylandType.string,
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> showWindowMenu(Seat seat, int serial, int x, int y) async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      4,
-      [
-        seat,
-        serial,
-        x,
-        y,
-      ],
-      [
-        WaylandType.object,
-        WaylandType.uint,
-        WaylandType.int,
-        WaylandType.int,
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> move(Seat seat, int serial) async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      5,
-      [
-        seat,
-        serial,
-      ],
-      [
-        WaylandType.object,
-        WaylandType.uint,
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> resize(Seat seat, int serial, int edges) async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      6,
-      [
-        seat,
-        serial,
-        edges,
-      ],
-      [
-        WaylandType.object,
-        WaylandType.uint,
-        WaylandType.uint,
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> setMaxSize(int width, int height) async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      7,
-      [
-        width,
-        height,
-      ],
-      [
-        WaylandType.int,
-        WaylandType.int,
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> setMinSize(int width, int height) async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      8,
-      [
-        width,
-        height,
-      ],
-      [
-        WaylandType.int,
-        WaylandType.int,
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> setMaximized() async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      9,
-      [
-      ],
-      [
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> unsetMaximized() async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      10,
-      [
-      ],
-      [
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> setFullscreen(Output output) async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      11,
-      [
-        output,
-      ],
-      [
-        WaylandType.object,
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> unsetFullscreen() async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      12,
-      [
-      ],
-      [
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> setMinimized() async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      13,
-      [
-      ],
-      [
-      ],
-    );
-    context.sendMessage(message);
-  }
-
- /// suggest a surface change
+/// suggest a surface change
 /// 
 /// This configure event asks the client to resize its toplevel surface or
 /// to change its state. The configured state should not be applied
@@ -769,13 +880,39 @@ class ZxdgToplevelV6 extends Proxy implements Dispatcher{
 /// Clients must send an ack_configure in response to this event. See
 /// xdg_surface.configure and xdg_surface.ack_configure for details.
 /// 
- void onconfigure(void Function(int width, int height, List<int> states) handler) {
-   _configureHandler = handler;
- }
+class ZxdgToplevelV6ConfigureEvent {
+/// 
+  final int width;
 
- void Function(int width, int height, List<int> states)? _configureHandler;
+/// 
+  final int height;
 
- /// surface wants to be closed
+/// 
+  final List<int> states;
+
+  ZxdgToplevelV6ConfigureEvent(
+this.width,
+
+this.height,
+
+this.states,
+
+);
+
+@override
+String toString(){
+  return """ZxdgToplevelV6ConfigureEvent: {
+    width: $width,
+    height: $height,
+    states: $states,
+  }""";
+}
+
+}
+
+typedef ZxdgToplevelV6ConfigureEventHandler = void Function(ZxdgToplevelV6ConfigureEvent);
+
+/// surface wants to be closed
 /// 
 /// The close event is sent by the compositor when the user
 /// wants the surface to be closed. This should be equivalent to
@@ -786,28 +923,598 @@ class ZxdgToplevelV6 extends Proxy implements Dispatcher{
 /// window. The client may choose to ignore this request, or show
 /// a dialog to ask the user to save their data, etc.
 /// 
- void onclose(void Function() handler) {
+class ZxdgToplevelV6CloseEvent {
+  ZxdgToplevelV6CloseEvent(
+);
+
+@override
+String toString(){
+  return """ZxdgToplevelV6CloseEvent: {
+  }""";
+}
+
+}
+
+typedef ZxdgToplevelV6CloseEventHandler = void Function(ZxdgToplevelV6CloseEvent);
+
+
+/// toplevel surface
+/// 
+/// This interface defines an xdg_surface role which allows a surface to,
+/// among other things, set window-like properties such as maximize,
+/// fullscreen, and minimize, set application-specific metadata like title and
+/// id, and well as trigger user interactive operations such as interactive
+/// resize and move.
+/// 
+class ZxdgToplevelV6 extends Proxy implements Dispatcher{
+  final Context context;
+
+  ZxdgToplevelV6(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
+
+/// destroy the xdg_toplevel
+/// 
+/// Unmap and destroy the window. The window will be effectively
+/// hidden from the user's point of view, and all state like
+/// maximization, fullscreen, and so on, will be lost.
+/// 
+  Future<void> destroy() async {
+    print("ZxdgToplevelV6::destroy ");
+    final message = WaylandMessage(
+      objectId,
+      0,
+      [
+      ],
+      [
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// set the parent of this surface
+/// 
+/// Set the "parent" of this surface. This window should be stacked
+/// above a parent. The parent surface must be mapped as long as this
+/// surface is mapped.
+/// 
+/// Parent windows should be set on dialogs, toolboxes, or other
+/// "auxiliary" surfaces, so that the parent is raised when the dialog
+/// is raised.
+/// 
+/// [parent]:
+  Future<void> setParent(ZxdgToplevelV6 parent) async {
+    print("ZxdgToplevelV6::setParent  parent: $parent");
+    final message = WaylandMessage(
+      objectId,
+      1,
+      [
+        parent,
+      ],
+      [
+        WaylandType.object,
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// set surface title
+/// 
+/// Set a short title for the surface.
+/// 
+/// This string may be used to identify the surface in a task bar,
+/// window list, or other user interface elements provided by the
+/// compositor.
+/// 
+/// The string must be encoded in UTF-8.
+/// 
+/// [title]:
+  Future<void> setTitle(String title) async {
+    print("ZxdgToplevelV6::setTitle  title: $title");
+    final message = WaylandMessage(
+      objectId,
+      2,
+      [
+        title,
+      ],
+      [
+        WaylandType.string,
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// set application ID
+/// 
+/// Set an application identifier for the surface.
+/// 
+/// The app ID identifies the general class of applications to which
+/// the surface belongs. The compositor can use this to group multiple
+/// surfaces together, or to determine how to launch a new application.
+/// 
+/// For D-Bus activatable applications, the app ID is used as the D-Bus
+/// service name.
+/// 
+/// The compositor shell will try to group application surfaces together
+/// by their app ID. As a best practice, it is suggested to select app
+/// ID's that match the basename of the application's .desktop file.
+/// For example, "org.freedesktop.FooViewer" where the .desktop file is
+/// "org.freedesktop.FooViewer.desktop".
+/// 
+/// See the desktop-entry specification [0] for more details on
+/// application identifiers and how they relate to well-known D-Bus
+/// names and .desktop files.
+/// 
+/// [0] http://standards.freedesktop.org/desktop-entry-spec/
+/// 
+/// [app_id]:
+  Future<void> setAppId(String appId) async {
+    print("ZxdgToplevelV6::setAppId  appId: $appId");
+    final message = WaylandMessage(
+      objectId,
+      3,
+      [
+        appId,
+      ],
+      [
+        WaylandType.string,
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// show the window menu
+/// 
+/// Clients implementing client-side decorations might want to show
+/// a context menu when right-clicking on the decorations, giving the
+/// user a menu that they can use to maximize or minimize the window.
+/// 
+/// This request asks the compositor to pop up such a window menu at
+/// the given position, relative to the local surface coordinates of
+/// the parent surface. There are no guarantees as to what menu items
+/// the window menu contains.
+/// 
+/// This request must be used in response to some sort of user action
+/// like a button press, key press, or touch down event.
+/// 
+/// [seat]: the wl_seat of the user event
+/// [serial]: the serial of the user event
+/// [x]: the x position to pop up the window menu at
+/// [y]: the y position to pop up the window menu at
+  Future<void> showWindowMenu(Seat seat, int serial, int x, int y) async {
+    print("ZxdgToplevelV6::showWindowMenu  seat: $seat serial: $serial x: $x y: $y");
+    final message = WaylandMessage(
+      objectId,
+      4,
+      [
+        seat,
+        serial,
+        x,
+        y,
+      ],
+      [
+        WaylandType.object,
+        WaylandType.uint,
+        WaylandType.int,
+        WaylandType.int,
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// start an interactive move
+/// 
+/// Start an interactive, user-driven move of the surface.
+/// 
+/// This request must be used in response to some sort of user action
+/// like a button press, key press, or touch down event. The passed
+/// serial is used to determine the type of interactive move (touch,
+/// pointer, etc).
+/// 
+/// The server may ignore move requests depending on the state of
+/// the surface (e.g. fullscreen or maximized), or if the passed serial
+/// is no longer valid.
+/// 
+/// If triggered, the surface will lose the focus of the device
+/// (wl_pointer, wl_touch, etc) used for the move. It is up to the
+/// compositor to visually indicate that the move is taking place, such as
+/// updating a pointer cursor, during the move. There is no guarantee
+/// that the device focus will return when the move is completed.
+/// 
+/// [seat]: the wl_seat of the user event
+/// [serial]: the serial of the user event
+  Future<void> move(Seat seat, int serial) async {
+    print("ZxdgToplevelV6::move  seat: $seat serial: $serial");
+    final message = WaylandMessage(
+      objectId,
+      5,
+      [
+        seat,
+        serial,
+      ],
+      [
+        WaylandType.object,
+        WaylandType.uint,
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// start an interactive resize
+/// 
+/// Start a user-driven, interactive resize of the surface.
+/// 
+/// This request must be used in response to some sort of user action
+/// like a button press, key press, or touch down event. The passed
+/// serial is used to determine the type of interactive resize (touch,
+/// pointer, etc).
+/// 
+/// The server may ignore resize requests depending on the state of
+/// the surface (e.g. fullscreen or maximized).
+/// 
+/// If triggered, the client will receive configure events with the
+/// "resize" state enum value and the expected sizes. See the "resize"
+/// enum value for more details about what is required. The client
+/// must also acknowledge configure events using "ack_configure". After
+/// the resize is completed, the client will receive another "configure"
+/// event without the resize state.
+/// 
+/// If triggered, the surface also will lose the focus of the device
+/// (wl_pointer, wl_touch, etc) used for the resize. It is up to the
+/// compositor to visually indicate that the resize is taking place,
+/// such as updating a pointer cursor, during the resize. There is no
+/// guarantee that the device focus will return when the resize is
+/// completed.
+/// 
+/// The edges parameter specifies how the surface should be resized,
+/// and is one of the values of the resize_edge enum. The compositor
+/// may use this information to update the surface position for
+/// example when dragging the top left corner. The compositor may also
+/// use this information to adapt its behavior, e.g. choose an
+/// appropriate cursor image.
+/// 
+/// [seat]: the wl_seat of the user event
+/// [serial]: the serial of the user event
+/// [edges]: which edge or corner is being dragged
+  Future<void> resize(Seat seat, int serial, int edges) async {
+    print("ZxdgToplevelV6::resize  seat: $seat serial: $serial edges: $edges");
+    final message = WaylandMessage(
+      objectId,
+      6,
+      [
+        seat,
+        serial,
+        edges,
+      ],
+      [
+        WaylandType.object,
+        WaylandType.uint,
+        WaylandType.uint,
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// set the maximum size
+/// 
+/// Set a maximum size for the window.
+/// 
+/// The client can specify a maximum size so that the compositor does
+/// not try to configure the window beyond this size.
+/// 
+/// The width and height arguments are in window geometry coordinates.
+/// See xdg_surface.set_window_geometry.
+/// 
+/// Values set in this way are double-buffered, see wl_surface.commit.
+/// 
+/// The compositor can use this information to allow or disallow
+/// different states like maximize or fullscreen and draw accurate
+/// animations.
+/// 
+/// Similarly, a tiling window manager may use this information to
+/// place and resize client windows in a more effective way.
+/// 
+/// The client should not rely on the compositor to obey the maximum
+/// size. The compositor may decide to ignore the values set by the
+/// client and request a larger size.
+/// 
+/// If never set, or a value of zero in the request, means that the
+/// client has no expected maximum size in the given dimension.
+/// As a result, a client wishing to reset the maximum size
+/// to an unspecified state can use zero for width and height in the
+/// request.
+/// 
+/// Requesting a maximum size to be smaller than the minimum size of
+/// a surface is illegal and will result in a protocol error.
+/// 
+/// The width and height must be greater than or equal to zero. Using
+/// strictly negative values for width and height will result in the
+/// zxdg_shell_v6.invalid_surface_state error being raised.
+/// 
+/// [width]:
+/// [height]:
+  Future<void> setMaxSize(int width, int height) async {
+    print("ZxdgToplevelV6::setMaxSize  width: $width height: $height");
+    final message = WaylandMessage(
+      objectId,
+      7,
+      [
+        width,
+        height,
+      ],
+      [
+        WaylandType.int,
+        WaylandType.int,
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// set the minimum size
+/// 
+/// Set a minimum size for the window.
+/// 
+/// The client can specify a minimum size so that the compositor does
+/// not try to configure the window below this size.
+/// 
+/// The width and height arguments are in window geometry coordinates.
+/// See xdg_surface.set_window_geometry.
+/// 
+/// Values set in this way are double-buffered, see wl_surface.commit.
+/// 
+/// The compositor can use this information to allow or disallow
+/// different states like maximize or fullscreen and draw accurate
+/// animations.
+/// 
+/// Similarly, a tiling window manager may use this information to
+/// place and resize client windows in a more effective way.
+/// 
+/// The client should not rely on the compositor to obey the minimum
+/// size. The compositor may decide to ignore the values set by the
+/// client and request a smaller size.
+/// 
+/// If never set, or a value of zero in the request, means that the
+/// client has no expected minimum size in the given dimension.
+/// As a result, a client wishing to reset the minimum size
+/// to an unspecified state can use zero for width and height in the
+/// request.
+/// 
+/// Requesting a minimum size to be larger than the maximum size of
+/// a surface is illegal and will result in a protocol error.
+/// 
+/// The width and height must be greater than or equal to zero. Using
+/// strictly negative values for width and height will result in the
+/// zxdg_shell_v6.invalid_surface_state error being raised.
+/// 
+/// [width]:
+/// [height]:
+  Future<void> setMinSize(int width, int height) async {
+    print("ZxdgToplevelV6::setMinSize  width: $width height: $height");
+    final message = WaylandMessage(
+      objectId,
+      8,
+      [
+        width,
+        height,
+      ],
+      [
+        WaylandType.int,
+        WaylandType.int,
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// maximize the window
+/// 
+/// Maximize the surface.
+/// 
+/// After requesting that the surface should be maximized, the compositor
+/// will respond by emitting a configure event with the "maximized" state
+/// and the required window geometry. The client should then update its
+/// content, drawing it in a maximized state, i.e. without shadow or other
+/// decoration outside of the window geometry. The client must also
+/// acknowledge the configure when committing the new content (see
+/// ack_configure).
+/// 
+/// It is up to the compositor to decide how and where to maximize the
+/// surface, for example which output and what region of the screen should
+/// be used.
+/// 
+/// If the surface was already maximized, the compositor will still emit
+/// a configure event with the "maximized" state.
+/// 
+/// Note that unrelated compositor side state changes may cause
+/// configure events to be emitted at any time, meaning trying to
+/// match this request to a specific future configure event is
+/// futile.
+/// 
+  Future<void> setMaximized() async {
+    print("ZxdgToplevelV6::setMaximized ");
+    final message = WaylandMessage(
+      objectId,
+      9,
+      [
+      ],
+      [
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// unmaximize the window
+/// 
+/// Unmaximize the surface.
+/// 
+/// After requesting that the surface should be unmaximized, the compositor
+/// will respond by emitting a configure event without the "maximized"
+/// state. If available, the compositor will include the window geometry
+/// dimensions the window had prior to being maximized in the configure
+/// request. The client must then update its content, drawing it in a
+/// regular state, i.e. potentially with shadow, etc. The client must also
+/// acknowledge the configure when committing the new content (see
+/// ack_configure).
+/// 
+/// It is up to the compositor to position the surface after it was
+/// unmaximized; usually the position the surface had before maximizing, if
+/// applicable.
+/// 
+/// If the surface was already not maximized, the compositor will still
+/// emit a configure event without the "maximized" state.
+/// 
+/// Note that unrelated changes in the state of compositor may cause
+/// configure events to be emitted by the compositor between processing
+/// this request and emitting corresponding configure event, so trying
+/// to match the request with the event is futile.
+/// 
+  Future<void> unsetMaximized() async {
+    print("ZxdgToplevelV6::unsetMaximized ");
+    final message = WaylandMessage(
+      objectId,
+      10,
+      [
+      ],
+      [
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// set the window as fullscreen on a monitor
+/// 
+/// Make the surface fullscreen.
+/// 
+/// You can specify an output that you would prefer to be fullscreen.
+/// If this value is NULL, it's up to the compositor to choose which
+/// display will be used to map this surface.
+/// 
+/// If the surface doesn't cover the whole output, the compositor will
+/// position the surface in the center of the output and compensate with
+/// black borders filling the rest of the output.
+/// 
+/// [output]:
+  Future<void> setFullscreen(Output output) async {
+    print("ZxdgToplevelV6::setFullscreen  output: $output");
+    final message = WaylandMessage(
+      objectId,
+      11,
+      [
+        output,
+      ],
+      [
+        WaylandType.object,
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// 
+/// 
+  Future<void> unsetFullscreen() async {
+    print("ZxdgToplevelV6::unsetFullscreen ");
+    final message = WaylandMessage(
+      objectId,
+      12,
+      [
+      ],
+      [
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// set the window as minimized
+/// 
+/// Request that the compositor minimize your surface. There is no
+/// way to know if the surface is currently minimized, nor is there
+/// any way to unset minimization on this surface.
+/// 
+/// If you are looking to throttle redrawing when minimized, please
+/// instead use the wl_surface.frame event for this, as this will
+/// also work with live previews on windows in Alt-Tab, Expose or
+/// similar compositor features.
+/// 
+  Future<void> setMinimized() async {
+    print("ZxdgToplevelV6::setMinimized ");
+    final message = WaylandMessage(
+      objectId,
+      13,
+      [
+      ],
+      [
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// suggest a surface change
+/// 
+/// This configure event asks the client to resize its toplevel surface or
+/// to change its state. The configured state should not be applied
+/// immediately. See xdg_surface.configure for details.
+/// 
+/// The width and height arguments specify a hint to the window
+/// about how its surface should be resized in window geometry
+/// coordinates. See set_window_geometry.
+/// 
+/// If the width or height arguments are zero, it means the client
+/// should decide its own window dimension. This may happen when the
+/// compositor needs to configure the state of the surface but doesn't
+/// have any information about any previous or expected dimension.
+/// 
+/// The states listed in the event specify how the width/height
+/// arguments should be interpreted, and possibly how it should be
+/// drawn.
+/// 
+/// Clients must send an ack_configure in response to this event. See
+/// xdg_surface.configure and xdg_surface.ack_configure for details.
+/// 
+/// Event handler for Configure
+/// - [width]:
+/// - [height]:
+/// - [states]:
+ void onConfigure(ZxdgToplevelV6ConfigureEventHandler handler) {
+   _configureHandler = handler;
+ }
+
+ ZxdgToplevelV6ConfigureEventHandler? _configureHandler;
+
+/// surface wants to be closed
+/// 
+/// The close event is sent by the compositor when the user
+/// wants the surface to be closed. This should be equivalent to
+/// the user clicking the close button in client-side decorations,
+/// if your application has any.
+/// 
+/// This is only a request that the user intends to close the
+/// window. The client may choose to ignore this request, or show
+/// a dialog to ask the user to save their data, etc.
+/// 
+/// Event handler for Close
+ void onClose(ZxdgToplevelV6CloseEventHandler handler) {
    _closeHandler = handler;
  }
 
- void Function()? _closeHandler;
+ ZxdgToplevelV6CloseEventHandler? _closeHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_configureHandler != null) {
-         _configureHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-           ByteData.view(data.buffer).getInt32(4, Endian.host),
+var event = ZxdgToplevelV6ConfigureEvent(
+           ByteData.view(data.buffer).getInt32(0, Endian.little),
+           ByteData.view(data.buffer).getInt32(4, Endian.little),
            getArray(data, 8),
-         );
+        );
+         _configureHandler!(event);
        }
        break;
      case 1:
        if (_closeHandler != null) {
-         _closeHandler!(
-         );
+var event = ZxdgToplevelV6CloseEvent(
+        );
+         _closeHandler!(event);
        }
        break;
    }
@@ -821,23 +1528,23 @@ class ZxdgToplevelV6 extends Proxy implements Dispatcher{
 /// 
 
 enum ZxdgToplevelV6resizeEdge {
-  /// 
+/// 
   none,
-  /// 
+/// 
   top,
-  /// 
+/// 
   bottom,
-  /// 
+/// 
   left,
-  /// 
+/// 
   topLeft,
-  /// 
+/// 
   bottomLeft,
-  /// 
+/// 
   right,
-  /// 
+/// 
   topRight,
-  /// 
+/// 
   bottomRight,
 }
 
@@ -852,15 +1559,85 @@ enum ZxdgToplevelV6resizeEdge {
 /// 
 
 enum ZxdgToplevelV6state {
-  /// the surface is maximized
+/// the surface is maximized
   maximized,
-  /// the surface is fullscreen
+/// the surface is fullscreen
   fullscreen,
-  /// the surface is being resized
+/// the surface is being resized
   resizing,
-  /// the surface is now activated
+/// the surface is now activated
   activated,
 }
+
+
+/// configure the popup surface
+/// 
+/// This event asks the popup surface to configure itself given the
+/// configuration. The configured state should not be applied immediately.
+/// See xdg_surface.configure for details.
+/// 
+/// The x and y arguments represent the position the popup was placed at
+/// given the xdg_positioner rule, relative to the upper left corner of the
+/// window geometry of the parent surface.
+/// 
+class ZxdgPopupV6ConfigureEvent {
+/// x position relative to parent surface window geometry
+  final int x;
+
+/// y position relative to parent surface window geometry
+  final int y;
+
+/// window geometry width
+  final int width;
+
+/// window geometry height
+  final int height;
+
+  ZxdgPopupV6ConfigureEvent(
+this.x,
+
+this.y,
+
+this.width,
+
+this.height,
+
+);
+
+@override
+String toString(){
+  return """ZxdgPopupV6ConfigureEvent: {
+    x: $x,
+    y: $y,
+    width: $width,
+    height: $height,
+  }""";
+}
+
+}
+
+typedef ZxdgPopupV6ConfigureEventHandler = void Function(ZxdgPopupV6ConfigureEvent);
+
+/// popup interaction is done
+/// 
+/// The popup_done event is sent out when a popup is dismissed by the
+/// compositor. The client should destroy the xdg_popup object at this
+/// point.
+/// 
+class ZxdgPopupV6PopupDoneEvent {
+  ZxdgPopupV6PopupDoneEvent(
+);
+
+@override
+String toString(){
+  return """ZxdgPopupV6PopupDoneEvent: {
+  }""";
+}
+
+}
+
+typedef ZxdgPopupV6PopupDoneEventHandler = void Function(ZxdgPopupV6PopupDoneEvent);
+
 
 /// short-lived, popup surfaces for menus
 /// 
@@ -901,23 +1678,81 @@ enum ZxdgToplevelV6state {
 class ZxdgPopupV6 extends Proxy implements Dispatcher{
   final Context context;
 
-  ZxdgPopupV6(this.context) : super(context.allocateClientId());
+  ZxdgPopupV6(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// remove xdg_popup interface
+/// 
+/// This destroys the popup. Explicitly destroying the xdg_popup
+/// object will also dismiss the popup, and unmap the surface.
+/// 
+/// If this xdg_popup is not the "topmost" popup, a protocol error
+/// will be sent.
+/// 
   Future<void> destroy() async {
+    print("ZxdgPopupV6::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// make the popup take an explicit grab
+/// 
+/// This request makes the created popup take an explicit grab. An explicit
+/// grab will be dismissed when the user dismisses the popup, or when the
+/// client destroys the xdg_popup. This can be done by the user clicking
+/// outside the surface, using the keyboard, or even locking the screen
+/// through closing the lid or a timeout.
+/// 
+/// If the compositor denies the grab, the popup will be immediately
+/// dismissed.
+/// 
+/// This request must be used in response to some sort of user action like a
+/// button press, key press, or touch down event. The serial number of the
+/// event should be passed as 'serial'.
+/// 
+/// The parent of a grabbing popup must either be an xdg_toplevel surface or
+/// another xdg_popup with an explicit grab. If the parent is another
+/// xdg_popup it means that the popups are nested, with this popup now being
+/// the topmost popup.
+/// 
+/// Nested popups must be destroyed in the reverse order they were created
+/// in, e.g. the only popup you are allowed to destroy at all times is the
+/// topmost one.
+/// 
+/// When compositors choose to dismiss a popup, they may dismiss every
+/// nested grabbing popup as well. When a compositor dismisses popups, it
+/// will follow the same dismissing order as required from the client.
+/// 
+/// The parent of a grabbing popup must either be another xdg_popup with an
+/// active explicit grab, or an xdg_popup or xdg_toplevel, if there are no
+/// explicit grabs already taken.
+/// 
+/// If the topmost grabbing popup is destroyed, the grab will be returned to
+/// the parent of the popup, if that parent previously had an explicit grab.
+/// 
+/// If the parent is a grabbing popup which has already been dismissed, this
+/// popup will be immediately dismissed. If the parent is a popup that did
+/// not take an explicit grab, an error will be raised.
+/// 
+/// During a popup grab, the client owning the grab will receive pointer
+/// and touch events for all their surfaces as normal (similar to an
+/// "owner-events" grab in X11 parlance), while the top most grabbing popup
+/// will always have keyboard focus.
+/// 
+/// [seat]: the wl_seat of the user event
+/// [serial]: the serial of the user event
   Future<void> grab(Seat seat, int serial) async {
+    print("ZxdgPopupV6::grab  seat: $seat serial: $serial");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         seat,
@@ -928,10 +1763,10 @@ class ZxdgPopupV6 extends Proxy implements Dispatcher{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// configure the popup surface
+/// configure the popup surface
 /// 
 /// This event asks the popup surface to configure itself given the
 /// configuration. The configured state should not be applied immediately.
@@ -941,41 +1776,49 @@ class ZxdgPopupV6 extends Proxy implements Dispatcher{
 /// given the xdg_positioner rule, relative to the upper left corner of the
 /// window geometry of the parent surface.
 /// 
- void onconfigure(void Function(int x, int y, int width, int height) handler) {
+/// Event handler for Configure
+/// - [x]: x position relative to parent surface window geometry
+/// - [y]: y position relative to parent surface window geometry
+/// - [width]: window geometry width
+/// - [height]: window geometry height
+ void onConfigure(ZxdgPopupV6ConfigureEventHandler handler) {
    _configureHandler = handler;
  }
 
- void Function(int x, int y, int width, int height)? _configureHandler;
+ ZxdgPopupV6ConfigureEventHandler? _configureHandler;
 
- /// popup interaction is done
+/// popup interaction is done
 /// 
 /// The popup_done event is sent out when a popup is dismissed by the
 /// compositor. The client should destroy the xdg_popup object at this
 /// point.
 /// 
- void onpopupDone(void Function() handler) {
+/// Event handler for PopupDone
+ void onPopupDone(ZxdgPopupV6PopupDoneEventHandler handler) {
    _popupDoneHandler = handler;
  }
 
- void Function()? _popupDoneHandler;
+ ZxdgPopupV6PopupDoneEventHandler? _popupDoneHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_configureHandler != null) {
-         _configureHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-           ByteData.view(data.buffer).getInt32(4, Endian.host),
-           ByteData.view(data.buffer).getInt32(8, Endian.host),
-           ByteData.view(data.buffer).getInt32(12, Endian.host),
-         );
+var event = ZxdgPopupV6ConfigureEvent(
+           ByteData.view(data.buffer).getInt32(0, Endian.little),
+           ByteData.view(data.buffer).getInt32(4, Endian.little),
+           ByteData.view(data.buffer).getInt32(8, Endian.little),
+           ByteData.view(data.buffer).getInt32(12, Endian.little),
+        );
+         _configureHandler!(event);
        }
        break;
      case 1:
        if (_popupDoneHandler != null) {
-         _popupDoneHandler!(
-         );
+var event = ZxdgPopupV6PopupDoneEvent(
+        );
+         _popupDoneHandler!(event);
        }
        break;
    }
@@ -986,7 +1829,7 @@ class ZxdgPopupV6 extends Proxy implements Dispatcher{
 /// 
 
 enum ZxdgPopupV6error {
-  /// tried to grab after being mapped
+/// tried to grab after being mapped
   invalidGrab,
 }
 

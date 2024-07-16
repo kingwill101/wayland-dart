@@ -30,7 +30,10 @@ library client;
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
 import 'package:wayland/generated/stable/tablet/tablet_v2.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// cursor shape manager
 /// 
 /// This global offers an alternative, optional way to set cursor images. This
@@ -45,24 +48,38 @@ import 'dart:typed_data';
 class WpCursorShapeManagerV1 extends Proxy{
   final Context context;
 
-  WpCursorShapeManagerV1(this.context) : super(context.allocateClientId());
+  WpCursorShapeManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the manager
+/// 
+/// Destroy the cursor shape manager.
+/// 
   Future<void> destroy() async {
+    print("WpCursorShapeManagerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getPointer(Pointer pointer) async {
-  var cursorShapeDevice =  WpCursorShapeManagerV1(context);
+/// manage the cursor shape of a pointer device
+/// 
+/// Obtain a wp_cursor_shape_device_v1 for a wl_pointer object.
+/// 
+/// [cursor_shape_device]:
+/// [pointer]:
+  Future<WpCursorShapeDeviceV1> getPointer(Pointer pointer) async {
+  var cursorShapeDevice =  WpCursorShapeDeviceV1(context);
+    print("WpCursorShapeManagerV1::getPointer  cursorShapeDevice: $cursorShapeDevice pointer: $pointer");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         cursorShapeDevice,
@@ -73,13 +90,21 @@ class WpCursorShapeManagerV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return cursorShapeDevice;
   }
 
-  Future<void> getTabletToolV2(ZwpTabletToolV2 tabletTool) async {
-  var cursorShapeDevice =  WpCursorShapeManagerV1(context);
+/// manage the cursor shape of a tablet tool device
+/// 
+/// Obtain a wp_cursor_shape_device_v1 for a zwp_tablet_tool_v2 object.
+/// 
+/// [cursor_shape_device]:
+/// [tablet_tool]:
+  Future<WpCursorShapeDeviceV1> getTabletToolV2(ZwpTabletToolV2 tabletTool) async {
+  var cursorShapeDevice =  WpCursorShapeDeviceV1(context);
+    print("WpCursorShapeManagerV1::getTabletToolV2  cursorShapeDevice: $cursorShapeDevice tabletTool: $tabletTool");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
         cursorShapeDevice,
@@ -90,10 +115,13 @@ class WpCursorShapeManagerV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return cursorShapeDevice;
   }
 
 }
+
+
 
 /// cursor shape for a device
 /// 
@@ -102,23 +130,56 @@ class WpCursorShapeManagerV1 extends Proxy{
 class WpCursorShapeDeviceV1 extends Proxy{
   final Context context;
 
-  WpCursorShapeDeviceV1(this.context) : super(context.allocateClientId());
+  WpCursorShapeDeviceV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the cursor shape device
+/// 
+/// Destroy the cursor shape device.
+/// 
+/// The device cursor shape remains unchanged.
+/// 
   Future<void> destroy() async {
+    print("WpCursorShapeDeviceV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set device cursor to the shape
+/// 
+/// Sets the device cursor to the specified shape. The compositor will
+/// change the cursor image based on the specified shape.
+/// 
+/// The cursor actually changes only if the input device focus is one of
+/// the requesting client's surfaces. If any, the previous cursor image
+/// (surface or shape) is replaced.
+/// 
+/// The "shape" argument must be a valid enum entry, otherwise the
+/// invalid_shape protocol error is raised.
+/// 
+/// This is similar to the wl_pointer.set_cursor and
+/// zwp_tablet_tool_v2.set_cursor requests, but this request accepts a
+/// shape instead of contents in the form of a surface. Clients can mix
+/// set_cursor and set_shape requests.
+/// 
+/// The serial parameter must match the latest wl_pointer.enter or
+/// zwp_tablet_tool_v2.proximity_in serial number sent to the client.
+/// Otherwise the request will be ignored.
+/// 
+/// [serial]: serial number of the enter event
+/// [shape]:
   Future<void> setShape(int serial, int shape) async {
+    print("WpCursorShapeDeviceV1::setShape  serial: $serial shape: $shape");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         serial,
@@ -129,7 +190,7 @@ class WpCursorShapeDeviceV1 extends Proxy{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }
@@ -143,73 +204,73 @@ class WpCursorShapeDeviceV1 extends Proxy{
 /// 
 
 enum WpCursorShapeDeviceV1shape {
-  /// default cursor
+/// default cursor
   defaulted,
-  /// a context menu is available for the object under the cursor
+/// a context menu is available for the object under the cursor
   contextMenu,
-  /// help is available for the object under the cursor
+/// help is available for the object under the cursor
   help,
-  /// pointer that indicates a link or another interactive element
+/// pointer that indicates a link or another interactive element
   pointer,
-  /// progress indicator
+/// progress indicator
   progress,
-  /// program is busy, user should wait
+/// program is busy, user should wait
   wait,
-  /// a cell or set of cells may be selected
+/// a cell or set of cells may be selected
   cell,
-  /// simple crosshair
+/// simple crosshair
   crosshair,
-  /// text may be selected
+/// text may be selected
   text,
-  /// vertical text may be selected
+/// vertical text may be selected
   verticalText,
-  /// drag-and-drop: alias of/shortcut to something is to be created
+/// drag-and-drop: alias of/shortcut to something is to be created
   alias,
-  /// drag-and-drop: something is to be copied
+/// drag-and-drop: something is to be copied
   copy,
-  /// drag-and-drop: something is to be moved
+/// drag-and-drop: something is to be moved
   move,
-  /// drag-and-drop: the dragged item cannot be dropped at the current cursor location
+/// drag-and-drop: the dragged item cannot be dropped at the current cursor location
   noDrop,
-  /// drag-and-drop: the requested action will not be carried out
+/// drag-and-drop: the requested action will not be carried out
   notAllowed,
-  /// drag-and-drop: something can be grabbed
+/// drag-and-drop: something can be grabbed
   grab,
-  /// drag-and-drop: something is being grabbed
+/// drag-and-drop: something is being grabbed
   grabbing,
-  /// resizing: the east border is to be moved
+/// resizing: the east border is to be moved
   eResize,
-  /// resizing: the north border is to be moved
+/// resizing: the north border is to be moved
   nResize,
-  /// resizing: the north-east corner is to be moved
+/// resizing: the north-east corner is to be moved
   neResize,
-  /// resizing: the north-west corner is to be moved
+/// resizing: the north-west corner is to be moved
   nwResize,
-  /// resizing: the south border is to be moved
+/// resizing: the south border is to be moved
   sResize,
-  /// resizing: the south-east corner is to be moved
+/// resizing: the south-east corner is to be moved
   seResize,
-  /// resizing: the south-west corner is to be moved
+/// resizing: the south-west corner is to be moved
   swResize,
-  /// resizing: the west border is to be moved
+/// resizing: the west border is to be moved
   wResize,
-  /// resizing: the east and west borders are to be moved
+/// resizing: the east and west borders are to be moved
   ewResize,
-  /// resizing: the north and south borders are to be moved
+/// resizing: the north and south borders are to be moved
   nsResize,
-  /// resizing: the north-east and south-west corners are to be moved
+/// resizing: the north-east and south-west corners are to be moved
   neswResize,
-  /// resizing: the north-west and south-east corners are to be moved
+/// resizing: the north-west and south-east corners are to be moved
   nwseResize,
-  /// resizing: that the item/column can be resized horizontally
+/// resizing: that the item/column can be resized horizontally
   colResize,
-  /// resizing: that the item/row can be resized vertically
+/// resizing: that the item/row can be resized vertically
   rowResize,
-  /// something can be scrolled in any direction
+/// something can be scrolled in any direction
   allScroll,
-  /// something can be zoomed in
+/// something can be zoomed in
   zoomIn,
-  /// something can be zoomed out
+/// something can be zoomed out
   zoomOut,
 }
 
@@ -217,7 +278,7 @@ enum WpCursorShapeDeviceV1shape {
 /// 
 
 enum WpCursorShapeDeviceV1error {
-  /// the specified shape value is invalid
+/// the specified shape value is invalid
   invalidShape,
 }
 

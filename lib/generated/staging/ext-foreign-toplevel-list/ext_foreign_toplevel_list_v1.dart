@@ -35,7 +35,63 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+/// a toplevel has been created
+/// 
+/// This event is emitted whenever a new toplevel window is created. It is
+/// emitted for all toplevels, regardless of the app that has created them.
+/// 
+/// All initial properties of the toplevel (identifier, title, app_id) will be sent
+/// immediately after this event using the corresponding events for
+/// ext_foreign_toplevel_handle_v1. The compositor will use the
+/// ext_foreign_toplevel_handle_v1.done event to indicate when all data has
+/// been sent.
+/// 
+class ExtForeignToplevelListV1ToplevelEvent {
+/// 
+  final int toplevel;
+
+  ExtForeignToplevelListV1ToplevelEvent(
+this.toplevel,
+
+);
+
+@override
+String toString(){
+  return """ExtForeignToplevelListV1ToplevelEvent: {
+    toplevel: $toplevel,
+  }""";
+}
+
+}
+
+typedef ExtForeignToplevelListV1ToplevelEventHandler = void Function(ExtForeignToplevelListV1ToplevelEvent);
+
+/// the compositor has finished with the toplevel manager
+/// 
+/// This event indicates that the compositor is done sending events
+/// to this object. The client should destroy the object.
+/// See ext_foreign_toplevel_list_v1.destroy for more information.
+/// 
+/// The compositor must not send any more toplevel events after this event.
+/// 
+class ExtForeignToplevelListV1FinishedEvent {
+  ExtForeignToplevelListV1FinishedEvent(
+);
+
+@override
+String toString(){
+  return """ExtForeignToplevelListV1FinishedEvent: {
+  }""";
+}
+
+}
+
+typedef ExtForeignToplevelListV1FinishedEventHandler = void Function(ExtForeignToplevelListV1FinishedEvent);
+
+
 /// list toplevels
 /// 
 /// A toplevel is defined as a surface with a role similar to xdg_toplevel.
@@ -58,33 +114,57 @@ import 'dart:typed_data';
 class ExtForeignToplevelListV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  ExtForeignToplevelListV1(this.context) : super(context.allocateClientId());
+  ExtForeignToplevelListV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// stop sending events
+/// 
+/// This request indicates that the client no longer wishes to receive
+/// events for new toplevels.
+/// 
+/// The Wayland protocol is asynchronous, meaning the compositor may send
+/// further toplevel events until the stop request is processed.
+/// The client should wait for a ext_foreign_toplevel_list_v1.finished
+/// event before destroying this object.
+/// 
   Future<void> stop() async {
+    print("ExtForeignToplevelListV1::stop ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// destroy the ext_foreign_toplevel_list_v1 object
+/// 
+/// This request should be called either when the client will no longer
+/// use the ext_foreign_toplevel_list_v1 or after the finished event
+/// has been received to allow destruction of the object.
+/// 
+/// If a client wishes to destroy this object it should send a
+/// ext_foreign_toplevel_list_v1.stop request and wait for a ext_foreign_toplevel_list_v1.finished
+/// event, then destroy the handles and then this object.
+/// 
   Future<void> destroy() async {
+    print("ExtForeignToplevelListV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// a toplevel has been created
+/// a toplevel has been created
 /// 
 /// This event is emitted whenever a new toplevel window is created. It is
 /// emitted for all toplevels, regardless of the app that has created them.
@@ -95,13 +175,15 @@ class ExtForeignToplevelListV1 extends Proxy implements Dispatcher{
 /// ext_foreign_toplevel_handle_v1.done event to indicate when all data has
 /// been sent.
 /// 
- void ontoplevel(void Function(int toplevel) handler) {
+/// Event handler for Toplevel
+/// - [toplevel]:
+ void onToplevel(ExtForeignToplevelListV1ToplevelEventHandler handler) {
    _toplevelHandler = handler;
  }
 
- void Function(int toplevel)? _toplevelHandler;
+ ExtForeignToplevelListV1ToplevelEventHandler? _toplevelHandler;
 
- /// the compositor has finished with the toplevel manager
+/// the compositor has finished with the toplevel manager
 /// 
 /// This event indicates that the compositor is done sending events
 /// to this object. The client should destroy the object.
@@ -109,55 +191,37 @@ class ExtForeignToplevelListV1 extends Proxy implements Dispatcher{
 /// 
 /// The compositor must not send any more toplevel events after this event.
 /// 
- void onfinished(void Function() handler) {
+/// Event handler for Finished
+ void onFinished(ExtForeignToplevelListV1FinishedEventHandler handler) {
    _finishedHandler = handler;
  }
 
- void Function()? _finishedHandler;
+ ExtForeignToplevelListV1FinishedEventHandler? _finishedHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_toplevelHandler != null) {
-         _toplevelHandler!(
-           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.host)).id,
-         );
+var event = ExtForeignToplevelListV1ToplevelEvent(
+           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.little)).objectId,
+        );
+         _toplevelHandler!(event);
        }
        break;
      case 1:
        if (_finishedHandler != null) {
-         _finishedHandler!(
-         );
+var event = ExtForeignToplevelListV1FinishedEvent(
+        );
+         _finishedHandler!(event);
        }
        break;
    }
  }
 }
 
-/// a mapped toplevel
-/// 
-/// A ext_foreign_toplevel_handle_v1 object represents a mapped toplevel
-/// window. A single app may have multiple mapped toplevels.
-/// 
-class ExtForeignToplevelHandleV1 extends Proxy implements Dispatcher{
-  final Context context;
 
-  ExtForeignToplevelHandleV1(this.context) : super(context.allocateClientId());
-
-  Future<void> destroy() async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      0,
-      [
-      ],
-      [
-      ],
-    );
-    context.sendMessage(message);
-  }
-
- /// the toplevel has been closed
+/// the toplevel has been closed
 /// 
 /// The server will emit no further events on the ext_foreign_toplevel_handle_v1
 /// after this event. Any requests received aside from the destroy request must
@@ -166,13 +230,21 @@ class ExtForeignToplevelHandleV1 extends Proxy implements Dispatcher{
 /// Other protocols which extend the ext_foreign_toplevel_handle_v1
 /// interface must also ignore requests other than destructors.
 /// 
- void onclosed(void Function() handler) {
-   _closedHandler = handler;
- }
+class ExtForeignToplevelHandleV1ClosedEvent {
+  ExtForeignToplevelHandleV1ClosedEvent(
+);
 
- void Function()? _closedHandler;
+@override
+String toString(){
+  return """ExtForeignToplevelHandleV1ClosedEvent: {
+  }""";
+}
 
- /// all information about the toplevel has been sent
+}
+
+typedef ExtForeignToplevelHandleV1ClosedEventHandler = void Function(ExtForeignToplevelHandleV1ClosedEvent);
+
+/// all information about the toplevel has been sent
 /// 
 /// This event is sent after all changes in the toplevel state have
 /// been sent.
@@ -185,39 +257,75 @@ class ExtForeignToplevelHandleV1 extends Proxy implements Dispatcher{
 /// This event must not be sent after the ext_foreign_toplevel_handle_v1.closed
 /// event.
 /// 
- void ondone(void Function() handler) {
-   _doneHandler = handler;
- }
+class ExtForeignToplevelHandleV1DoneEvent {
+  ExtForeignToplevelHandleV1DoneEvent(
+);
 
- void Function()? _doneHandler;
+@override
+String toString(){
+  return """ExtForeignToplevelHandleV1DoneEvent: {
+  }""";
+}
 
- /// title change
+}
+
+typedef ExtForeignToplevelHandleV1DoneEventHandler = void Function(ExtForeignToplevelHandleV1DoneEvent);
+
+/// title change
 /// 
 /// The title of the toplevel has changed.
 /// 
 /// The configured state must not be applied immediately. See
 /// ext_foreign_toplevel_handle_v1.done for details.
 /// 
- void ontitle(void Function(String title) handler) {
-   _titleHandler = handler;
- }
+class ExtForeignToplevelHandleV1TitleEvent {
+/// 
+  final String title;
 
- void Function(String title)? _titleHandler;
+  ExtForeignToplevelHandleV1TitleEvent(
+this.title,
 
- /// app_id change
+);
+
+@override
+String toString(){
+  return """ExtForeignToplevelHandleV1TitleEvent: {
+    title: $title,
+  }""";
+}
+
+}
+
+typedef ExtForeignToplevelHandleV1TitleEventHandler = void Function(ExtForeignToplevelHandleV1TitleEvent);
+
+/// app_id change
 /// 
 /// The app id of the toplevel has changed.
 /// 
 /// The configured state must not be applied immediately. See
 /// ext_foreign_toplevel_handle_v1.done for details.
 /// 
- void onappId(void Function(String appId) handler) {
-   _appIdHandler = handler;
- }
+class ExtForeignToplevelHandleV1AppIdEvent {
+/// 
+  final String appId;
 
- void Function(String appId)? _appIdHandler;
+  ExtForeignToplevelHandleV1AppIdEvent(
+this.appId,
 
- /// a stable identifier for a toplevel
+);
+
+@override
+String toString(){
+  return """ExtForeignToplevelHandleV1AppIdEvent: {
+    appId: $appId,
+  }""";
+}
+
+}
+
+typedef ExtForeignToplevelHandleV1AppIdEventHandler = void Function(ExtForeignToplevelHandleV1AppIdEvent);
+
+/// a stable identifier for a toplevel
 /// 
 /// This identifier is used to check if two or more toplevel handles belong
 /// to the same toplevel.
@@ -240,46 +348,204 @@ class ExtForeignToplevelHandleV1 extends Proxy implements Dispatcher{
 /// generation value is used when generating the identifier is implementation
 /// dependent.
 /// 
- void onidentifier(void Function(String identifier) handler) {
+class ExtForeignToplevelHandleV1IdentifierEvent {
+/// 
+  final String identifier;
+
+  ExtForeignToplevelHandleV1IdentifierEvent(
+this.identifier,
+
+);
+
+@override
+String toString(){
+  return """ExtForeignToplevelHandleV1IdentifierEvent: {
+    identifier: $identifier,
+  }""";
+}
+
+}
+
+typedef ExtForeignToplevelHandleV1IdentifierEventHandler = void Function(ExtForeignToplevelHandleV1IdentifierEvent);
+
+
+/// a mapped toplevel
+/// 
+/// A ext_foreign_toplevel_handle_v1 object represents a mapped toplevel
+/// window. A single app may have multiple mapped toplevels.
+/// 
+class ExtForeignToplevelHandleV1 extends Proxy implements Dispatcher{
+  final Context context;
+
+  ExtForeignToplevelHandleV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
+
+/// destroy the ext_foreign_toplevel_handle_v1 object
+/// 
+/// This request should be used when the client will no longer use the handle
+/// or after the closed event has been received to allow destruction of the
+/// object.
+/// 
+/// When a handle is destroyed, a new handle may not be created by the server
+/// until the toplevel is unmapped and then remapped. Destroying a toplevel handle
+/// is not recommended unless the client is cleaning up child objects
+/// before destroying the ext_foreign_toplevel_list_v1 object, the toplevel
+/// was closed or the toplevel handle will not be used in the future.
+/// 
+/// Other protocols which extend the ext_foreign_toplevel_handle_v1
+/// interface should require destructors for extension interfaces be
+/// called before allowing the toplevel handle to be destroyed.
+/// 
+  Future<void> destroy() async {
+    print("ExtForeignToplevelHandleV1::destroy ");
+    final message = WaylandMessage(
+      objectId,
+      0,
+      [
+      ],
+      [
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// the toplevel has been closed
+/// 
+/// The server will emit no further events on the ext_foreign_toplevel_handle_v1
+/// after this event. Any requests received aside from the destroy request must
+/// be ignored. Upon receiving this event, the client should destroy the handle.
+/// 
+/// Other protocols which extend the ext_foreign_toplevel_handle_v1
+/// interface must also ignore requests other than destructors.
+/// 
+/// Event handler for Closed
+ void onClosed(ExtForeignToplevelHandleV1ClosedEventHandler handler) {
+   _closedHandler = handler;
+ }
+
+ ExtForeignToplevelHandleV1ClosedEventHandler? _closedHandler;
+
+/// all information about the toplevel has been sent
+/// 
+/// This event is sent after all changes in the toplevel state have
+/// been sent.
+/// 
+/// This allows changes to the ext_foreign_toplevel_handle_v1 properties
+/// to be atomically applied. Other protocols which extend the
+/// ext_foreign_toplevel_handle_v1 interface may use this event to also
+/// atomically apply any pending state.
+/// 
+/// This event must not be sent after the ext_foreign_toplevel_handle_v1.closed
+/// event.
+/// 
+/// Event handler for Done
+ void onDone(ExtForeignToplevelHandleV1DoneEventHandler handler) {
+   _doneHandler = handler;
+ }
+
+ ExtForeignToplevelHandleV1DoneEventHandler? _doneHandler;
+
+/// title change
+/// 
+/// The title of the toplevel has changed.
+/// 
+/// The configured state must not be applied immediately. See
+/// ext_foreign_toplevel_handle_v1.done for details.
+/// 
+/// Event handler for Title
+/// - [title]:
+ void onTitle(ExtForeignToplevelHandleV1TitleEventHandler handler) {
+   _titleHandler = handler;
+ }
+
+ ExtForeignToplevelHandleV1TitleEventHandler? _titleHandler;
+
+/// app_id change
+/// 
+/// The app id of the toplevel has changed.
+/// 
+/// The configured state must not be applied immediately. See
+/// ext_foreign_toplevel_handle_v1.done for details.
+/// 
+/// Event handler for AppId
+/// - [app_id]:
+ void onAppId(ExtForeignToplevelHandleV1AppIdEventHandler handler) {
+   _appIdHandler = handler;
+ }
+
+ ExtForeignToplevelHandleV1AppIdEventHandler? _appIdHandler;
+
+/// a stable identifier for a toplevel
+/// 
+/// This identifier is used to check if two or more toplevel handles belong
+/// to the same toplevel.
+/// 
+/// The identifier is useful for command line tools or privileged clients
+/// which may need to reference an exact toplevel across processes or
+/// instances of the ext_foreign_toplevel_list_v1 global.
+/// 
+/// The compositor must only send this event when the handle is created.
+/// 
+/// The identifier must be unique per toplevel and it's handles. Two different
+/// toplevels must not have the same identifier. The identifier is only valid
+/// as long as the toplevel is mapped. If the toplevel is unmapped the identifier
+/// must not be reused. An identifier must not be reused by the compositor to
+/// ensure there are no races when sharing identifiers between processes.
+/// 
+/// An identifier is a string that contains up to 32 printable ASCII bytes.
+/// An identifier must not be an empty string. It is recommended that a
+/// compositor includes an opaque generation value in identifiers. How the
+/// generation value is used when generating the identifier is implementation
+/// dependent.
+/// 
+/// Event handler for Identifier
+/// - [identifier]:
+ void onIdentifier(ExtForeignToplevelHandleV1IdentifierEventHandler handler) {
    _identifierHandler = handler;
  }
 
- void Function(String identifier)? _identifierHandler;
+ ExtForeignToplevelHandleV1IdentifierEventHandler? _identifierHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_closedHandler != null) {
-         _closedHandler!(
-         );
+var event = ExtForeignToplevelHandleV1ClosedEvent(
+        );
+         _closedHandler!(event);
        }
        break;
      case 1:
        if (_doneHandler != null) {
-         _doneHandler!(
-         );
+var event = ExtForeignToplevelHandleV1DoneEvent(
+        );
+         _doneHandler!(event);
        }
        break;
      case 2:
        if (_titleHandler != null) {
-         _titleHandler!(
+var event = ExtForeignToplevelHandleV1TitleEvent(
            getString(data, 0),
-         );
+        );
+         _titleHandler!(event);
        }
        break;
      case 3:
        if (_appIdHandler != null) {
-         _appIdHandler!(
+var event = ExtForeignToplevelHandleV1AppIdEvent(
            getString(data, 0),
-         );
+        );
+         _appIdHandler!(event);
        }
        break;
      case 4:
        if (_identifierHandler != null) {
-         _identifierHandler!(
+var event = ExtForeignToplevelHandleV1IdentifierEvent(
            getString(data, 0),
-         );
+        );
+         _identifierHandler!(event);
        }
        break;
    }

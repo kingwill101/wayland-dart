@@ -33,7 +33,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// controller object for graphic tablet devices
 /// 
 /// An object that provides access to the graphics tablets available on this
@@ -43,12 +46,22 @@ import 'dart:typed_data';
 class ZwpTabletManagerV2 extends Proxy{
   final Context context;
 
-  ZwpTabletManagerV2(this.context) : super(context.allocateClientId());
+  ZwpTabletManagerV2(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
-  Future<void> getTabletSeat(Seat seat) async {
-  var tabletSeat =  ZwpTabletManagerV2(context);
+/// get the tablet seat
+/// 
+/// Get the wp_tablet_seat object for the given seat. This object
+/// provides access to all graphics tablets in this seat.
+/// 
+/// [tablet_seat]:
+/// [seat]: The wl_seat object to retrieve the tablets for
+  Future<ZwpTabletSeatV2> getTabletSeat(Seat seat) async {
+  var tabletSeat =  ZwpTabletSeatV2(context);
+    print("ZwpTabletManagerV2::getTabletSeat  tabletSeat: $tabletSeat seat: $seat");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
         tabletSeat,
@@ -59,73 +72,86 @@ class ZwpTabletManagerV2 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return tabletSeat;
   }
 
+/// release the memory for the tablet manager object
+/// 
+/// Destroy the wp_tablet_manager object. Objects created from this
+/// object are unaffected and should be destroyed separately.
+/// 
   Future<void> destroy() async {
+    print("ZwpTabletManagerV2::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }
 
-/// controller object for graphic tablet devices of a seat
-/// 
-/// An object that provides access to the graphics tablets available on this
-/// seat. After binding to this interface, the compositor sends a set of
-/// wp_tablet_seat.tablet_added and wp_tablet_seat.tool_added events.
-/// 
-class ZwpTabletSeatV2 extends Proxy implements Dispatcher{
-  final Context context;
 
-  ZwpTabletSeatV2(this.context) : super(context.allocateClientId());
-
-  Future<void> destroy() async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      0,
-      [
-      ],
-      [
-      ],
-    );
-    context.sendMessage(message);
-  }
-
- /// new device notification
+/// new device notification
 /// 
 /// This event is sent whenever a new tablet becomes available on this
 /// seat. This event only provides the object id of the tablet, any
 /// static information about the tablet (device name, vid/pid, etc.) is
 /// sent through the wp_tablet interface.
 /// 
- void ontabletAdded(void Function(int id) handler) {
-   _tabletAddedHandler = handler;
- }
+class ZwpTabletSeatV2TabletAddedEvent {
+/// the newly added graphics tablet
+  final int id;
 
- void Function(int id)? _tabletAddedHandler;
+  ZwpTabletSeatV2TabletAddedEvent(
+this.id,
 
- /// a new tool has been used with a tablet
+);
+
+@override
+String toString(){
+  return """ZwpTabletSeatV2TabletAddedEvent: {
+    id: $id,
+  }""";
+}
+
+}
+
+typedef ZwpTabletSeatV2TabletAddedEventHandler = void Function(ZwpTabletSeatV2TabletAddedEvent);
+
+/// a new tool has been used with a tablet
 /// 
 /// This event is sent whenever a tool that has not previously been used
 /// with a tablet comes into use. This event only provides the object id
 /// of the tool; any static information about the tool (capabilities,
 /// type, etc.) is sent through the wp_tablet_tool interface.
 /// 
- void ontoolAdded(void Function(int id) handler) {
-   _toolAddedHandler = handler;
- }
+class ZwpTabletSeatV2ToolAddedEvent {
+/// the newly added tablet tool
+  final int id;
 
- void Function(int id)? _toolAddedHandler;
+  ZwpTabletSeatV2ToolAddedEvent(
+this.id,
 
- /// new pad notification
+);
+
+@override
+String toString(){
+  return """ZwpTabletSeatV2ToolAddedEvent: {
+    id: $id,
+  }""";
+}
+
+}
+
+typedef ZwpTabletSeatV2ToolAddedEventHandler = void Function(ZwpTabletSeatV2ToolAddedEvent);
+
+/// new pad notification
 /// 
 /// This event is sent whenever a new pad is known to the system. Typically,
 /// pads are physically attached to tablets and a pad_added event is
@@ -138,39 +164,756 @@ class ZwpTabletSeatV2 extends Proxy implements Dispatcher{
 /// features (buttons, strips, rings) are sent through the wp_tablet_pad
 /// interface.
 /// 
- void onpadAdded(void Function(int id) handler) {
+class ZwpTabletSeatV2PadAddedEvent {
+/// the newly added pad
+  final int id;
+
+  ZwpTabletSeatV2PadAddedEvent(
+this.id,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletSeatV2PadAddedEvent: {
+    id: $id,
+  }""";
+}
+
+}
+
+typedef ZwpTabletSeatV2PadAddedEventHandler = void Function(ZwpTabletSeatV2PadAddedEvent);
+
+
+/// controller object for graphic tablet devices of a seat
+/// 
+/// An object that provides access to the graphics tablets available on this
+/// seat. After binding to this interface, the compositor sends a set of
+/// wp_tablet_seat.tablet_added and wp_tablet_seat.tool_added events.
+/// 
+class ZwpTabletSeatV2 extends Proxy implements Dispatcher{
+  final Context context;
+
+  ZwpTabletSeatV2(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
+
+/// release the memory for the tablet seat object
+/// 
+/// Destroy the wp_tablet_seat object. Objects created from this
+/// object are unaffected and should be destroyed separately.
+/// 
+  Future<void> destroy() async {
+    print("ZwpTabletSeatV2::destroy ");
+    final message = WaylandMessage(
+      objectId,
+      0,
+      [
+      ],
+      [
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// new device notification
+/// 
+/// This event is sent whenever a new tablet becomes available on this
+/// seat. This event only provides the object id of the tablet, any
+/// static information about the tablet (device name, vid/pid, etc.) is
+/// sent through the wp_tablet interface.
+/// 
+/// Event handler for TabletAdded
+/// - [id]: the newly added graphics tablet
+ void onTabletAdded(ZwpTabletSeatV2TabletAddedEventHandler handler) {
+   _tabletAddedHandler = handler;
+ }
+
+ ZwpTabletSeatV2TabletAddedEventHandler? _tabletAddedHandler;
+
+/// a new tool has been used with a tablet
+/// 
+/// This event is sent whenever a tool that has not previously been used
+/// with a tablet comes into use. This event only provides the object id
+/// of the tool; any static information about the tool (capabilities,
+/// type, etc.) is sent through the wp_tablet_tool interface.
+/// 
+/// Event handler for ToolAdded
+/// - [id]: the newly added tablet tool
+ void onToolAdded(ZwpTabletSeatV2ToolAddedEventHandler handler) {
+   _toolAddedHandler = handler;
+ }
+
+ ZwpTabletSeatV2ToolAddedEventHandler? _toolAddedHandler;
+
+/// new pad notification
+/// 
+/// This event is sent whenever a new pad is known to the system. Typically,
+/// pads are physically attached to tablets and a pad_added event is
+/// sent immediately after the wp_tablet_seat.tablet_added.
+/// However, some standalone pad devices logically attach to tablets at
+/// runtime, and the client must wait for wp_tablet_pad.enter to know
+/// the tablet a pad is attached to.
+/// 
+/// This event only provides the object id of the pad. All further
+/// features (buttons, strips, rings) are sent through the wp_tablet_pad
+/// interface.
+/// 
+/// Event handler for PadAdded
+/// - [id]: the newly added pad
+ void onPadAdded(ZwpTabletSeatV2PadAddedEventHandler handler) {
    _padAddedHandler = handler;
  }
 
- void Function(int id)? _padAddedHandler;
+ ZwpTabletSeatV2PadAddedEventHandler? _padAddedHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_tabletAddedHandler != null) {
-         _tabletAddedHandler!(
-           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.host)).id,
-         );
+var event = ZwpTabletSeatV2TabletAddedEvent(
+           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.little)).objectId,
+        );
+         _tabletAddedHandler!(event);
        }
        break;
      case 1:
        if (_toolAddedHandler != null) {
-         _toolAddedHandler!(
-           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.host)).id,
-         );
+var event = ZwpTabletSeatV2ToolAddedEvent(
+           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.little)).objectId,
+        );
+         _toolAddedHandler!(event);
        }
        break;
      case 2:
        if (_padAddedHandler != null) {
-         _padAddedHandler!(
-           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.host)).id,
-         );
+var event = ZwpTabletSeatV2PadAddedEvent(
+           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.little)).objectId,
+        );
+         _padAddedHandler!(event);
        }
        break;
    }
  }
 }
+
+
+/// tool type
+/// 
+/// The tool type is the high-level type of the tool and usually decides
+/// the interaction expected from this tool.
+/// 
+/// This event is sent in the initial burst of events before the
+/// wp_tablet_tool.done event.
+/// 
+class ZwpTabletToolV2TypeEvent {
+/// the physical tool type
+  final int toolType;
+
+  ZwpTabletToolV2TypeEvent(
+this.toolType,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2TypeEvent: {
+    toolType: $toolType,
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2TypeEventHandler = void Function(ZwpTabletToolV2TypeEvent);
+
+/// unique hardware serial number of the tool
+/// 
+/// If the physical tool can be identified by a unique 64-bit serial
+/// number, this event notifies the client of this serial number.
+/// 
+/// If multiple tablets are available in the same seat and the tool is
+/// uniquely identifiable by the serial number, that tool may move
+/// between tablets.
+/// 
+/// Otherwise, if the tool has no serial number and this event is
+/// missing, the tool is tied to the tablet it first comes into
+/// proximity with. Even if the physical tool is used on multiple
+/// tablets, separate wp_tablet_tool objects will be created, one per
+/// tablet.
+/// 
+/// This event is sent in the initial burst of events before the
+/// wp_tablet_tool.done event.
+/// 
+class ZwpTabletToolV2HardwareSerialEvent {
+/// the unique serial number of the tool, most significant bits
+  final int hardwareSerialHi;
+
+/// the unique serial number of the tool, least significant bits
+  final int hardwareSerialLo;
+
+  ZwpTabletToolV2HardwareSerialEvent(
+this.hardwareSerialHi,
+
+this.hardwareSerialLo,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2HardwareSerialEvent: {
+    hardwareSerialHi: $hardwareSerialHi,
+    hardwareSerialLo: $hardwareSerialLo,
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2HardwareSerialEventHandler = void Function(ZwpTabletToolV2HardwareSerialEvent);
+
+/// hardware id notification in Wacom's format
+/// 
+/// This event notifies the client of a hardware id available on this tool.
+/// 
+/// The hardware id is a device-specific 64-bit id that provides extra
+/// information about the tool in use, beyond the wl_tool.type
+/// enumeration. The format of the id is specific to tablets made by
+/// Wacom Inc. For example, the hardware id of a Wacom Grip
+/// Pen (a stylus) is 0x802.
+/// 
+/// This event is sent in the initial burst of events before the
+/// wp_tablet_tool.done event.
+/// 
+class ZwpTabletToolV2HardwareIdWacomEvent {
+/// the hardware id, most significant bits
+  final int hardwareIdHi;
+
+/// the hardware id, least significant bits
+  final int hardwareIdLo;
+
+  ZwpTabletToolV2HardwareIdWacomEvent(
+this.hardwareIdHi,
+
+this.hardwareIdLo,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2HardwareIdWacomEvent: {
+    hardwareIdHi: $hardwareIdHi,
+    hardwareIdLo: $hardwareIdLo,
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2HardwareIdWacomEventHandler = void Function(ZwpTabletToolV2HardwareIdWacomEvent);
+
+/// tool capability notification
+/// 
+/// This event notifies the client of any capabilities of this tool,
+/// beyond the main set of x/y axes and tip up/down detection.
+/// 
+/// One event is sent for each extra capability available on this tool.
+/// 
+/// This event is sent in the initial burst of events before the
+/// wp_tablet_tool.done event.
+/// 
+class ZwpTabletToolV2CapabilityEvent {
+/// the capability
+  final int capability;
+
+  ZwpTabletToolV2CapabilityEvent(
+this.capability,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2CapabilityEvent: {
+    capability: $capability,
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2CapabilityEventHandler = void Function(ZwpTabletToolV2CapabilityEvent);
+
+/// tool description events sequence complete
+/// 
+/// This event signals the end of the initial burst of descriptive
+/// events. A client may consider the static description of the tool to
+/// be complete and finalize initialization of the tool.
+/// 
+class ZwpTabletToolV2DoneEvent {
+  ZwpTabletToolV2DoneEvent(
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2DoneEvent: {
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2DoneEventHandler = void Function(ZwpTabletToolV2DoneEvent);
+
+/// tool removed
+/// 
+/// This event is sent when the tool is removed from the system and will
+/// send no further events. Should the physical tool come back into
+/// proximity later, a new wp_tablet_tool object will be created.
+/// 
+/// It is compositor-dependent when a tool is removed. A compositor may
+/// remove a tool on proximity out, tablet removal or any other reason.
+/// A compositor may also keep a tool alive until shutdown.
+/// 
+/// If the tool is currently in proximity, a proximity_out event will be
+/// sent before the removed event. See wp_tablet_tool.proximity_out for
+/// the handling of any buttons logically down.
+/// 
+/// When this event is received, the client must wp_tablet_tool.destroy
+/// the object.
+/// 
+class ZwpTabletToolV2RemovedEvent {
+  ZwpTabletToolV2RemovedEvent(
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2RemovedEvent: {
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2RemovedEventHandler = void Function(ZwpTabletToolV2RemovedEvent);
+
+/// proximity in event
+/// 
+/// Notification that this tool is focused on a certain surface.
+/// 
+/// This event can be received when the tool has moved from one surface to
+/// another, or when the tool has come back into proximity above the
+/// surface.
+/// 
+/// If any button is logically down when the tool comes into proximity,
+/// the respective button event is sent after the proximity_in event but
+/// within the same frame as the proximity_in event.
+/// 
+class ZwpTabletToolV2ProximityInEvent {
+/// 
+  final int serial;
+
+/// The tablet the tool is in proximity of
+  final int tablet;
+
+/// The current surface the tablet tool is over
+  final int surface;
+
+  ZwpTabletToolV2ProximityInEvent(
+this.serial,
+
+this.tablet,
+
+this.surface,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2ProximityInEvent: {
+    serial: $serial,
+    tablet: $tablet,
+    surface: $surface,
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2ProximityInEventHandler = void Function(ZwpTabletToolV2ProximityInEvent);
+
+/// proximity out event
+/// 
+/// Notification that this tool has either left proximity, or is no
+/// longer focused on a certain surface.
+/// 
+/// When the tablet tool leaves proximity of the tablet, button release
+/// events are sent for each button that was held down at the time of
+/// leaving proximity. These events are sent before the proximity_out
+/// event but within the same wp_tablet.frame.
+/// 
+/// If the tool stays within proximity of the tablet, but the focus
+/// changes from one surface to another, a button release event may not
+/// be sent until the button is actually released or the tool leaves the
+/// proximity of the tablet.
+/// 
+class ZwpTabletToolV2ProximityOutEvent {
+  ZwpTabletToolV2ProximityOutEvent(
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2ProximityOutEvent: {
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2ProximityOutEventHandler = void Function(ZwpTabletToolV2ProximityOutEvent);
+
+/// tablet tool is making contact
+/// 
+/// Sent whenever the tablet tool comes in contact with the surface of the
+/// tablet.
+/// 
+/// If the tool is already in contact with the tablet when entering the
+/// input region, the client owning said region will receive a
+/// wp_tablet.proximity_in event, followed by a wp_tablet.down
+/// event and a wp_tablet.frame event.
+/// 
+/// Note that this event describes logical contact, not physical
+/// contact. On some devices, a compositor may not consider a tool in
+/// logical contact until a minimum physical pressure threshold is
+/// exceeded.
+/// 
+class ZwpTabletToolV2DownEvent {
+/// 
+  final int serial;
+
+  ZwpTabletToolV2DownEvent(
+this.serial,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2DownEvent: {
+    serial: $serial,
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2DownEventHandler = void Function(ZwpTabletToolV2DownEvent);
+
+/// tablet tool is no longer making contact
+/// 
+/// Sent whenever the tablet tool stops making contact with the surface of
+/// the tablet, or when the tablet tool moves out of the input region
+/// and the compositor grab (if any) is dismissed.
+/// 
+/// If the tablet tool moves out of the input region while in contact
+/// with the surface of the tablet and the compositor does not have an
+/// ongoing grab on the surface, the client owning said region will
+/// receive a wp_tablet.up event, followed by a wp_tablet.proximity_out
+/// event and a wp_tablet.frame event. If the compositor has an ongoing
+/// grab on this device, this event sequence is sent whenever the grab
+/// is dismissed in the future.
+/// 
+/// Note that this event describes logical contact, not physical
+/// contact. On some devices, a compositor may not consider a tool out
+/// of logical contact until physical pressure falls below a specific
+/// threshold.
+/// 
+class ZwpTabletToolV2UpEvent {
+  ZwpTabletToolV2UpEvent(
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2UpEvent: {
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2UpEventHandler = void Function(ZwpTabletToolV2UpEvent);
+
+/// motion event
+/// 
+/// Sent whenever a tablet tool moves.
+/// 
+class ZwpTabletToolV2MotionEvent {
+/// surface-local x coordinate
+  final double x;
+
+/// surface-local y coordinate
+  final double y;
+
+  ZwpTabletToolV2MotionEvent(
+this.x,
+
+this.y,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2MotionEvent: {
+    x: $x,
+    y: $y,
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2MotionEventHandler = void Function(ZwpTabletToolV2MotionEvent);
+
+/// pressure change event
+/// 
+/// Sent whenever the pressure axis on a tool changes. The value of this
+/// event is normalized to a value between 0 and 65535.
+/// 
+/// Note that pressure may be nonzero even when a tool is not in logical
+/// contact. See the down and up events for more details.
+/// 
+class ZwpTabletToolV2PressureEvent {
+/// The current pressure value
+  final int pressure;
+
+  ZwpTabletToolV2PressureEvent(
+this.pressure,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2PressureEvent: {
+    pressure: $pressure,
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2PressureEventHandler = void Function(ZwpTabletToolV2PressureEvent);
+
+/// distance change event
+/// 
+/// Sent whenever the distance axis on a tool changes. The value of this
+/// event is normalized to a value between 0 and 65535.
+/// 
+/// Note that distance may be nonzero even when a tool is not in logical
+/// contact. See the down and up events for more details.
+/// 
+class ZwpTabletToolV2DistanceEvent {
+/// The current distance value
+  final int distance;
+
+  ZwpTabletToolV2DistanceEvent(
+this.distance,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2DistanceEvent: {
+    distance: $distance,
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2DistanceEventHandler = void Function(ZwpTabletToolV2DistanceEvent);
+
+/// tilt change event
+/// 
+/// Sent whenever one or both of the tilt axes on a tool change. Each tilt
+/// value is in degrees, relative to the z-axis of the tablet.
+/// The angle is positive when the top of a tool tilts along the
+/// positive x or y axis.
+/// 
+class ZwpTabletToolV2TiltEvent {
+/// The current value of the X tilt axis
+  final double tiltX;
+
+/// The current value of the Y tilt axis
+  final double tiltY;
+
+  ZwpTabletToolV2TiltEvent(
+this.tiltX,
+
+this.tiltY,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2TiltEvent: {
+    tiltX: $tiltX,
+    tiltY: $tiltY,
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2TiltEventHandler = void Function(ZwpTabletToolV2TiltEvent);
+
+/// z-rotation change event
+/// 
+/// Sent whenever the z-rotation axis on the tool changes. The
+/// rotation value is in degrees clockwise from the tool's
+/// logical neutral position.
+/// 
+class ZwpTabletToolV2RotationEvent {
+/// The current rotation of the Z axis
+  final double degrees;
+
+  ZwpTabletToolV2RotationEvent(
+this.degrees,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2RotationEvent: {
+    degrees: $degrees,
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2RotationEventHandler = void Function(ZwpTabletToolV2RotationEvent);
+
+/// Slider position change event
+/// 
+/// Sent whenever the slider position on the tool changes. The
+/// value is normalized between -65535 and 65535, with 0 as the logical
+/// neutral position of the slider.
+/// 
+/// The slider is available on e.g. the Wacom Airbrush tool.
+/// 
+class ZwpTabletToolV2SliderEvent {
+/// The current position of slider
+  final int position;
+
+  ZwpTabletToolV2SliderEvent(
+this.position,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2SliderEvent: {
+    position: $position,
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2SliderEventHandler = void Function(ZwpTabletToolV2SliderEvent);
+
+/// Wheel delta event
+/// 
+/// Sent whenever the wheel on the tool emits an event. This event
+/// contains two values for the same axis change. The degrees value is
+/// in the same orientation as the wl_pointer.vertical_scroll axis. The
+/// clicks value is in discrete logical clicks of the mouse wheel. This
+/// value may be zero if the movement of the wheel was less
+/// than one logical click.
+/// 
+/// Clients should choose either value and avoid mixing degrees and
+/// clicks. The compositor may accumulate values smaller than a logical
+/// click and emulate click events when a certain threshold is met.
+/// Thus, wl_tablet_tool.wheel events with non-zero clicks values may
+/// have different degrees values.
+/// 
+class ZwpTabletToolV2WheelEvent {
+/// The wheel delta in degrees
+  final double degrees;
+
+/// The wheel delta in discrete clicks
+  final int clicks;
+
+  ZwpTabletToolV2WheelEvent(
+this.degrees,
+
+this.clicks,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2WheelEvent: {
+    degrees: $degrees,
+    clicks: $clicks,
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2WheelEventHandler = void Function(ZwpTabletToolV2WheelEvent);
+
+/// button event
+/// 
+/// Sent whenever a button on the tool is pressed or released.
+/// 
+/// If a button is held down when the tool moves in or out of proximity,
+/// button events are generated by the compositor. See
+/// wp_tablet_tool.proximity_in and wp_tablet_tool.proximity_out for
+/// details.
+/// 
+class ZwpTabletToolV2ButtonEvent {
+/// 
+  final int serial;
+
+/// The button whose state has changed
+  final int button;
+
+/// Whether the button was pressed or released
+  final int state;
+
+  ZwpTabletToolV2ButtonEvent(
+this.serial,
+
+this.button,
+
+this.state,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2ButtonEvent: {
+    serial: $serial,
+    button: $button,
+    state: $state,
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2ButtonEventHandler = void Function(ZwpTabletToolV2ButtonEvent);
+
+/// frame event
+/// 
+/// Marks the end of a series of axis and/or button updates from the
+/// tablet. The Wayland protocol requires axis updates to be sent
+/// sequentially, however all events within a frame should be considered
+/// one hardware event.
+/// 
+class ZwpTabletToolV2FrameEvent {
+/// The time of the event with millisecond granularity
+  final int time;
+
+  ZwpTabletToolV2FrameEvent(
+this.time,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletToolV2FrameEvent: {
+    time: $time,
+  }""";
+}
+
+}
+
+typedef ZwpTabletToolV2FrameEventHandler = void Function(ZwpTabletToolV2FrameEvent);
+
 
 /// a physical tablet tool
 /// 
@@ -198,11 +941,51 @@ class ZwpTabletSeatV2 extends Proxy implements Dispatcher{
 class ZwpTabletToolV2 extends Proxy implements Dispatcher{
   final Context context;
 
-  ZwpTabletToolV2(this.context) : super(context.allocateClientId());
+  ZwpTabletToolV2(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// set the tablet tool's surface
+/// 
+/// Sets the surface of the cursor used for this tool on the given
+/// tablet. This request only takes effect if the tool is in proximity
+/// of one of the requesting client's surfaces or the surface parameter
+/// is the current pointer surface. If there was a previous surface set
+/// with this request it is replaced. If surface is NULL, the cursor
+/// image is hidden.
+/// 
+/// The parameters hotspot_x and hotspot_y define the position of the
+/// pointer surface relative to the pointer location. Its top-left corner
+/// is always at (x, y) - (hotspot_x, hotspot_y), where (x, y) are the
+/// coordinates of the pointer location, in surface-local coordinates.
+/// 
+/// On surface.attach requests to the pointer surface, hotspot_x and
+/// hotspot_y are decremented by the x and y parameters passed to the
+/// request. Attach must be confirmed by wl_surface.commit as usual.
+/// 
+/// The hotspot can also be updated by passing the currently set pointer
+/// surface to this request with new values for hotspot_x and hotspot_y.
+/// 
+/// The current and pending input regions of the wl_surface are cleared,
+/// and wl_surface.set_input_region is ignored until the wl_surface is no
+/// longer used as the cursor. When the use as a cursor ends, the current
+/// and pending input regions become undefined, and the wl_surface is
+/// unmapped.
+/// 
+/// This request gives the surface the role of a wp_tablet_tool cursor. A
+/// surface may only ever be used as the cursor surface for one
+/// wp_tablet_tool. If the surface already has another role or has
+/// previously been used as cursor surface for a different tool, a
+/// protocol error is raised.
+/// 
+/// [serial]: serial of the proximity_in event
+/// [surface]:
+/// [hotspot_x]: surface-local x coordinate
+/// [hotspot_y]: surface-local y coordinate
   Future<void> setCursor(int serial, Surface surface, int hotspotX, int hotspotY) async {
+    print("ZwpTabletToolV2::setCursor  serial: $serial surface: $surface hotspotX: $hotspotX hotspotY: $hotspotY");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
         serial,
@@ -217,22 +1000,27 @@ class ZwpTabletToolV2 extends Proxy implements Dispatcher{
         WaylandType.int,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// destroy the tool object
+/// 
+/// This destroys the client's resource for this tool object.
+/// 
   Future<void> destroy() async {
+    print("ZwpTabletToolV2::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// tool type
+/// tool type
 /// 
 /// The tool type is the high-level type of the tool and usually decides
 /// the interaction expected from this tool.
@@ -240,13 +1028,15 @@ class ZwpTabletToolV2 extends Proxy implements Dispatcher{
 /// This event is sent in the initial burst of events before the
 /// wp_tablet_tool.done event.
 /// 
- void ontype(void Function(int toolType) handler) {
+/// Event handler for Type
+/// - [tool_type]: the physical tool type
+ void onType(ZwpTabletToolV2TypeEventHandler handler) {
    _typeHandler = handler;
  }
 
- void Function(int toolType)? _typeHandler;
+ ZwpTabletToolV2TypeEventHandler? _typeHandler;
 
- /// unique hardware serial number of the tool
+/// unique hardware serial number of the tool
 /// 
 /// If the physical tool can be identified by a unique 64-bit serial
 /// number, this event notifies the client of this serial number.
@@ -264,13 +1054,16 @@ class ZwpTabletToolV2 extends Proxy implements Dispatcher{
 /// This event is sent in the initial burst of events before the
 /// wp_tablet_tool.done event.
 /// 
- void onhardwareSerial(void Function(int hardwareSerialHi, int hardwareSerialLo) handler) {
+/// Event handler for HardwareSerial
+/// - [hardware_serial_hi]: the unique serial number of the tool, most significant bits
+/// - [hardware_serial_lo]: the unique serial number of the tool, least significant bits
+ void onHardwareSerial(ZwpTabletToolV2HardwareSerialEventHandler handler) {
    _hardwareSerialHandler = handler;
  }
 
- void Function(int hardwareSerialHi, int hardwareSerialLo)? _hardwareSerialHandler;
+ ZwpTabletToolV2HardwareSerialEventHandler? _hardwareSerialHandler;
 
- /// hardware id notification in Wacom's format
+/// hardware id notification in Wacom's format
 /// 
 /// This event notifies the client of a hardware id available on this tool.
 /// 
@@ -283,13 +1076,16 @@ class ZwpTabletToolV2 extends Proxy implements Dispatcher{
 /// This event is sent in the initial burst of events before the
 /// wp_tablet_tool.done event.
 /// 
- void onhardwareIdWacom(void Function(int hardwareIdHi, int hardwareIdLo) handler) {
+/// Event handler for HardwareIdWacom
+/// - [hardware_id_hi]: the hardware id, most significant bits
+/// - [hardware_id_lo]: the hardware id, least significant bits
+ void onHardwareIdWacom(ZwpTabletToolV2HardwareIdWacomEventHandler handler) {
    _hardwareIdWacomHandler = handler;
  }
 
- void Function(int hardwareIdHi, int hardwareIdLo)? _hardwareIdWacomHandler;
+ ZwpTabletToolV2HardwareIdWacomEventHandler? _hardwareIdWacomHandler;
 
- /// tool capability notification
+/// tool capability notification
 /// 
 /// This event notifies the client of any capabilities of this tool,
 /// beyond the main set of x/y axes and tip up/down detection.
@@ -299,25 +1095,28 @@ class ZwpTabletToolV2 extends Proxy implements Dispatcher{
 /// This event is sent in the initial burst of events before the
 /// wp_tablet_tool.done event.
 /// 
- void oncapability(void Function(int capability) handler) {
+/// Event handler for Capability
+/// - [capability]: the capability
+ void onCapability(ZwpTabletToolV2CapabilityEventHandler handler) {
    _capabilityHandler = handler;
  }
 
- void Function(int capability)? _capabilityHandler;
+ ZwpTabletToolV2CapabilityEventHandler? _capabilityHandler;
 
- /// tool description events sequence complete
+/// tool description events sequence complete
 /// 
 /// This event signals the end of the initial burst of descriptive
 /// events. A client may consider the static description of the tool to
 /// be complete and finalize initialization of the tool.
 /// 
- void ondone(void Function() handler) {
+/// Event handler for Done
+ void onDone(ZwpTabletToolV2DoneEventHandler handler) {
    _doneHandler = handler;
  }
 
- void Function()? _doneHandler;
+ ZwpTabletToolV2DoneEventHandler? _doneHandler;
 
- /// tool removed
+/// tool removed
 /// 
 /// This event is sent when the tool is removed from the system and will
 /// send no further events. Should the physical tool come back into
@@ -334,13 +1133,14 @@ class ZwpTabletToolV2 extends Proxy implements Dispatcher{
 /// When this event is received, the client must wp_tablet_tool.destroy
 /// the object.
 /// 
- void onremoved(void Function() handler) {
+/// Event handler for Removed
+ void onRemoved(ZwpTabletToolV2RemovedEventHandler handler) {
    _removedHandler = handler;
  }
 
- void Function()? _removedHandler;
+ ZwpTabletToolV2RemovedEventHandler? _removedHandler;
 
- /// proximity in event
+/// proximity in event
 /// 
 /// Notification that this tool is focused on a certain surface.
 /// 
@@ -352,13 +1152,17 @@ class ZwpTabletToolV2 extends Proxy implements Dispatcher{
 /// the respective button event is sent after the proximity_in event but
 /// within the same frame as the proximity_in event.
 /// 
- void onproximityIn(void Function(int serial, int tablet, int surface) handler) {
+/// Event handler for ProximityIn
+/// - [serial]:
+/// - [tablet]: The tablet the tool is in proximity of
+/// - [surface]: The current surface the tablet tool is over
+ void onProximityIn(ZwpTabletToolV2ProximityInEventHandler handler) {
    _proximityInHandler = handler;
  }
 
- void Function(int serial, int tablet, int surface)? _proximityInHandler;
+ ZwpTabletToolV2ProximityInEventHandler? _proximityInHandler;
 
- /// proximity out event
+/// proximity out event
 /// 
 /// Notification that this tool has either left proximity, or is no
 /// longer focused on a certain surface.
@@ -373,13 +1177,14 @@ class ZwpTabletToolV2 extends Proxy implements Dispatcher{
 /// be sent until the button is actually released or the tool leaves the
 /// proximity of the tablet.
 /// 
- void onproximityOut(void Function() handler) {
+/// Event handler for ProximityOut
+ void onProximityOut(ZwpTabletToolV2ProximityOutEventHandler handler) {
    _proximityOutHandler = handler;
  }
 
- void Function()? _proximityOutHandler;
+ ZwpTabletToolV2ProximityOutEventHandler? _proximityOutHandler;
 
- /// tablet tool is making contact
+/// tablet tool is making contact
 /// 
 /// Sent whenever the tablet tool comes in contact with the surface of the
 /// tablet.
@@ -394,13 +1199,15 @@ class ZwpTabletToolV2 extends Proxy implements Dispatcher{
 /// logical contact until a minimum physical pressure threshold is
 /// exceeded.
 /// 
- void ondown(void Function(int serial) handler) {
+/// Event handler for Down
+/// - [serial]:
+ void onDown(ZwpTabletToolV2DownEventHandler handler) {
    _downHandler = handler;
  }
 
- void Function(int serial)? _downHandler;
+ ZwpTabletToolV2DownEventHandler? _downHandler;
 
- /// tablet tool is no longer making contact
+/// tablet tool is no longer making contact
 /// 
 /// Sent whenever the tablet tool stops making contact with the surface of
 /// the tablet, or when the tablet tool moves out of the input region
@@ -419,23 +1226,27 @@ class ZwpTabletToolV2 extends Proxy implements Dispatcher{
 /// of logical contact until physical pressure falls below a specific
 /// threshold.
 /// 
- void onup(void Function() handler) {
+/// Event handler for Up
+ void onUp(ZwpTabletToolV2UpEventHandler handler) {
    _upHandler = handler;
  }
 
- void Function()? _upHandler;
+ ZwpTabletToolV2UpEventHandler? _upHandler;
 
- /// motion event
+/// motion event
 /// 
 /// Sent whenever a tablet tool moves.
 /// 
- void onmotion(void Function(double x, double y) handler) {
+/// Event handler for Motion
+/// - [x]: surface-local x coordinate
+/// - [y]: surface-local y coordinate
+ void onMotion(ZwpTabletToolV2MotionEventHandler handler) {
    _motionHandler = handler;
  }
 
- void Function(double x, double y)? _motionHandler;
+ ZwpTabletToolV2MotionEventHandler? _motionHandler;
 
- /// pressure change event
+/// pressure change event
 /// 
 /// Sent whenever the pressure axis on a tool changes. The value of this
 /// event is normalized to a value between 0 and 65535.
@@ -443,13 +1254,15 @@ class ZwpTabletToolV2 extends Proxy implements Dispatcher{
 /// Note that pressure may be nonzero even when a tool is not in logical
 /// contact. See the down and up events for more details.
 /// 
- void onpressure(void Function(int pressure) handler) {
+/// Event handler for Pressure
+/// - [pressure]: The current pressure value
+ void onPressure(ZwpTabletToolV2PressureEventHandler handler) {
    _pressureHandler = handler;
  }
 
- void Function(int pressure)? _pressureHandler;
+ ZwpTabletToolV2PressureEventHandler? _pressureHandler;
 
- /// distance change event
+/// distance change event
 /// 
 /// Sent whenever the distance axis on a tool changes. The value of this
 /// event is normalized to a value between 0 and 65535.
@@ -457,38 +1270,45 @@ class ZwpTabletToolV2 extends Proxy implements Dispatcher{
 /// Note that distance may be nonzero even when a tool is not in logical
 /// contact. See the down and up events for more details.
 /// 
- void ondistance(void Function(int distance) handler) {
+/// Event handler for Distance
+/// - [distance]: The current distance value
+ void onDistance(ZwpTabletToolV2DistanceEventHandler handler) {
    _distanceHandler = handler;
  }
 
- void Function(int distance)? _distanceHandler;
+ ZwpTabletToolV2DistanceEventHandler? _distanceHandler;
 
- /// tilt change event
+/// tilt change event
 /// 
 /// Sent whenever one or both of the tilt axes on a tool change. Each tilt
 /// value is in degrees, relative to the z-axis of the tablet.
 /// The angle is positive when the top of a tool tilts along the
 /// positive x or y axis.
 /// 
- void ontilt(void Function(double tiltX, double tiltY) handler) {
+/// Event handler for Tilt
+/// - [tilt_x]: The current value of the X tilt axis
+/// - [tilt_y]: The current value of the Y tilt axis
+ void onTilt(ZwpTabletToolV2TiltEventHandler handler) {
    _tiltHandler = handler;
  }
 
- void Function(double tiltX, double tiltY)? _tiltHandler;
+ ZwpTabletToolV2TiltEventHandler? _tiltHandler;
 
- /// z-rotation change event
+/// z-rotation change event
 /// 
 /// Sent whenever the z-rotation axis on the tool changes. The
 /// rotation value is in degrees clockwise from the tool's
 /// logical neutral position.
 /// 
- void onrotation(void Function(double degrees) handler) {
+/// Event handler for Rotation
+/// - [degrees]: The current rotation of the Z axis
+ void onRotation(ZwpTabletToolV2RotationEventHandler handler) {
    _rotationHandler = handler;
  }
 
- void Function(double degrees)? _rotationHandler;
+ ZwpTabletToolV2RotationEventHandler? _rotationHandler;
 
- /// Slider position change event
+/// Slider position change event
 /// 
 /// Sent whenever the slider position on the tool changes. The
 /// value is normalized between -65535 and 65535, with 0 as the logical
@@ -496,13 +1316,15 @@ class ZwpTabletToolV2 extends Proxy implements Dispatcher{
 /// 
 /// The slider is available on e.g. the Wacom Airbrush tool.
 /// 
- void onslider(void Function(int position) handler) {
+/// Event handler for Slider
+/// - [position]: The current position of slider
+ void onSlider(ZwpTabletToolV2SliderEventHandler handler) {
    _sliderHandler = handler;
  }
 
- void Function(int position)? _sliderHandler;
+ ZwpTabletToolV2SliderEventHandler? _sliderHandler;
 
- /// Wheel delta event
+/// Wheel delta event
 /// 
 /// Sent whenever the wheel on the tool emits an event. This event
 /// contains two values for the same axis change. The degrees value is
@@ -517,13 +1339,16 @@ class ZwpTabletToolV2 extends Proxy implements Dispatcher{
 /// Thus, wl_tablet_tool.wheel events with non-zero clicks values may
 /// have different degrees values.
 /// 
- void onwheel(void Function(double degrees, int clicks) handler) {
+/// Event handler for Wheel
+/// - [degrees]: The wheel delta in degrees
+/// - [clicks]: The wheel delta in discrete clicks
+ void onWheel(ZwpTabletToolV2WheelEventHandler handler) {
    _wheelHandler = handler;
  }
 
- void Function(double degrees, int clicks)? _wheelHandler;
+ ZwpTabletToolV2WheelEventHandler? _wheelHandler;
 
- /// button event
+/// button event
 /// 
 /// Sent whenever a button on the tool is pressed or released.
 /// 
@@ -532,164 +1357,189 @@ class ZwpTabletToolV2 extends Proxy implements Dispatcher{
 /// wp_tablet_tool.proximity_in and wp_tablet_tool.proximity_out for
 /// details.
 /// 
- void onbutton(void Function(int serial, int button, int state) handler) {
+/// Event handler for Button
+/// - [serial]:
+/// - [button]: The button whose state has changed
+/// - [state]: Whether the button was pressed or released
+ void onButton(ZwpTabletToolV2ButtonEventHandler handler) {
    _buttonHandler = handler;
  }
 
- void Function(int serial, int button, int state)? _buttonHandler;
+ ZwpTabletToolV2ButtonEventHandler? _buttonHandler;
 
- /// frame event
+/// frame event
 /// 
 /// Marks the end of a series of axis and/or button updates from the
 /// tablet. The Wayland protocol requires axis updates to be sent
 /// sequentially, however all events within a frame should be considered
 /// one hardware event.
 /// 
- void onframe(void Function(int time) handler) {
+/// Event handler for Frame
+/// - [time]: The time of the event with millisecond granularity
+ void onFrame(ZwpTabletToolV2FrameEventHandler handler) {
    _frameHandler = handler;
  }
 
- void Function(int time)? _frameHandler;
+ ZwpTabletToolV2FrameEventHandler? _frameHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_typeHandler != null) {
-         _typeHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZwpTabletToolV2TypeEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _typeHandler!(event);
        }
        break;
      case 1:
        if (_hardwareSerialHandler != null) {
-         _hardwareSerialHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-           ByteData.view(data.buffer).getInt32(4, Endian.host),
-         );
+var event = ZwpTabletToolV2HardwareSerialEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+           ByteData.view(data.buffer).getUint32(4, Endian.little),
+        );
+         _hardwareSerialHandler!(event);
        }
        break;
      case 2:
        if (_hardwareIdWacomHandler != null) {
-         _hardwareIdWacomHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-           ByteData.view(data.buffer).getInt32(4, Endian.host),
-         );
+var event = ZwpTabletToolV2HardwareIdWacomEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+           ByteData.view(data.buffer).getUint32(4, Endian.little),
+        );
+         _hardwareIdWacomHandler!(event);
        }
        break;
      case 3:
        if (_capabilityHandler != null) {
-         _capabilityHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZwpTabletToolV2CapabilityEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _capabilityHandler!(event);
        }
        break;
      case 4:
        if (_doneHandler != null) {
-         _doneHandler!(
-         );
+var event = ZwpTabletToolV2DoneEvent(
+        );
+         _doneHandler!(event);
        }
        break;
      case 5:
        if (_removedHandler != null) {
-         _removedHandler!(
-         );
+var event = ZwpTabletToolV2RemovedEvent(
+        );
+         _removedHandler!(event);
        }
        break;
      case 6:
        if (_proximityInHandler != null) {
-         _proximityInHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-           context.getProxy(ByteData.view(data.buffer).getUint32(4, Endian.host)).id,
-           context.getProxy(ByteData.view(data.buffer).getUint32(8, Endian.host)).id,
-         );
+var event = ZwpTabletToolV2ProximityInEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+           context.getProxy(ByteData.view(data.buffer).getUint32(4, Endian.little)).objectId,
+           context.getProxy(ByteData.view(data.buffer).getUint32(8, Endian.little)).objectId,
+        );
+         _proximityInHandler!(event);
        }
        break;
      case 7:
        if (_proximityOutHandler != null) {
-         _proximityOutHandler!(
-         );
+var event = ZwpTabletToolV2ProximityOutEvent(
+        );
+         _proximityOutHandler!(event);
        }
        break;
      case 8:
        if (_downHandler != null) {
-         _downHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZwpTabletToolV2DownEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _downHandler!(event);
        }
        break;
      case 9:
        if (_upHandler != null) {
-         _upHandler!(
-         );
+var event = ZwpTabletToolV2UpEvent(
+        );
+         _upHandler!(event);
        }
        break;
      case 10:
        if (_motionHandler != null) {
-         _motionHandler!(
-           fixedToDouble(ByteData.view(data.buffer).getInt32(0, Endian.host)),
-           fixedToDouble(ByteData.view(data.buffer).getInt32(4, Endian.host)),
-         );
+var event = ZwpTabletToolV2MotionEvent(
+           fixedToDouble(ByteData.view(data.buffer).getInt32(0, Endian.little)),
+           fixedToDouble(ByteData.view(data.buffer).getInt32(4, Endian.little)),
+        );
+         _motionHandler!(event);
        }
        break;
      case 11:
        if (_pressureHandler != null) {
-         _pressureHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZwpTabletToolV2PressureEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _pressureHandler!(event);
        }
        break;
      case 12:
        if (_distanceHandler != null) {
-         _distanceHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZwpTabletToolV2DistanceEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _distanceHandler!(event);
        }
        break;
      case 13:
        if (_tiltHandler != null) {
-         _tiltHandler!(
-           fixedToDouble(ByteData.view(data.buffer).getInt32(0, Endian.host)),
-           fixedToDouble(ByteData.view(data.buffer).getInt32(4, Endian.host)),
-         );
+var event = ZwpTabletToolV2TiltEvent(
+           fixedToDouble(ByteData.view(data.buffer).getInt32(0, Endian.little)),
+           fixedToDouble(ByteData.view(data.buffer).getInt32(4, Endian.little)),
+        );
+         _tiltHandler!(event);
        }
        break;
      case 14:
        if (_rotationHandler != null) {
-         _rotationHandler!(
-           fixedToDouble(ByteData.view(data.buffer).getInt32(0, Endian.host)),
-         );
+var event = ZwpTabletToolV2RotationEvent(
+           fixedToDouble(ByteData.view(data.buffer).getInt32(0, Endian.little)),
+        );
+         _rotationHandler!(event);
        }
        break;
      case 15:
        if (_sliderHandler != null) {
-         _sliderHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZwpTabletToolV2SliderEvent(
+           ByteData.view(data.buffer).getInt32(0, Endian.little),
+        );
+         _sliderHandler!(event);
        }
        break;
      case 16:
        if (_wheelHandler != null) {
-         _wheelHandler!(
-           fixedToDouble(ByteData.view(data.buffer).getInt32(0, Endian.host)),
-           ByteData.view(data.buffer).getInt32(4, Endian.host),
-         );
+var event = ZwpTabletToolV2WheelEvent(
+           fixedToDouble(ByteData.view(data.buffer).getInt32(0, Endian.little)),
+           ByteData.view(data.buffer).getInt32(4, Endian.little),
+        );
+         _wheelHandler!(event);
        }
        break;
      case 17:
        if (_buttonHandler != null) {
-         _buttonHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-           ByteData.view(data.buffer).getInt32(4, Endian.host),
-           ByteData.view(data.buffer).getInt32(8, Endian.host),
-         );
+var event = ZwpTabletToolV2ButtonEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+           ByteData.view(data.buffer).getUint32(4, Endian.little),
+           ByteData.view(data.buffer).getUint32(8, Endian.little),
+        );
+         _buttonHandler!(event);
        }
        break;
      case 18:
        if (_frameHandler != null) {
-         _frameHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZwpTabletToolV2FrameEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _frameHandler!(event);
        }
        break;
    }
@@ -710,21 +1560,21 @@ class ZwpTabletToolV2 extends Proxy implements Dispatcher{
 /// 
 
 enum ZwpTabletToolV2type {
-  /// Pen
+/// Pen
   pen,
-  /// Eraser
+/// Eraser
   eraser,
-  /// Brush
+/// Brush
   brush,
-  /// Pencil
+/// Pencil
   pencil,
-  /// Airbrush
+/// Airbrush
   airbrush,
-  /// Finger
+/// Finger
   finger,
-  /// Mouse
+/// Mouse
   mouse,
-  /// Lens
+/// Lens
   lens,
 }
 
@@ -737,17 +1587,17 @@ enum ZwpTabletToolV2type {
 /// 
 
 enum ZwpTabletToolV2capability {
-  /// Tilt axes
+/// Tilt axes
   tilt,
-  /// Pressure axis
+/// Pressure axis
   pressure,
-  /// Distance axis
+/// Distance axis
   distance,
-  /// Z-rotation axis
+/// Z-rotation axis
   rotation,
-  /// Slider axis
+/// Slider axis
   slider,
-  /// Wheel axis
+/// Wheel axis
   wheel,
 }
 
@@ -757,9 +1607,9 @@ enum ZwpTabletToolV2capability {
 /// 
 
 enum ZwpTabletToolV2buttonState {
-  /// button is not pressed
+/// button is not pressed
   released,
-  /// button is pressed
+/// button is pressed
   pressed,
 }
 
@@ -767,39 +1617,12 @@ enum ZwpTabletToolV2buttonState {
 /// 
 
 enum ZwpTabletToolV2error {
-  /// given wl_surface has another role
+/// given wl_surface has another role
   role,
 }
 
-/// graphics tablet device
-/// 
-/// The wp_tablet interface represents one graphics tablet device. The
-/// tablet interface itself does not generate events; all events are
-/// generated by wp_tablet_tool objects when in proximity above a tablet.
-/// 
-/// A tablet has a number of static characteristics, e.g. device name and
-/// pid/vid. These capabilities are sent in an event sequence after the
-/// wp_tablet_seat.tablet_added event. This initial event sequence is
-/// terminated by a wp_tablet.done event.
-/// 
-class ZwpTabletV2 extends Proxy implements Dispatcher{
-  final Context context;
 
-  ZwpTabletV2(this.context) : super(context.allocateClientId());
-
-  Future<void> destroy() async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      0,
-      [
-      ],
-      [
-      ],
-    );
-    context.sendMessage(message);
-  }
-
- /// tablet device name
+/// tablet device name
 /// 
 /// A descriptive name for the tablet device.
 /// 
@@ -808,13 +1631,27 @@ class ZwpTabletV2 extends Proxy implements Dispatcher{
 /// This event is sent in the initial burst of events before the
 /// wp_tablet.done event.
 /// 
- void onname(void Function(String name) handler) {
-   _nameHandler = handler;
- }
+class ZwpTabletV2NameEvent {
+/// the device name
+  final String name;
 
- void Function(String name)? _nameHandler;
+  ZwpTabletV2NameEvent(
+this.name,
 
- /// tablet device USB vendor/product id
+);
+
+@override
+String toString(){
+  return """ZwpTabletV2NameEvent: {
+    name: $name,
+  }""";
+}
+
+}
+
+typedef ZwpTabletV2NameEventHandler = void Function(ZwpTabletV2NameEvent);
+
+/// tablet device USB vendor/product id
 /// 
 /// The USB vendor and product IDs for the tablet device.
 /// 
@@ -824,13 +1661,33 @@ class ZwpTabletV2 extends Proxy implements Dispatcher{
 /// This event is sent in the initial burst of events before the
 /// wp_tablet.done event.
 /// 
- void onid(void Function(int vid, int pid) handler) {
-   _idHandler = handler;
- }
+class ZwpTabletV2IdEvent {
+/// USB vendor id
+  final int vid;
 
- void Function(int vid, int pid)? _idHandler;
+/// USB product id
+  final int pid;
 
- /// path to the device
+  ZwpTabletV2IdEvent(
+this.vid,
+
+this.pid,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletV2IdEvent: {
+    vid: $vid,
+    pid: $pid,
+  }""";
+}
+
+}
+
+typedef ZwpTabletV2IdEventHandler = void Function(ZwpTabletV2IdEvent);
+
+/// path to the device
 /// 
 /// A system-specific device path that indicates which device is behind
 /// this wp_tablet. This information may be used to gather additional
@@ -847,26 +1704,48 @@ class ZwpTabletV2 extends Proxy implements Dispatcher{
 /// This event is sent in the initial burst of events before the
 /// wp_tablet.done event.
 /// 
- void onpath(void Function(String path) handler) {
-   _pathHandler = handler;
- }
+class ZwpTabletV2PathEvent {
+/// path to local device
+  final String path;
 
- void Function(String path)? _pathHandler;
+  ZwpTabletV2PathEvent(
+this.path,
 
- /// tablet description events sequence complete
+);
+
+@override
+String toString(){
+  return """ZwpTabletV2PathEvent: {
+    path: $path,
+  }""";
+}
+
+}
+
+typedef ZwpTabletV2PathEventHandler = void Function(ZwpTabletV2PathEvent);
+
+/// tablet description events sequence complete
 /// 
 /// This event is sent immediately to signal the end of the initial
 /// burst of descriptive events. A client may consider the static
 /// description of the tablet to be complete and finalize initialization
 /// of the tablet.
 /// 
- void ondone(void Function() handler) {
-   _doneHandler = handler;
- }
+class ZwpTabletV2DoneEvent {
+  ZwpTabletV2DoneEvent(
+);
 
- void Function()? _doneHandler;
+@override
+String toString(){
+  return """ZwpTabletV2DoneEvent: {
+  }""";
+}
 
- /// tablet removed event
+}
+
+typedef ZwpTabletV2DoneEventHandler = void Function(ZwpTabletV2DoneEvent);
+
+/// tablet removed event
 /// 
 /// Sent when the tablet has been removed from the system. When a tablet
 /// is removed, some tools may be removed.
@@ -874,95 +1753,194 @@ class ZwpTabletV2 extends Proxy implements Dispatcher{
 /// When this event is received, the client must wp_tablet.destroy
 /// the object.
 /// 
- void onremoved(void Function() handler) {
+class ZwpTabletV2RemovedEvent {
+  ZwpTabletV2RemovedEvent(
+);
+
+@override
+String toString(){
+  return """ZwpTabletV2RemovedEvent: {
+  }""";
+}
+
+}
+
+typedef ZwpTabletV2RemovedEventHandler = void Function(ZwpTabletV2RemovedEvent);
+
+
+/// graphics tablet device
+/// 
+/// The wp_tablet interface represents one graphics tablet device. The
+/// tablet interface itself does not generate events; all events are
+/// generated by wp_tablet_tool objects when in proximity above a tablet.
+/// 
+/// A tablet has a number of static characteristics, e.g. device name and
+/// pid/vid. These capabilities are sent in an event sequence after the
+/// wp_tablet_seat.tablet_added event. This initial event sequence is
+/// terminated by a wp_tablet.done event.
+/// 
+class ZwpTabletV2 extends Proxy implements Dispatcher{
+  final Context context;
+
+  ZwpTabletV2(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
+
+/// destroy the tablet object
+/// 
+/// This destroys the client's resource for this tablet object.
+/// 
+  Future<void> destroy() async {
+    print("ZwpTabletV2::destroy ");
+    final message = WaylandMessage(
+      objectId,
+      0,
+      [
+      ],
+      [
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// tablet device name
+/// 
+/// A descriptive name for the tablet device.
+/// 
+/// If the device has no descriptive name, this event is not sent.
+/// 
+/// This event is sent in the initial burst of events before the
+/// wp_tablet.done event.
+/// 
+/// Event handler for Name
+/// - [name]: the device name
+ void onName(ZwpTabletV2NameEventHandler handler) {
+   _nameHandler = handler;
+ }
+
+ ZwpTabletV2NameEventHandler? _nameHandler;
+
+/// tablet device USB vendor/product id
+/// 
+/// The USB vendor and product IDs for the tablet device.
+/// 
+/// If the device has no USB vendor/product ID, this event is not sent.
+/// This can happen for virtual devices or non-USB devices, for instance.
+/// 
+/// This event is sent in the initial burst of events before the
+/// wp_tablet.done event.
+/// 
+/// Event handler for Id
+/// - [vid]: USB vendor id
+/// - [pid]: USB product id
+ void onId(ZwpTabletV2IdEventHandler handler) {
+   _idHandler = handler;
+ }
+
+ ZwpTabletV2IdEventHandler? _idHandler;
+
+/// path to the device
+/// 
+/// A system-specific device path that indicates which device is behind
+/// this wp_tablet. This information may be used to gather additional
+/// information about the device, e.g. through libwacom.
+/// 
+/// A device may have more than one device path. If so, multiple
+/// wp_tablet.path events are sent. A device may be emulated and not
+/// have a device path, and in that case this event will not be sent.
+/// 
+/// The format of the path is unspecified, it may be a device node, a
+/// sysfs path, or some other identifier. It is up to the client to
+/// identify the string provided.
+/// 
+/// This event is sent in the initial burst of events before the
+/// wp_tablet.done event.
+/// 
+/// Event handler for Path
+/// - [path]: path to local device
+ void onPath(ZwpTabletV2PathEventHandler handler) {
+   _pathHandler = handler;
+ }
+
+ ZwpTabletV2PathEventHandler? _pathHandler;
+
+/// tablet description events sequence complete
+/// 
+/// This event is sent immediately to signal the end of the initial
+/// burst of descriptive events. A client may consider the static
+/// description of the tablet to be complete and finalize initialization
+/// of the tablet.
+/// 
+/// Event handler for Done
+ void onDone(ZwpTabletV2DoneEventHandler handler) {
+   _doneHandler = handler;
+ }
+
+ ZwpTabletV2DoneEventHandler? _doneHandler;
+
+/// tablet removed event
+/// 
+/// Sent when the tablet has been removed from the system. When a tablet
+/// is removed, some tools may be removed.
+/// 
+/// When this event is received, the client must wp_tablet.destroy
+/// the object.
+/// 
+/// Event handler for Removed
+ void onRemoved(ZwpTabletV2RemovedEventHandler handler) {
    _removedHandler = handler;
  }
 
- void Function()? _removedHandler;
+ ZwpTabletV2RemovedEventHandler? _removedHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_nameHandler != null) {
-         _nameHandler!(
+var event = ZwpTabletV2NameEvent(
            getString(data, 0),
-         );
+        );
+         _nameHandler!(event);
        }
        break;
      case 1:
        if (_idHandler != null) {
-         _idHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-           ByteData.view(data.buffer).getInt32(4, Endian.host),
-         );
+var event = ZwpTabletV2IdEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+           ByteData.view(data.buffer).getUint32(4, Endian.little),
+        );
+         _idHandler!(event);
        }
        break;
      case 2:
        if (_pathHandler != null) {
-         _pathHandler!(
+var event = ZwpTabletV2PathEvent(
            getString(data, 0),
-         );
+        );
+         _pathHandler!(event);
        }
        break;
      case 3:
        if (_doneHandler != null) {
-         _doneHandler!(
-         );
+var event = ZwpTabletV2DoneEvent(
+        );
+         _doneHandler!(event);
        }
        break;
      case 4:
        if (_removedHandler != null) {
-         _removedHandler!(
-         );
+var event = ZwpTabletV2RemovedEvent(
+        );
+         _removedHandler!(event);
        }
        break;
    }
  }
 }
 
-/// pad ring
-/// 
-/// A circular interaction area, such as the touch ring on the Wacom Intuos
-/// Pro series tablets.
-/// 
-/// Events on a ring are logically grouped by the wl_tablet_pad_ring.frame
-/// event.
-/// 
-class ZwpTabletPadRingV2 extends Proxy implements Dispatcher{
-  final Context context;
 
-  ZwpTabletPadRingV2(this.context) : super(context.allocateClientId());
-
-  Future<void> setFeedback(String description, int serial) async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      0,
-      [
-        description,
-        serial,
-      ],
-      [
-        WaylandType.string,
-        WaylandType.uint,
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> destroy() async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      1,
-      [
-      ],
-      [
-      ],
-    );
-    context.sendMessage(message);
-  }
-
- /// ring event source
+/// ring event source
 /// 
 /// Source information for ring events.
 /// 
@@ -977,26 +1955,54 @@ class ZwpTabletPadRingV2 extends Proxy implements Dispatcher{
 /// This event is optional. If the source is unknown for an interaction,
 /// no event is sent.
 /// 
- void onsource(void Function(int source) handler) {
-   _sourceHandler = handler;
- }
+class ZwpTabletPadRingV2SourceEvent {
+/// the event source
+  final int source;
 
- void Function(int source)? _sourceHandler;
+  ZwpTabletPadRingV2SourceEvent(
+this.source,
 
- /// angle changed
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadRingV2SourceEvent: {
+    source: $source,
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadRingV2SourceEventHandler = void Function(ZwpTabletPadRingV2SourceEvent);
+
+/// angle changed
 /// 
 /// Sent whenever the angle on a ring changes.
 /// 
 /// The angle is provided in degrees clockwise from the logical
 /// north of the ring in the pad's current rotation.
 /// 
- void onangle(void Function(double degrees) handler) {
-   _angleHandler = handler;
- }
+class ZwpTabletPadRingV2AngleEvent {
+/// the current angle in degrees
+  final double degrees;
 
- void Function(double degrees)? _angleHandler;
+  ZwpTabletPadRingV2AngleEvent(
+this.degrees,
 
- /// interaction stopped
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadRingV2AngleEvent: {
+    degrees: $degrees,
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadRingV2AngleEventHandler = void Function(ZwpTabletPadRingV2AngleEvent);
+
+/// interaction stopped
 /// 
 /// Stop notification for ring events.
 /// 
@@ -1009,13 +2015,21 @@ class ZwpTabletPadRingV2 extends Proxy implements Dispatcher{
 /// Any wp_tablet_pad_ring.angle events with the same source after this
 /// event should be considered as the start of a new interaction.
 /// 
- void onstop(void Function() handler) {
-   _stopHandler = handler;
- }
+class ZwpTabletPadRingV2StopEvent {
+  ZwpTabletPadRingV2StopEvent(
+);
 
- void Function()? _stopHandler;
+@override
+String toString(){
+  return """ZwpTabletPadRingV2StopEvent: {
+  }""";
+}
 
- /// end of a ring event sequence
+}
+
+typedef ZwpTabletPadRingV2StopEventHandler = void Function(ZwpTabletPadRingV2StopEvent);
+
+/// end of a ring event sequence
 /// 
 /// Indicates the end of a set of ring events that logically belong
 /// together. A client is expected to accumulate the data in all events
@@ -1031,40 +2045,214 @@ class ZwpTabletPadRingV2 extends Proxy implements Dispatcher{
 /// event. Specifically, a client may get a sequence: angle, frame,
 /// angle, frame, etc.
 /// 
- void onframe(void Function(int time) handler) {
+class ZwpTabletPadRingV2FrameEvent {
+/// timestamp with millisecond granularity
+  final int time;
+
+  ZwpTabletPadRingV2FrameEvent(
+this.time,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadRingV2FrameEvent: {
+    time: $time,
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadRingV2FrameEventHandler = void Function(ZwpTabletPadRingV2FrameEvent);
+
+
+/// pad ring
+/// 
+/// A circular interaction area, such as the touch ring on the Wacom Intuos
+/// Pro series tablets.
+/// 
+/// Events on a ring are logically grouped by the wl_tablet_pad_ring.frame
+/// event.
+/// 
+class ZwpTabletPadRingV2 extends Proxy implements Dispatcher{
+  final Context context;
+
+  ZwpTabletPadRingV2(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
+
+/// set compositor feedback
+/// 
+/// Request that the compositor use the provided feedback string
+/// associated with this ring. This request should be issued immediately
+/// after a wp_tablet_pad_group.mode_switch event from the corresponding
+/// group is received, or whenever the ring is mapped to a different
+/// action. See wp_tablet_pad_group.mode_switch for more details.
+/// 
+/// Clients are encouraged to provide context-aware descriptions for
+/// the actions associated with the ring; compositors may use this
+/// information to offer visual feedback about the button layout
+/// (eg. on-screen displays).
+/// 
+/// The provided string 'description' is a UTF-8 encoded string to be
+/// associated with this ring, and is considered user-visible; general
+/// internationalization rules apply.
+/// 
+/// The serial argument will be that of the last
+/// wp_tablet_pad_group.mode_switch event received for the group of this
+/// ring. Requests providing other serials than the most recent one will be
+/// ignored.
+/// 
+/// [description]: ring description
+/// [serial]: serial of the mode switch event
+  Future<void> setFeedback(String description, int serial) async {
+    print("ZwpTabletPadRingV2::setFeedback  description: $description serial: $serial");
+    final message = WaylandMessage(
+      objectId,
+      0,
+      [
+        description,
+        serial,
+      ],
+      [
+        WaylandType.string,
+        WaylandType.uint,
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// destroy the ring object
+/// 
+/// This destroys the client's resource for this ring object.
+/// 
+  Future<void> destroy() async {
+    print("ZwpTabletPadRingV2::destroy ");
+    final message = WaylandMessage(
+      objectId,
+      1,
+      [
+      ],
+      [
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// ring event source
+/// 
+/// Source information for ring events.
+/// 
+/// This event does not occur on its own. It is sent before a
+/// wp_tablet_pad_ring.frame event and carries the source information
+/// for all events within that frame.
+/// 
+/// The source specifies how this event was generated. If the source is
+/// wp_tablet_pad_ring.source.finger, a wp_tablet_pad_ring.stop event
+/// will be sent when the user lifts the finger off the device.
+/// 
+/// This event is optional. If the source is unknown for an interaction,
+/// no event is sent.
+/// 
+/// Event handler for Source
+/// - [source]: the event source
+ void onSource(ZwpTabletPadRingV2SourceEventHandler handler) {
+   _sourceHandler = handler;
+ }
+
+ ZwpTabletPadRingV2SourceEventHandler? _sourceHandler;
+
+/// angle changed
+/// 
+/// Sent whenever the angle on a ring changes.
+/// 
+/// The angle is provided in degrees clockwise from the logical
+/// north of the ring in the pad's current rotation.
+/// 
+/// Event handler for Angle
+/// - [degrees]: the current angle in degrees
+ void onAngle(ZwpTabletPadRingV2AngleEventHandler handler) {
+   _angleHandler = handler;
+ }
+
+ ZwpTabletPadRingV2AngleEventHandler? _angleHandler;
+
+/// interaction stopped
+/// 
+/// Stop notification for ring events.
+/// 
+/// For some wp_tablet_pad_ring.source types, a wp_tablet_pad_ring.stop
+/// event is sent to notify a client that the interaction with the ring
+/// has terminated. This enables the client to implement kinetic scrolling.
+/// See the wp_tablet_pad_ring.source documentation for information on
+/// when this event may be generated.
+/// 
+/// Any wp_tablet_pad_ring.angle events with the same source after this
+/// event should be considered as the start of a new interaction.
+/// 
+/// Event handler for Stop
+ void onStop(ZwpTabletPadRingV2StopEventHandler handler) {
+   _stopHandler = handler;
+ }
+
+ ZwpTabletPadRingV2StopEventHandler? _stopHandler;
+
+/// end of a ring event sequence
+/// 
+/// Indicates the end of a set of ring events that logically belong
+/// together. A client is expected to accumulate the data in all events
+/// within the frame before proceeding.
+/// 
+/// All wp_tablet_pad_ring events before a wp_tablet_pad_ring.frame event belong
+/// logically together. For example, on termination of a finger interaction
+/// on a ring the compositor will send a wp_tablet_pad_ring.source event,
+/// a wp_tablet_pad_ring.stop event and a wp_tablet_pad_ring.frame event.
+/// 
+/// A wp_tablet_pad_ring.frame event is sent for every logical event
+/// group, even if the group only contains a single wp_tablet_pad_ring
+/// event. Specifically, a client may get a sequence: angle, frame,
+/// angle, frame, etc.
+/// 
+/// Event handler for Frame
+/// - [time]: timestamp with millisecond granularity
+ void onFrame(ZwpTabletPadRingV2FrameEventHandler handler) {
    _frameHandler = handler;
  }
 
- void Function(int time)? _frameHandler;
+ ZwpTabletPadRingV2FrameEventHandler? _frameHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_sourceHandler != null) {
-         _sourceHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZwpTabletPadRingV2SourceEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _sourceHandler!(event);
        }
        break;
      case 1:
        if (_angleHandler != null) {
-         _angleHandler!(
-           fixedToDouble(ByteData.view(data.buffer).getInt32(0, Endian.host)),
-         );
+var event = ZwpTabletPadRingV2AngleEvent(
+           fixedToDouble(ByteData.view(data.buffer).getInt32(0, Endian.little)),
+        );
+         _angleHandler!(event);
        }
        break;
      case 2:
        if (_stopHandler != null) {
-         _stopHandler!(
-         );
+var event = ZwpTabletPadRingV2StopEvent(
+        );
+         _stopHandler!(event);
        }
        break;
      case 3:
        if (_frameHandler != null) {
-         _frameHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZwpTabletPadRingV2FrameEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _frameHandler!(event);
        }
        break;
    }
@@ -1080,52 +2268,12 @@ class ZwpTabletPadRingV2 extends Proxy implements Dispatcher{
 /// 
 
 enum ZwpTabletPadRingV2source {
-  /// finger
+/// finger
   finger,
 }
 
-/// pad strip
-/// 
-/// A linear interaction area, such as the strips found in Wacom Cintiq
-/// models.
-/// 
-/// Events on a strip are logically grouped by the wl_tablet_pad_strip.frame
-/// event.
-/// 
-class ZwpTabletPadStripV2 extends Proxy implements Dispatcher{
-  final Context context;
 
-  ZwpTabletPadStripV2(this.context) : super(context.allocateClientId());
-
-  Future<void> setFeedback(String description, int serial) async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      0,
-      [
-        description,
-        serial,
-      ],
-      [
-        WaylandType.string,
-        WaylandType.uint,
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> destroy() async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      1,
-      [
-      ],
-      [
-      ],
-    );
-    context.sendMessage(message);
-  }
-
- /// strip event source
+/// strip event source
 /// 
 /// Source information for strip events.
 /// 
@@ -1140,13 +2288,27 @@ class ZwpTabletPadStripV2 extends Proxy implements Dispatcher{
 /// This event is optional. If the source is unknown for an interaction,
 /// no event is sent.
 /// 
- void onsource(void Function(int source) handler) {
-   _sourceHandler = handler;
- }
+class ZwpTabletPadStripV2SourceEvent {
+/// the event source
+  final int source;
 
- void Function(int source)? _sourceHandler;
+  ZwpTabletPadStripV2SourceEvent(
+this.source,
 
- /// position changed
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadStripV2SourceEvent: {
+    source: $source,
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadStripV2SourceEventHandler = void Function(ZwpTabletPadStripV2SourceEvent);
+
+/// position changed
 /// 
 /// Sent whenever the position on a strip changes.
 /// 
@@ -1154,13 +2316,27 @@ class ZwpTabletPadStripV2 extends Proxy implements Dispatcher{
 /// represents the top-most and/or left-most position of the strip in
 /// the pad's current rotation.
 /// 
- void onposition(void Function(int position) handler) {
-   _positionHandler = handler;
- }
+class ZwpTabletPadStripV2PositionEvent {
+/// the current position
+  final int position;
 
- void Function(int position)? _positionHandler;
+  ZwpTabletPadStripV2PositionEvent(
+this.position,
 
- /// interaction stopped
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadStripV2PositionEvent: {
+    position: $position,
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadStripV2PositionEventHandler = void Function(ZwpTabletPadStripV2PositionEvent);
+
+/// interaction stopped
 /// 
 /// Stop notification for strip events.
 /// 
@@ -1173,13 +2349,21 @@ class ZwpTabletPadStripV2 extends Proxy implements Dispatcher{
 /// Any wp_tablet_pad_strip.position events with the same source after this
 /// event should be considered as the start of a new interaction.
 /// 
- void onstop(void Function() handler) {
-   _stopHandler = handler;
- }
+class ZwpTabletPadStripV2StopEvent {
+  ZwpTabletPadStripV2StopEvent(
+);
 
- void Function()? _stopHandler;
+@override
+String toString(){
+  return """ZwpTabletPadStripV2StopEvent: {
+  }""";
+}
 
- /// end of a strip event sequence
+}
+
+typedef ZwpTabletPadStripV2StopEventHandler = void Function(ZwpTabletPadStripV2StopEvent);
+
+/// end of a strip event sequence
 /// 
 /// Indicates the end of a set of events that represent one logical
 /// hardware strip event. A client is expected to accumulate the data
@@ -1196,40 +2380,216 @@ class ZwpTabletPadStripV2 extends Proxy implements Dispatcher{
 /// event. Specifically, a client may get a sequence: position, frame,
 /// position, frame, etc.
 /// 
- void onframe(void Function(int time) handler) {
+class ZwpTabletPadStripV2FrameEvent {
+/// timestamp with millisecond granularity
+  final int time;
+
+  ZwpTabletPadStripV2FrameEvent(
+this.time,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadStripV2FrameEvent: {
+    time: $time,
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadStripV2FrameEventHandler = void Function(ZwpTabletPadStripV2FrameEvent);
+
+
+/// pad strip
+/// 
+/// A linear interaction area, such as the strips found in Wacom Cintiq
+/// models.
+/// 
+/// Events on a strip are logically grouped by the wl_tablet_pad_strip.frame
+/// event.
+/// 
+class ZwpTabletPadStripV2 extends Proxy implements Dispatcher{
+  final Context context;
+
+  ZwpTabletPadStripV2(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
+
+/// set compositor feedback
+/// 
+/// Requests the compositor to use the provided feedback string
+/// associated with this strip. This request should be issued immediately
+/// after a wp_tablet_pad_group.mode_switch event from the corresponding
+/// group is received, or whenever the strip is mapped to a different
+/// action. See wp_tablet_pad_group.mode_switch for more details.
+/// 
+/// Clients are encouraged to provide context-aware descriptions for
+/// the actions associated with the strip, and compositors may use this
+/// information to offer visual feedback about the button layout
+/// (eg. on-screen displays).
+/// 
+/// The provided string 'description' is a UTF-8 encoded string to be
+/// associated with this ring, and is considered user-visible; general
+/// internationalization rules apply.
+/// 
+/// The serial argument will be that of the last
+/// wp_tablet_pad_group.mode_switch event received for the group of this
+/// strip. Requests providing other serials than the most recent one will be
+/// ignored.
+/// 
+/// [description]: strip description
+/// [serial]: serial of the mode switch event
+  Future<void> setFeedback(String description, int serial) async {
+    print("ZwpTabletPadStripV2::setFeedback  description: $description serial: $serial");
+    final message = WaylandMessage(
+      objectId,
+      0,
+      [
+        description,
+        serial,
+      ],
+      [
+        WaylandType.string,
+        WaylandType.uint,
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// destroy the strip object
+/// 
+/// This destroys the client's resource for this strip object.
+/// 
+  Future<void> destroy() async {
+    print("ZwpTabletPadStripV2::destroy ");
+    final message = WaylandMessage(
+      objectId,
+      1,
+      [
+      ],
+      [
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// strip event source
+/// 
+/// Source information for strip events.
+/// 
+/// This event does not occur on its own. It is sent before a
+/// wp_tablet_pad_strip.frame event and carries the source information
+/// for all events within that frame.
+/// 
+/// The source specifies how this event was generated. If the source is
+/// wp_tablet_pad_strip.source.finger, a wp_tablet_pad_strip.stop event
+/// will be sent when the user lifts their finger off the device.
+/// 
+/// This event is optional. If the source is unknown for an interaction,
+/// no event is sent.
+/// 
+/// Event handler for Source
+/// - [source]: the event source
+ void onSource(ZwpTabletPadStripV2SourceEventHandler handler) {
+   _sourceHandler = handler;
+ }
+
+ ZwpTabletPadStripV2SourceEventHandler? _sourceHandler;
+
+/// position changed
+/// 
+/// Sent whenever the position on a strip changes.
+/// 
+/// The position is normalized to a range of [0, 65535], the 0-value
+/// represents the top-most and/or left-most position of the strip in
+/// the pad's current rotation.
+/// 
+/// Event handler for Position
+/// - [position]: the current position
+ void onPosition(ZwpTabletPadStripV2PositionEventHandler handler) {
+   _positionHandler = handler;
+ }
+
+ ZwpTabletPadStripV2PositionEventHandler? _positionHandler;
+
+/// interaction stopped
+/// 
+/// Stop notification for strip events.
+/// 
+/// For some wp_tablet_pad_strip.source types, a wp_tablet_pad_strip.stop
+/// event is sent to notify a client that the interaction with the strip
+/// has terminated. This enables the client to implement kinetic
+/// scrolling. See the wp_tablet_pad_strip.source documentation for
+/// information on when this event may be generated.
+/// 
+/// Any wp_tablet_pad_strip.position events with the same source after this
+/// event should be considered as the start of a new interaction.
+/// 
+/// Event handler for Stop
+ void onStop(ZwpTabletPadStripV2StopEventHandler handler) {
+   _stopHandler = handler;
+ }
+
+ ZwpTabletPadStripV2StopEventHandler? _stopHandler;
+
+/// end of a strip event sequence
+/// 
+/// Indicates the end of a set of events that represent one logical
+/// hardware strip event. A client is expected to accumulate the data
+/// in all events within the frame before proceeding.
+/// 
+/// All wp_tablet_pad_strip events before a wp_tablet_pad_strip.frame event belong
+/// logically together. For example, on termination of a finger interaction
+/// on a strip the compositor will send a wp_tablet_pad_strip.source event,
+/// a wp_tablet_pad_strip.stop event and a wp_tablet_pad_strip.frame
+/// event.
+/// 
+/// A wp_tablet_pad_strip.frame event is sent for every logical event
+/// group, even if the group only contains a single wp_tablet_pad_strip
+/// event. Specifically, a client may get a sequence: position, frame,
+/// position, frame, etc.
+/// 
+/// Event handler for Frame
+/// - [time]: timestamp with millisecond granularity
+ void onFrame(ZwpTabletPadStripV2FrameEventHandler handler) {
    _frameHandler = handler;
  }
 
- void Function(int time)? _frameHandler;
+ ZwpTabletPadStripV2FrameEventHandler? _frameHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_sourceHandler != null) {
-         _sourceHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZwpTabletPadStripV2SourceEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _sourceHandler!(event);
        }
        break;
      case 1:
        if (_positionHandler != null) {
-         _positionHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZwpTabletPadStripV2PositionEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _positionHandler!(event);
        }
        break;
      case 2:
        if (_stopHandler != null) {
-         _stopHandler!(
-         );
+var event = ZwpTabletPadStripV2StopEvent(
+        );
+         _stopHandler!(event);
        }
        break;
      case 3:
        if (_frameHandler != null) {
-         _frameHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZwpTabletPadStripV2FrameEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _frameHandler!(event);
        }
        break;
    }
@@ -1245,52 +2605,12 @@ class ZwpTabletPadStripV2 extends Proxy implements Dispatcher{
 /// 
 
 enum ZwpTabletPadStripV2source {
-  /// finger
+/// finger
   finger,
 }
 
-/// a set of buttons, rings and strips
-/// 
-/// A pad group describes a distinct (sub)set of buttons, rings and strips
-/// present in the tablet. The criteria of this grouping is usually positional,
-/// eg. if a tablet has buttons on the left and right side, 2 groups will be
-/// presented. The physical arrangement of groups is undisclosed and may
-/// change on the fly.
-/// 
-/// Pad groups will announce their features during pad initialization. Between
-/// the corresponding wp_tablet_pad.group event and wp_tablet_pad_group.done, the
-/// pad group will announce the buttons, rings and strips contained in it,
-/// plus the number of supported modes.
-/// 
-/// Modes are a mechanism to allow multiple groups of actions for every element
-/// in the pad group. The number of groups and available modes in each is
-/// persistent across device plugs. The current mode is user-switchable, it
-/// will be announced through the wp_tablet_pad_group.mode_switch event both
-/// whenever it is switched, and after wp_tablet_pad.enter.
-/// 
-/// The current mode logically applies to all elements in the pad group,
-/// although it is at clients' discretion whether to actually perform different
-/// actions, and/or issue the respective .set_feedback requests to notify the
-/// compositor. See the wp_tablet_pad_group.mode_switch event for more details.
-/// 
-class ZwpTabletPadGroupV2 extends Proxy implements Dispatcher{
-  final Context context;
 
-  ZwpTabletPadGroupV2(this.context) : super(context.allocateClientId());
-
-  Future<void> destroy() async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      0,
-      [
-      ],
-      [
-      ],
-    );
-    context.sendMessage(message);
-  }
-
- /// buttons announced
+/// buttons announced
 /// 
 /// Sent on wp_tablet_pad_group initialization to announce the available
 /// buttons in the group. Button indices start at 0, a button may only be
@@ -1305,13 +2625,27 @@ class ZwpTabletPadGroupV2 extends Proxy implements Dispatcher{
 /// If the compositor happens to reserve all buttons in a group, this event
 /// will be sent with an empty array.
 /// 
- void onbuttons(void Function(List<int> buttons) handler) {
-   _buttonsHandler = handler;
- }
+class ZwpTabletPadGroupV2ButtonsEvent {
+/// buttons in this group
+  final List<int> buttons;
 
- void Function(List<int> buttons)? _buttonsHandler;
+  ZwpTabletPadGroupV2ButtonsEvent(
+this.buttons,
 
- /// ring announced
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadGroupV2ButtonsEvent: {
+    buttons: $buttons,
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadGroupV2ButtonsEventHandler = void Function(ZwpTabletPadGroupV2ButtonsEvent);
+
+/// ring announced
 /// 
 /// Sent on wp_tablet_pad_group initialization to announce available rings.
 /// One event is sent for each ring available on this pad group.
@@ -1319,13 +2653,27 @@ class ZwpTabletPadGroupV2 extends Proxy implements Dispatcher{
 /// This event is sent in the initial burst of events before the
 /// wp_tablet_pad_group.done event.
 /// 
- void onring(void Function(int ring) handler) {
-   _ringHandler = handler;
- }
+class ZwpTabletPadGroupV2RingEvent {
+/// 
+  final int ring;
 
- void Function(int ring)? _ringHandler;
+  ZwpTabletPadGroupV2RingEvent(
+this.ring,
 
- /// strip announced
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadGroupV2RingEvent: {
+    ring: $ring,
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadGroupV2RingEventHandler = void Function(ZwpTabletPadGroupV2RingEvent);
+
+/// strip announced
 /// 
 /// Sent on wp_tablet_pad initialization to announce available strips.
 /// One event is sent for each strip available on this pad group.
@@ -1333,13 +2681,27 @@ class ZwpTabletPadGroupV2 extends Proxy implements Dispatcher{
 /// This event is sent in the initial burst of events before the
 /// wp_tablet_pad_group.done event.
 /// 
- void onstrip(void Function(int strip) handler) {
-   _stripHandler = handler;
- }
+class ZwpTabletPadGroupV2StripEvent {
+/// 
+  final int strip;
 
- void Function(int strip)? _stripHandler;
+  ZwpTabletPadGroupV2StripEvent(
+this.strip,
 
- /// mode-switch ability announced
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadGroupV2StripEvent: {
+    strip: $strip,
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadGroupV2StripEventHandler = void Function(ZwpTabletPadGroupV2StripEvent);
+
+/// mode-switch ability announced
 /// 
 /// Sent on wp_tablet_pad_group initialization to announce that the pad
 /// group may switch between modes. A client may use a mode to store a
@@ -1354,26 +2716,48 @@ class ZwpTabletPadGroupV2 extends Proxy implements Dispatcher{
 /// wp_tablet_pad_group.done event. This event is only sent when more than
 /// more than one mode is available.
 /// 
- void onmodes(void Function(int modes) handler) {
-   _modesHandler = handler;
- }
+class ZwpTabletPadGroupV2ModesEvent {
+/// the number of modes
+  final int modes;
 
- void Function(int modes)? _modesHandler;
+  ZwpTabletPadGroupV2ModesEvent(
+this.modes,
 
- /// tablet group description events sequence complete
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadGroupV2ModesEvent: {
+    modes: $modes,
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadGroupV2ModesEventHandler = void Function(ZwpTabletPadGroupV2ModesEvent);
+
+/// tablet group description events sequence complete
 /// 
 /// This event is sent immediately to signal the end of the initial
 /// burst of descriptive events. A client may consider the static
 /// description of the tablet to be complete and finalize initialization
 /// of the tablet group.
 /// 
- void ondone(void Function() handler) {
-   _doneHandler = handler;
- }
+class ZwpTabletPadGroupV2DoneEvent {
+  ZwpTabletPadGroupV2DoneEvent(
+);
 
- void Function()? _doneHandler;
+@override
+String toString(){
+  return """ZwpTabletPadGroupV2DoneEvent: {
+  }""";
+}
 
- /// mode switch event
+}
+
+typedef ZwpTabletPadGroupV2DoneEventHandler = void Function(ZwpTabletPadGroupV2DoneEvent);
+
+/// mode switch event
 /// 
 /// Notification that the mode was switched.
 /// 
@@ -1403,61 +2787,513 @@ class ZwpTabletPadGroupV2 extends Proxy implements Dispatcher{
 /// wp_tablet_ring.set_feedback or wp_tablet_strip.set_feedback request
 /// for each changed ring or strip.
 /// 
- void onmodeSwitch(void Function(int time, int serial, int mode) handler) {
+class ZwpTabletPadGroupV2ModeSwitchEvent {
+/// the time of the event with millisecond granularity
+  final int time;
+
+/// 
+  final int serial;
+
+/// the new mode of the pad
+  final int mode;
+
+  ZwpTabletPadGroupV2ModeSwitchEvent(
+this.time,
+
+this.serial,
+
+this.mode,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadGroupV2ModeSwitchEvent: {
+    time: $time,
+    serial: $serial,
+    mode: $mode,
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadGroupV2ModeSwitchEventHandler = void Function(ZwpTabletPadGroupV2ModeSwitchEvent);
+
+
+/// a set of buttons, rings and strips
+/// 
+/// A pad group describes a distinct (sub)set of buttons, rings and strips
+/// present in the tablet. The criteria of this grouping is usually positional,
+/// eg. if a tablet has buttons on the left and right side, 2 groups will be
+/// presented. The physical arrangement of groups is undisclosed and may
+/// change on the fly.
+/// 
+/// Pad groups will announce their features during pad initialization. Between
+/// the corresponding wp_tablet_pad.group event and wp_tablet_pad_group.done, the
+/// pad group will announce the buttons, rings and strips contained in it,
+/// plus the number of supported modes.
+/// 
+/// Modes are a mechanism to allow multiple groups of actions for every element
+/// in the pad group. The number of groups and available modes in each is
+/// persistent across device plugs. The current mode is user-switchable, it
+/// will be announced through the wp_tablet_pad_group.mode_switch event both
+/// whenever it is switched, and after wp_tablet_pad.enter.
+/// 
+/// The current mode logically applies to all elements in the pad group,
+/// although it is at clients' discretion whether to actually perform different
+/// actions, and/or issue the respective .set_feedback requests to notify the
+/// compositor. See the wp_tablet_pad_group.mode_switch event for more details.
+/// 
+class ZwpTabletPadGroupV2 extends Proxy implements Dispatcher{
+  final Context context;
+
+  ZwpTabletPadGroupV2(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
+
+/// destroy the pad object
+/// 
+/// Destroy the wp_tablet_pad_group object. Objects created from this object
+/// are unaffected and should be destroyed separately.
+/// 
+  Future<void> destroy() async {
+    print("ZwpTabletPadGroupV2::destroy ");
+    final message = WaylandMessage(
+      objectId,
+      0,
+      [
+      ],
+      [
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// buttons announced
+/// 
+/// Sent on wp_tablet_pad_group initialization to announce the available
+/// buttons in the group. Button indices start at 0, a button may only be
+/// in one group at a time.
+/// 
+/// This event is first sent in the initial burst of events before the
+/// wp_tablet_pad_group.done event.
+/// 
+/// Some buttons are reserved by the compositor. These buttons may not be
+/// assigned to any wp_tablet_pad_group. Compositors may broadcast this
+/// event in the case of changes to the mapping of these reserved buttons.
+/// If the compositor happens to reserve all buttons in a group, this event
+/// will be sent with an empty array.
+/// 
+/// Event handler for Buttons
+/// - [buttons]: buttons in this group
+ void onButtons(ZwpTabletPadGroupV2ButtonsEventHandler handler) {
+   _buttonsHandler = handler;
+ }
+
+ ZwpTabletPadGroupV2ButtonsEventHandler? _buttonsHandler;
+
+/// ring announced
+/// 
+/// Sent on wp_tablet_pad_group initialization to announce available rings.
+/// One event is sent for each ring available on this pad group.
+/// 
+/// This event is sent in the initial burst of events before the
+/// wp_tablet_pad_group.done event.
+/// 
+/// Event handler for Ring
+/// - [ring]:
+ void onRing(ZwpTabletPadGroupV2RingEventHandler handler) {
+   _ringHandler = handler;
+ }
+
+ ZwpTabletPadGroupV2RingEventHandler? _ringHandler;
+
+/// strip announced
+/// 
+/// Sent on wp_tablet_pad initialization to announce available strips.
+/// One event is sent for each strip available on this pad group.
+/// 
+/// This event is sent in the initial burst of events before the
+/// wp_tablet_pad_group.done event.
+/// 
+/// Event handler for Strip
+/// - [strip]:
+ void onStrip(ZwpTabletPadGroupV2StripEventHandler handler) {
+   _stripHandler = handler;
+ }
+
+ ZwpTabletPadGroupV2StripEventHandler? _stripHandler;
+
+/// mode-switch ability announced
+/// 
+/// Sent on wp_tablet_pad_group initialization to announce that the pad
+/// group may switch between modes. A client may use a mode to store a
+/// specific configuration for buttons, rings and strips and use the
+/// wl_tablet_pad_group.mode_switch event to toggle between these
+/// configurations. Mode indices start at 0.
+/// 
+/// Switching modes is compositor-dependent. See the
+/// wp_tablet_pad_group.mode_switch event for more details.
+/// 
+/// This event is sent in the initial burst of events before the
+/// wp_tablet_pad_group.done event. This event is only sent when more than
+/// more than one mode is available.
+/// 
+/// Event handler for Modes
+/// - [modes]: the number of modes
+ void onModes(ZwpTabletPadGroupV2ModesEventHandler handler) {
+   _modesHandler = handler;
+ }
+
+ ZwpTabletPadGroupV2ModesEventHandler? _modesHandler;
+
+/// tablet group description events sequence complete
+/// 
+/// This event is sent immediately to signal the end of the initial
+/// burst of descriptive events. A client may consider the static
+/// description of the tablet to be complete and finalize initialization
+/// of the tablet group.
+/// 
+/// Event handler for Done
+ void onDone(ZwpTabletPadGroupV2DoneEventHandler handler) {
+   _doneHandler = handler;
+ }
+
+ ZwpTabletPadGroupV2DoneEventHandler? _doneHandler;
+
+/// mode switch event
+/// 
+/// Notification that the mode was switched.
+/// 
+/// A mode applies to all buttons, rings and strips in a group
+/// simultaneously, but a client is not required to assign different actions
+/// for each mode. For example, a client may have mode-specific button
+/// mappings but map the ring to vertical scrolling in all modes. Mode
+/// indices start at 0.
+/// 
+/// Switching modes is compositor-dependent. The compositor may provide
+/// visual cues to the client about the mode, e.g. by toggling LEDs on
+/// the tablet device. Mode-switching may be software-controlled or
+/// controlled by one or more physical buttons. For example, on a Wacom
+/// Intuos Pro, the button inside the ring may be assigned to switch
+/// between modes.
+/// 
+/// The compositor will also send this event after wp_tablet_pad.enter on
+/// each group in order to notify of the current mode. Groups that only
+/// feature one mode will use mode=0 when emitting this event.
+/// 
+/// If a button action in the new mode differs from the action in the
+/// previous mode, the client should immediately issue a
+/// wp_tablet_pad.set_feedback request for each changed button.
+/// 
+/// If a ring or strip action in the new mode differs from the action
+/// in the previous mode, the client should immediately issue a
+/// wp_tablet_ring.set_feedback or wp_tablet_strip.set_feedback request
+/// for each changed ring or strip.
+/// 
+/// Event handler for ModeSwitch
+/// - [time]: the time of the event with millisecond granularity
+/// - [serial]:
+/// - [mode]: the new mode of the pad
+ void onModeSwitch(ZwpTabletPadGroupV2ModeSwitchEventHandler handler) {
    _modeSwitchHandler = handler;
  }
 
- void Function(int time, int serial, int mode)? _modeSwitchHandler;
+ ZwpTabletPadGroupV2ModeSwitchEventHandler? _modeSwitchHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_buttonsHandler != null) {
-         _buttonsHandler!(
+var event = ZwpTabletPadGroupV2ButtonsEvent(
            getArray(data, 0),
-         );
+        );
+         _buttonsHandler!(event);
        }
        break;
      case 1:
        if (_ringHandler != null) {
-         _ringHandler!(
-           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.host)).id,
-         );
+var event = ZwpTabletPadGroupV2RingEvent(
+           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.little)).objectId,
+        );
+         _ringHandler!(event);
        }
        break;
      case 2:
        if (_stripHandler != null) {
-         _stripHandler!(
-           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.host)).id,
-         );
+var event = ZwpTabletPadGroupV2StripEvent(
+           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.little)).objectId,
+        );
+         _stripHandler!(event);
        }
        break;
      case 3:
        if (_modesHandler != null) {
-         _modesHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZwpTabletPadGroupV2ModesEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _modesHandler!(event);
        }
        break;
      case 4:
        if (_doneHandler != null) {
-         _doneHandler!(
-         );
+var event = ZwpTabletPadGroupV2DoneEvent(
+        );
+         _doneHandler!(event);
        }
        break;
      case 5:
        if (_modeSwitchHandler != null) {
-         _modeSwitchHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-           ByteData.view(data.buffer).getInt32(4, Endian.host),
-           ByteData.view(data.buffer).getInt32(8, Endian.host),
-         );
+var event = ZwpTabletPadGroupV2ModeSwitchEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+           ByteData.view(data.buffer).getUint32(4, Endian.little),
+           ByteData.view(data.buffer).getUint32(8, Endian.little),
+        );
+         _modeSwitchHandler!(event);
        }
        break;
    }
  }
 }
+
+
+/// group announced
+/// 
+/// Sent on wp_tablet_pad initialization to announce available groups.
+/// One event is sent for each pad group available.
+/// 
+/// This event is sent in the initial burst of events before the
+/// wp_tablet_pad.done event. At least one group will be announced.
+/// 
+class ZwpTabletPadV2GroupEvent {
+/// 
+  final int padGroup;
+
+  ZwpTabletPadV2GroupEvent(
+this.padGroup,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadV2GroupEvent: {
+    padGroup: $padGroup,
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadV2GroupEventHandler = void Function(ZwpTabletPadV2GroupEvent);
+
+/// path to the device
+/// 
+/// A system-specific device path that indicates which device is behind
+/// this wp_tablet_pad. This information may be used to gather additional
+/// information about the device, e.g. through libwacom.
+/// 
+/// The format of the path is unspecified, it may be a device node, a
+/// sysfs path, or some other identifier. It is up to the client to
+/// identify the string provided.
+/// 
+/// This event is sent in the initial burst of events before the
+/// wp_tablet_pad.done event.
+/// 
+class ZwpTabletPadV2PathEvent {
+/// path to local device
+  final String path;
+
+  ZwpTabletPadV2PathEvent(
+this.path,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadV2PathEvent: {
+    path: $path,
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadV2PathEventHandler = void Function(ZwpTabletPadV2PathEvent);
+
+/// buttons announced
+/// 
+/// Sent on wp_tablet_pad initialization to announce the available
+/// buttons.
+/// 
+/// This event is sent in the initial burst of events before the
+/// wp_tablet_pad.done event. This event is only sent when at least one
+/// button is available.
+/// 
+class ZwpTabletPadV2ButtonsEvent {
+/// the number of buttons
+  final int buttons;
+
+  ZwpTabletPadV2ButtonsEvent(
+this.buttons,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadV2ButtonsEvent: {
+    buttons: $buttons,
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadV2ButtonsEventHandler = void Function(ZwpTabletPadV2ButtonsEvent);
+
+/// pad description event sequence complete
+/// 
+/// This event signals the end of the initial burst of descriptive
+/// events. A client may consider the static description of the pad to
+/// be complete and finalize initialization of the pad.
+/// 
+class ZwpTabletPadV2DoneEvent {
+  ZwpTabletPadV2DoneEvent(
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadV2DoneEvent: {
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadV2DoneEventHandler = void Function(ZwpTabletPadV2DoneEvent);
+
+/// physical button state
+/// 
+/// Sent whenever the physical state of a button changes.
+/// 
+class ZwpTabletPadV2ButtonEvent {
+/// the time of the event with millisecond granularity
+  final int time;
+
+/// the index of the button that changed state
+  final int button;
+
+/// 
+  final int state;
+
+  ZwpTabletPadV2ButtonEvent(
+this.time,
+
+this.button,
+
+this.state,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadV2ButtonEvent: {
+    time: $time,
+    button: $button,
+    state: $state,
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadV2ButtonEventHandler = void Function(ZwpTabletPadV2ButtonEvent);
+
+/// enter event
+/// 
+/// Notification that this pad is focused on the specified surface.
+/// 
+class ZwpTabletPadV2EnterEvent {
+/// serial number of the enter event
+  final int serial;
+
+/// the tablet the pad is attached to
+  final int tablet;
+
+/// surface the pad is focused on
+  final int surface;
+
+  ZwpTabletPadV2EnterEvent(
+this.serial,
+
+this.tablet,
+
+this.surface,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadV2EnterEvent: {
+    serial: $serial,
+    tablet: $tablet,
+    surface: $surface,
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadV2EnterEventHandler = void Function(ZwpTabletPadV2EnterEvent);
+
+/// leave event
+/// 
+/// Notification that this pad is no longer focused on the specified
+/// surface.
+/// 
+class ZwpTabletPadV2LeaveEvent {
+/// serial number of the leave event
+  final int serial;
+
+/// surface the pad is no longer focused on
+  final int surface;
+
+  ZwpTabletPadV2LeaveEvent(
+this.serial,
+
+this.surface,
+
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadV2LeaveEvent: {
+    serial: $serial,
+    surface: $surface,
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadV2LeaveEventHandler = void Function(ZwpTabletPadV2LeaveEvent);
+
+/// pad removed event
+/// 
+/// Sent when the pad has been removed from the system. When a tablet
+/// is removed its pad(s) will be removed too.
+/// 
+/// When this event is received, the client must destroy all rings, strips
+/// and groups that were offered by this pad, and issue wp_tablet_pad.destroy
+/// the pad itself.
+/// 
+class ZwpTabletPadV2RemovedEvent {
+  ZwpTabletPadV2RemovedEvent(
+);
+
+@override
+String toString(){
+  return """ZwpTabletPadV2RemovedEvent: {
+  }""";
+}
+
+}
+
+typedef ZwpTabletPadV2RemovedEventHandler = void Function(ZwpTabletPadV2RemovedEvent);
+
 
 /// a set of buttons, rings and strips
 /// 
@@ -1487,11 +3323,44 @@ class ZwpTabletPadGroupV2 extends Proxy implements Dispatcher{
 class ZwpTabletPadV2 extends Proxy implements Dispatcher{
   final Context context;
 
-  ZwpTabletPadV2(this.context) : super(context.allocateClientId());
+  ZwpTabletPadV2(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// set compositor feedback
+/// 
+/// Requests the compositor to use the provided feedback string
+/// associated with this button. This request should be issued immediately
+/// after a wp_tablet_pad_group.mode_switch event from the corresponding
+/// group is received, or whenever a button is mapped to a different
+/// action. See wp_tablet_pad_group.mode_switch for more details.
+/// 
+/// Clients are encouraged to provide context-aware descriptions for
+/// the actions associated with each button, and compositors may use
+/// this information to offer visual feedback on the button layout
+/// (e.g. on-screen displays).
+/// 
+/// Button indices start at 0. Setting the feedback string on a button
+/// that is reserved by the compositor (i.e. not belonging to any
+/// wp_tablet_pad_group) does not generate an error but the compositor
+/// is free to ignore the request.
+/// 
+/// The provided string 'description' is a UTF-8 encoded string to be
+/// associated with this ring, and is considered user-visible; general
+/// internationalization rules apply.
+/// 
+/// The serial argument will be that of the last
+/// wp_tablet_pad_group.mode_switch event received for the group of this
+/// button. Requests providing other serials than the most recent one will
+/// be ignored.
+/// 
+/// [button]: button index
+/// [description]: button description
+/// [serial]: serial of the mode switch event
   Future<void> setFeedback(int button, String description, int serial) async {
+    print("ZwpTabletPadV2::setFeedback  button: $button description: $description serial: $serial");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
         button,
@@ -1504,22 +3373,28 @@ class ZwpTabletPadV2 extends Proxy implements Dispatcher{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// destroy the pad object
+/// 
+/// Destroy the wp_tablet_pad object. Objects created from this object
+/// are unaffected and should be destroyed separately.
+/// 
   Future<void> destroy() async {
+    print("ZwpTabletPadV2::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// group announced
+/// group announced
 /// 
 /// Sent on wp_tablet_pad initialization to announce available groups.
 /// One event is sent for each pad group available.
@@ -1527,13 +3402,15 @@ class ZwpTabletPadV2 extends Proxy implements Dispatcher{
 /// This event is sent in the initial burst of events before the
 /// wp_tablet_pad.done event. At least one group will be announced.
 /// 
- void ongroup(void Function(int padGroup) handler) {
+/// Event handler for Group
+/// - [pad_group]:
+ void onGroup(ZwpTabletPadV2GroupEventHandler handler) {
    _groupHandler = handler;
  }
 
- void Function(int padGroup)? _groupHandler;
+ ZwpTabletPadV2GroupEventHandler? _groupHandler;
 
- /// path to the device
+/// path to the device
 /// 
 /// A system-specific device path that indicates which device is behind
 /// this wp_tablet_pad. This information may be used to gather additional
@@ -1546,13 +3423,15 @@ class ZwpTabletPadV2 extends Proxy implements Dispatcher{
 /// This event is sent in the initial burst of events before the
 /// wp_tablet_pad.done event.
 /// 
- void onpath(void Function(String path) handler) {
+/// Event handler for Path
+/// - [path]: path to local device
+ void onPath(ZwpTabletPadV2PathEventHandler handler) {
    _pathHandler = handler;
  }
 
- void Function(String path)? _pathHandler;
+ ZwpTabletPadV2PathEventHandler? _pathHandler;
 
- /// buttons announced
+/// buttons announced
 /// 
 /// Sent on wp_tablet_pad initialization to announce the available
 /// buttons.
@@ -1561,56 +3440,70 @@ class ZwpTabletPadV2 extends Proxy implements Dispatcher{
 /// wp_tablet_pad.done event. This event is only sent when at least one
 /// button is available.
 /// 
- void onbuttons(void Function(int buttons) handler) {
+/// Event handler for Buttons
+/// - [buttons]: the number of buttons
+ void onButtons(ZwpTabletPadV2ButtonsEventHandler handler) {
    _buttonsHandler = handler;
  }
 
- void Function(int buttons)? _buttonsHandler;
+ ZwpTabletPadV2ButtonsEventHandler? _buttonsHandler;
 
- /// pad description event sequence complete
+/// pad description event sequence complete
 /// 
 /// This event signals the end of the initial burst of descriptive
 /// events. A client may consider the static description of the pad to
 /// be complete and finalize initialization of the pad.
 /// 
- void ondone(void Function() handler) {
+/// Event handler for Done
+ void onDone(ZwpTabletPadV2DoneEventHandler handler) {
    _doneHandler = handler;
  }
 
- void Function()? _doneHandler;
+ ZwpTabletPadV2DoneEventHandler? _doneHandler;
 
- /// physical button state
+/// physical button state
 /// 
 /// Sent whenever the physical state of a button changes.
 /// 
- void onbutton(void Function(int time, int button, int state) handler) {
+/// Event handler for Button
+/// - [time]: the time of the event with millisecond granularity
+/// - [button]: the index of the button that changed state
+/// - [state]:
+ void onButton(ZwpTabletPadV2ButtonEventHandler handler) {
    _buttonHandler = handler;
  }
 
- void Function(int time, int button, int state)? _buttonHandler;
+ ZwpTabletPadV2ButtonEventHandler? _buttonHandler;
 
- /// enter event
+/// enter event
 /// 
 /// Notification that this pad is focused on the specified surface.
 /// 
- void onenter(void Function(int serial, int tablet, int surface) handler) {
+/// Event handler for Enter
+/// - [serial]: serial number of the enter event
+/// - [tablet]: the tablet the pad is attached to
+/// - [surface]: surface the pad is focused on
+ void onEnter(ZwpTabletPadV2EnterEventHandler handler) {
    _enterHandler = handler;
  }
 
- void Function(int serial, int tablet, int surface)? _enterHandler;
+ ZwpTabletPadV2EnterEventHandler? _enterHandler;
 
- /// leave event
+/// leave event
 /// 
 /// Notification that this pad is no longer focused on the specified
 /// surface.
 /// 
- void onleave(void Function(int serial, int surface) handler) {
+/// Event handler for Leave
+/// - [serial]: serial number of the leave event
+/// - [surface]: surface the pad is no longer focused on
+ void onLeave(ZwpTabletPadV2LeaveEventHandler handler) {
    _leaveHandler = handler;
  }
 
- void Function(int serial, int surface)? _leaveHandler;
+ ZwpTabletPadV2LeaveEventHandler? _leaveHandler;
 
- /// pad removed event
+/// pad removed event
 /// 
 /// Sent when the pad has been removed from the system. When a tablet
 /// is removed its pad(s) will be removed too.
@@ -1619,72 +3512,81 @@ class ZwpTabletPadV2 extends Proxy implements Dispatcher{
 /// and groups that were offered by this pad, and issue wp_tablet_pad.destroy
 /// the pad itself.
 /// 
- void onremoved(void Function() handler) {
+/// Event handler for Removed
+ void onRemoved(ZwpTabletPadV2RemovedEventHandler handler) {
    _removedHandler = handler;
  }
 
- void Function()? _removedHandler;
+ ZwpTabletPadV2RemovedEventHandler? _removedHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_groupHandler != null) {
-         _groupHandler!(
-           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.host)).id,
-         );
+var event = ZwpTabletPadV2GroupEvent(
+           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.little)).objectId,
+        );
+         _groupHandler!(event);
        }
        break;
      case 1:
        if (_pathHandler != null) {
-         _pathHandler!(
+var event = ZwpTabletPadV2PathEvent(
            getString(data, 0),
-         );
+        );
+         _pathHandler!(event);
        }
        break;
      case 2:
        if (_buttonsHandler != null) {
-         _buttonsHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZwpTabletPadV2ButtonsEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _buttonsHandler!(event);
        }
        break;
      case 3:
        if (_doneHandler != null) {
-         _doneHandler!(
-         );
+var event = ZwpTabletPadV2DoneEvent(
+        );
+         _doneHandler!(event);
        }
        break;
      case 4:
        if (_buttonHandler != null) {
-         _buttonHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-           ByteData.view(data.buffer).getInt32(4, Endian.host),
-           ByteData.view(data.buffer).getInt32(8, Endian.host),
-         );
+var event = ZwpTabletPadV2ButtonEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+           ByteData.view(data.buffer).getUint32(4, Endian.little),
+           ByteData.view(data.buffer).getUint32(8, Endian.little),
+        );
+         _buttonHandler!(event);
        }
        break;
      case 5:
        if (_enterHandler != null) {
-         _enterHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-           context.getProxy(ByteData.view(data.buffer).getUint32(4, Endian.host)).id,
-           context.getProxy(ByteData.view(data.buffer).getUint32(8, Endian.host)).id,
-         );
+var event = ZwpTabletPadV2EnterEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+           context.getProxy(ByteData.view(data.buffer).getUint32(4, Endian.little)).objectId,
+           context.getProxy(ByteData.view(data.buffer).getUint32(8, Endian.little)).objectId,
+        );
+         _enterHandler!(event);
        }
        break;
      case 6:
        if (_leaveHandler != null) {
-         _leaveHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-           context.getProxy(ByteData.view(data.buffer).getUint32(4, Endian.host)).id,
-         );
+var event = ZwpTabletPadV2LeaveEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+           context.getProxy(ByteData.view(data.buffer).getUint32(4, Endian.little)).objectId,
+        );
+         _leaveHandler!(event);
        }
        break;
      case 7:
        if (_removedHandler != null) {
-         _removedHandler!(
-         );
+var event = ZwpTabletPadV2RemovedEvent(
+        );
+         _removedHandler!(event);
        }
        break;
    }
@@ -1698,9 +3600,9 @@ class ZwpTabletPadV2 extends Proxy implements Dispatcher{
 /// 
 
 enum ZwpTabletPadV2buttonState {
-  /// the button is not pressed
+/// the button is not pressed
   released,
-  /// the button is pressed
+/// the button is pressed
   pressed,
 }
 

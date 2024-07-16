@@ -31,7 +31,10 @@ library client;
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
 import 'package:wayland/generated/stable/xdg-shell/xdg_shell.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// create dialogs related to other toplevels
 /// 
 /// The xdg_wm_dialog_v1 interface is exposed as a global object allowing
@@ -49,24 +52,43 @@ import 'dart:typed_data';
 class XdgWmDialogV1 extends Proxy{
   final Context context;
 
-  XdgWmDialogV1(this.context) : super(context.allocateClientId());
+  XdgWmDialogV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the dialog manager object
+/// 
+/// Destroys the xdg_wm_dialog_v1 object. This does not affect
+/// the xdg_dialog_v1 objects generated through it.
+/// 
   Future<void> destroy() async {
+    print("XdgWmDialogV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getXdgDialog(XdgToplevel toplevel) async {
-  var id =  XdgWmDialogV1(context);
+/// create a dialog object
+/// 
+/// Creates a xdg_dialog_v1 object for the given toplevel. See the interface
+/// description for more details.
+/// 
+/// Compositors must raise an already_used error if clients attempt to
+/// create multiple xdg_dialog_v1 objects for the same xdg_toplevel.
+/// 
+/// [id]:
+/// [toplevel]:
+  Future<XdgDialogV1> getXdgDialog(XdgToplevel toplevel) async {
+  var id =  XdgDialogV1(context);
+    print("XdgWmDialogV1::getXdgDialog  id: $id toplevel: $toplevel");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -77,7 +99,8 @@ class XdgWmDialogV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
@@ -86,9 +109,11 @@ class XdgWmDialogV1 extends Proxy{
 /// 
 
 enum XdgWmDialogV1error {
-  /// the xdg_toplevel object has already been used to create a xdg_dialog_v1
+/// the xdg_toplevel object has already been used to create a xdg_dialog_v1
   alreadyUsed,
 }
+
+
 
 /// dialog object
 /// 
@@ -105,42 +130,72 @@ enum XdgWmDialogV1error {
 class XdgDialogV1 extends Proxy{
   final Context context;
 
-  XdgDialogV1(this.context) : super(context.allocateClientId());
+  XdgDialogV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the dialog object
+/// 
+/// Destroys the xdg_dialog_v1 object. If this object is destroyed
+/// before the related xdg_toplevel, the compositor should unapply its
+/// effects.
+/// 
   Future<void> destroy() async {
+    print("XdgDialogV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// mark dialog as modal
+/// 
+/// Hints that the dialog has "modal" behavior. Modal dialogs typically
+/// require to be fully addressed by the user (i.e. closed) before resuming
+/// interaction with the parent toplevel, and may require a distinct
+/// presentation.
+/// 
+/// Clients must implement the logic to filter events in the parent
+/// toplevel on their own.
+/// 
+/// Compositors may choose any policy in event delivery to the parent
+/// toplevel, from delivering all events unfiltered to using them for
+/// internal consumption.
+/// 
   Future<void> setModal() async {
+    print("XdgDialogV1::setModal ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// mark dialog as not modal
+/// 
+/// Drops the hint that this dialog has "modal" behavior. See
+/// xdg_dialog_v1.set_modal for more details.
+/// 
   Future<void> unsetModal() async {
+    print("XdgDialogV1::unsetModal ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }

@@ -33,7 +33,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// global for providing explicit synchronization
 /// 
 /// This global is a factory interface, allowing clients to request
@@ -44,24 +47,49 @@ import 'dart:typed_data';
 class WpLinuxDrmSyncobjManagerV1 extends Proxy{
   final Context context;
 
-  WpLinuxDrmSyncobjManagerV1(this.context) : super(context.allocateClientId());
+  WpLinuxDrmSyncobjManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy explicit synchronization factory object
+/// 
+/// Destroy this explicit synchronization factory object. Other objects
+/// shall not be affected by this request.
+/// 
   Future<void> destroy() async {
+    print("WpLinuxDrmSyncobjManagerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getSurface(Surface surface) async {
-  var id =  WpLinuxDrmSyncobjManagerV1(context);
+/// extend surface interface for explicit synchronization
+/// 
+/// Instantiate an interface extension for the given wl_surface to provide
+/// explicit synchronization.
+/// 
+/// If the given wl_surface already has an explicit synchronization object
+/// associated, the surface_exists protocol error is raised.
+/// 
+/// Graphics APIs, like EGL or Vulkan, that manage the buffer queue and
+/// commits of a wl_surface themselves, are likely to be using this
+/// extension internally. If a client is using such an API for a
+/// wl_surface, it should not directly use this extension on that surface,
+/// to avoid raising a surface_exists protocol error.
+/// 
+/// [id]: the new synchronization surface object id
+/// [surface]: the surface
+  Future<WpLinuxDrmSyncobjSurfaceV1> getSurface(Surface surface) async {
+  var id =  WpLinuxDrmSyncobjSurfaceV1(context);
+    print("WpLinuxDrmSyncobjManagerV1::getSurface  id: $id surface: $surface");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -72,13 +100,23 @@ class WpLinuxDrmSyncobjManagerV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
-  Future<void> importTimeline(int fd) async {
-  var id =  WpLinuxDrmSyncobjManagerV1(context);
+/// import a DRM syncobj timeline
+/// 
+/// Import a DRM synchronization object timeline.
+/// 
+/// If the FD cannot be imported, the invalid_timeline error is raised.
+/// 
+/// [id]:
+/// [fd]: drm_syncobj file descriptor
+  Future<WpLinuxDrmSyncobjTimelineV1> importTimeline(int fd) async {
+  var id =  WpLinuxDrmSyncobjTimelineV1(context);
+    print("WpLinuxDrmSyncobjManagerV1::importTimeline  id: $id fd: $fd");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
         id,
@@ -89,7 +127,8 @@ class WpLinuxDrmSyncobjManagerV1 extends Proxy{
         WaylandType.fd,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
@@ -98,11 +137,13 @@ class WpLinuxDrmSyncobjManagerV1 extends Proxy{
 /// 
 
 enum WpLinuxDrmSyncobjManagerV1error {
-  /// the surface already has a synchronization object associated
+/// the surface already has a synchronization object associated
   surfaceExists,
-  /// the timeline object could not be imported
+/// the timeline object could not be imported
   invalidTimeline,
 }
+
+
 
 /// synchronization object timeline
 /// 
@@ -112,21 +153,32 @@ enum WpLinuxDrmSyncobjManagerV1error {
 class WpLinuxDrmSyncobjTimelineV1 extends Proxy{
   final Context context;
 
-  WpLinuxDrmSyncobjTimelineV1(this.context) : super(context.allocateClientId());
+  WpLinuxDrmSyncobjTimelineV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the timeline
+/// 
+/// Destroy the synchronization object timeline. Other objects are not
+/// affected by this request, in particular timeline points set by
+/// set_acquire_point and set_release_point are not unset.
+/// 
   Future<void> destroy() async {
+    print("WpLinuxDrmSyncobjTimelineV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }
+
+
 
 /// per-surface explicit synchronization
 /// 
@@ -159,23 +211,64 @@ class WpLinuxDrmSyncobjTimelineV1 extends Proxy{
 class WpLinuxDrmSyncobjSurfaceV1 extends Proxy{
   final Context context;
 
-  WpLinuxDrmSyncobjSurfaceV1(this.context) : super(context.allocateClientId());
+  WpLinuxDrmSyncobjSurfaceV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the surface synchronization object
+/// 
+/// Destroy this surface synchronization object.
+/// 
+/// Any timeline point set by this object with set_acquire_point or
+/// set_release_point since the last commit may be discarded by the
+/// compositor. Any timeline point set by this object before the last
+/// commit will not be affected.
+/// 
   Future<void> destroy() async {
+    print("WpLinuxDrmSyncobjSurfaceV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set the acquire timeline point
+/// 
+/// Set the timeline point that must be signalled before the compositor may
+/// sample from the buffer attached with wl_surface.attach.
+/// 
+/// The 64-bit unsigned value combined from point_hi and point_lo is the
+/// point value.
+/// 
+/// The acquire point is double-buffered state, and will be applied on the
+/// next wl_surface.commit request for the associated surface. Thus, it
+/// applies only to the buffer that is attached to the surface at commit
+/// time.
+/// 
+/// If an acquire point has already been attached during the same commit
+/// cycle, the new point replaces the old one.
+/// 
+/// If the associated wl_surface was destroyed, a no_surface error is
+/// raised.
+/// 
+/// If at surface commit time there is a pending acquire timeline point set
+/// but no pending buffer attached, a no_buffer error is raised. If at
+/// surface commit time there is a pending buffer attached but no pending
+/// acquire timeline point set, the no_acquire_point protocol error is
+/// raised.
+/// 
+/// [timeline]:
+/// [point_hi]: high 32 bits of the point value
+/// [point_lo]: low 32 bits of the point value
   Future<void> setAcquirePoint(WpLinuxDrmSyncobjTimelineV1 timeline, int pointHi, int pointLo) async {
+    print("WpLinuxDrmSyncobjSurfaceV1::setAcquirePoint  timeline: $timeline pointHi: $pointHi pointLo: $pointLo");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         timeline,
@@ -188,12 +281,62 @@ class WpLinuxDrmSyncobjSurfaceV1 extends Proxy{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set the release timeline point
+/// 
+/// Set the timeline point that must be signalled by the compositor when it
+/// has finished its usage of the buffer attached with wl_surface.attach
+/// for the relevant commit.
+/// 
+/// Once the timeline point is signaled, and assuming the associated buffer
+/// is not pending release from other wl_surface.commit requests, no
+/// additional explicit or implicit synchronization with the compositor is
+/// required to safely re-use the buffer.
+/// 
+/// Note that clients cannot rely on the release point being always
+/// signaled after the acquire point: compositors may release buffers
+/// without ever reading from them. In addition, the compositor may use
+/// different presentation paths for different commits, which may have
+/// different release behavior. As a result, the compositor may signal the
+/// release points in a different order than the client committed them.
+/// 
+/// Because signaling a timeline point also signals every previous point,
+/// it is generally not safe to use the same timeline object for the
+/// release points of multiple buffers. The out-of-order signaling
+/// described above may lead to a release point being signaled before the
+/// compositor has finished reading. To avoid this, it is strongly
+/// recommended that each buffer should use a separate timeline for its
+/// release points.
+/// 
+/// The 64-bit unsigned value combined from point_hi and point_lo is the
+/// point value.
+/// 
+/// The release point is double-buffered state, and will be applied on the
+/// next wl_surface.commit request for the associated surface. Thus, it
+/// applies only to the buffer that is attached to the surface at commit
+/// time.
+/// 
+/// If a release point has already been attached during the same commit
+/// cycle, the new point replaces the old one.
+/// 
+/// If the associated wl_surface was destroyed, a no_surface error is
+/// raised.
+/// 
+/// If at surface commit time there is a pending release timeline point set
+/// but no pending buffer attached, a no_buffer error is raised. If at
+/// surface commit time there is a pending buffer attached but no pending
+/// release timeline point set, the no_release_point protocol error is
+/// raised.
+/// 
+/// [timeline]:
+/// [point_hi]: high 32 bits of the point value
+/// [point_lo]: low 32 bits of the point value
   Future<void> setReleasePoint(WpLinuxDrmSyncobjTimelineV1 timeline, int pointHi, int pointLo) async {
+    print("WpLinuxDrmSyncobjSurfaceV1::setReleasePoint  timeline: $timeline pointHi: $pointHi pointLo: $pointLo");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
         timeline,
@@ -206,7 +349,7 @@ class WpLinuxDrmSyncobjSurfaceV1 extends Proxy{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }
@@ -215,17 +358,17 @@ class WpLinuxDrmSyncobjSurfaceV1 extends Proxy{
 /// 
 
 enum WpLinuxDrmSyncobjSurfaceV1error {
-  /// the associated wl_surface was destroyed
+/// the associated wl_surface was destroyed
   noSurface,
-  /// the buffer does not support explicit synchronization
+/// the buffer does not support explicit synchronization
   unsupportedBuffer,
-  /// no buffer was attached
+/// no buffer was attached
   noBuffer,
-  /// no acquire timeline point was set
+/// no acquire timeline point was set
   noAcquirePoint,
-  /// no release timeline point was set
+/// no release timeline point was set
   noReleasePoint,
-  /// acquire and release timeline points are in conflict
+/// acquire and release timeline points are in conflict
   conflictingPoints,
 }
 

@@ -30,7 +30,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// X primary selection emulation
 /// 
 /// The primary selection device manager is a singleton global object that
@@ -41,12 +44,20 @@ import 'dart:typed_data';
 class ZwpPrimarySelectionDeviceManagerV1 extends Proxy{
   final Context context;
 
-  ZwpPrimarySelectionDeviceManagerV1(this.context) : super(context.allocateClientId());
+  ZwpPrimarySelectionDeviceManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
-  Future<void> createSource() async {
-  var id =  ZwpPrimarySelectionDeviceManagerV1(context);
+/// create a new primary selection source
+/// 
+/// Create a new primary selection source.
+/// 
+/// [id]:
+  Future<ZwpPrimarySelectionSourceV1> createSource() async {
+  var id =  ZwpPrimarySelectionSourceV1(context);
+    print("ZwpPrimarySelectionDeviceManagerV1::createSource  id: $id");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
         id,
@@ -55,13 +66,21 @@ class ZwpPrimarySelectionDeviceManagerV1 extends Proxy{
         WaylandType.newId,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
-  Future<void> getDevice(Seat seat) async {
-  var id =  ZwpPrimarySelectionDeviceManagerV1(context);
+/// create a new primary selection device
+/// 
+/// Create a new data device for a given seat.
+/// 
+/// [id]:
+/// [seat]:
+  Future<ZwpPrimarySelectionDeviceV1> getDevice(Seat seat) async {
+  var id =  ZwpPrimarySelectionDeviceV1(context);
+    print("ZwpPrimarySelectionDeviceManagerV1::getDevice  id: $id seat: $seat");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -72,59 +91,31 @@ class ZwpPrimarySelectionDeviceManagerV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
+/// destroy the primary selection device manager
+/// 
+/// Destroy the primary selection device manager.
+/// 
   Future<void> destroy() async {
+    print("ZwpPrimarySelectionDeviceManagerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }
 
-/// 
-/// 
-class ZwpPrimarySelectionDeviceV1 extends Proxy implements Dispatcher{
-  final Context context;
 
-  ZwpPrimarySelectionDeviceV1(this.context) : super(context.allocateClientId());
-
-  Future<void> setSelection(ZwpPrimarySelectionSourceV1 source, int serial) async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      0,
-      [
-        source,
-        serial,
-      ],
-      [
-        WaylandType.object,
-        WaylandType.uint,
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> destroy() async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      1,
-      [
-      ],
-      [
-      ],
-    );
-    context.sendMessage(message);
-  }
-
- /// introduce a new wp_primary_selection_offer
+/// introduce a new wp_primary_selection_offer
 /// 
 /// Introduces a new wp_primary_selection_offer object that may be used
 /// to receive the current primary selection. Immediately following this
@@ -132,13 +123,27 @@ class ZwpPrimarySelectionDeviceV1 extends Proxy implements Dispatcher{
 /// wp_primary_selection_offer.offer events to describe the offered mime
 /// types.
 /// 
- void ondataOffer(void Function(int offer) handler) {
-   _dataOfferHandler = handler;
- }
+class ZwpPrimarySelectionDeviceV1DataOfferEvent {
+/// 
+  final int offer;
 
- void Function(int offer)? _dataOfferHandler;
+  ZwpPrimarySelectionDeviceV1DataOfferEvent(
+this.offer,
 
- /// advertise a new primary selection
+);
+
+@override
+String toString(){
+  return """ZwpPrimarySelectionDeviceV1DataOfferEvent: {
+    offer: $offer,
+  }""";
+}
+
+}
+
+typedef ZwpPrimarySelectionDeviceV1DataOfferEventHandler = void Function(ZwpPrimarySelectionDeviceV1DataOfferEvent);
+
+/// advertise a new primary selection
 /// 
 /// The wp_primary_selection_device.selection event is sent to notify the
 /// client of a new primary selection. This event is sent after the
@@ -150,32 +155,166 @@ class ZwpPrimarySelectionDeviceV1 extends Proxy implements Dispatcher{
 /// or until the client loses keyboard focus. The client must destroy the
 /// previous selection data_offer, if any, upon receiving this event.
 /// 
- void onselection(void Function(int id) handler) {
+class ZwpPrimarySelectionDeviceV1SelectionEvent {
+/// 
+  final int id;
+
+  ZwpPrimarySelectionDeviceV1SelectionEvent(
+this.id,
+
+);
+
+@override
+String toString(){
+  return """ZwpPrimarySelectionDeviceV1SelectionEvent: {
+    id: $id,
+  }""";
+}
+
+}
+
+typedef ZwpPrimarySelectionDeviceV1SelectionEventHandler = void Function(ZwpPrimarySelectionDeviceV1SelectionEvent);
+
+
+/// 
+/// 
+class ZwpPrimarySelectionDeviceV1 extends Proxy implements Dispatcher{
+  final Context context;
+
+  ZwpPrimarySelectionDeviceV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
+
+/// set the primary selection
+/// 
+/// Replaces the current selection. The previous owner of the primary
+/// selection will receive a wp_primary_selection_source.cancelled event.
+/// 
+/// To unset the selection, set the source to NULL.
+/// 
+/// [source]:
+/// [serial]: serial of the event that triggered this request
+  Future<void> setSelection(ZwpPrimarySelectionSourceV1 source, int serial) async {
+    print("ZwpPrimarySelectionDeviceV1::setSelection  source: $source serial: $serial");
+    final message = WaylandMessage(
+      objectId,
+      0,
+      [
+        source,
+        serial,
+      ],
+      [
+        WaylandType.object,
+        WaylandType.uint,
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// destroy the primary selection device
+/// 
+/// Destroy the primary selection device.
+/// 
+  Future<void> destroy() async {
+    print("ZwpPrimarySelectionDeviceV1::destroy ");
+    final message = WaylandMessage(
+      objectId,
+      1,
+      [
+      ],
+      [
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// introduce a new wp_primary_selection_offer
+/// 
+/// Introduces a new wp_primary_selection_offer object that may be used
+/// to receive the current primary selection. Immediately following this
+/// event, the new wp_primary_selection_offer object will send
+/// wp_primary_selection_offer.offer events to describe the offered mime
+/// types.
+/// 
+/// Event handler for DataOffer
+/// - [offer]:
+ void onDataOffer(ZwpPrimarySelectionDeviceV1DataOfferEventHandler handler) {
+   _dataOfferHandler = handler;
+ }
+
+ ZwpPrimarySelectionDeviceV1DataOfferEventHandler? _dataOfferHandler;
+
+/// advertise a new primary selection
+/// 
+/// The wp_primary_selection_device.selection event is sent to notify the
+/// client of a new primary selection. This event is sent after the
+/// wp_primary_selection.data_offer event introducing this object, and after
+/// the offer has announced its mimetypes through
+/// wp_primary_selection_offer.offer.
+/// 
+/// The data_offer is valid until a new offer or NULL is received
+/// or until the client loses keyboard focus. The client must destroy the
+/// previous selection data_offer, if any, upon receiving this event.
+/// 
+/// Event handler for Selection
+/// - [id]:
+ void onSelection(ZwpPrimarySelectionDeviceV1SelectionEventHandler handler) {
    _selectionHandler = handler;
  }
 
- void Function(int id)? _selectionHandler;
+ ZwpPrimarySelectionDeviceV1SelectionEventHandler? _selectionHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_dataOfferHandler != null) {
-         _dataOfferHandler!(
-           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.host)).id,
-         );
+var event = ZwpPrimarySelectionDeviceV1DataOfferEvent(
+           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.little)).objectId,
+        );
+         _dataOfferHandler!(event);
        }
        break;
      case 1:
        if (_selectionHandler != null) {
-         _selectionHandler!(
-           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.host)).id,
-         );
+var event = ZwpPrimarySelectionDeviceV1SelectionEvent(
+           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.little)).objectId,
+        );
+         _selectionHandler!(event);
        }
        break;
    }
  }
 }
+
+
+/// advertise offered mime type
+/// 
+/// Sent immediately after creating announcing the
+/// wp_primary_selection_offer through
+/// wp_primary_selection_device.data_offer. One event is sent per offered
+/// mime type.
+/// 
+class ZwpPrimarySelectionOfferV1OfferEvent {
+/// 
+  final String mimeType;
+
+  ZwpPrimarySelectionOfferV1OfferEvent(
+this.mimeType,
+
+);
+
+@override
+String toString(){
+  return """ZwpPrimarySelectionOfferV1OfferEvent: {
+    mimeType: $mimeType,
+  }""";
+}
+
+}
+
+typedef ZwpPrimarySelectionOfferV1OfferEventHandler = void Function(ZwpPrimarySelectionOfferV1OfferEvent);
+
 
 /// offer to transfer primary selection contents
 /// 
@@ -188,11 +327,28 @@ class ZwpPrimarySelectionDeviceV1 extends Proxy implements Dispatcher{
 class ZwpPrimarySelectionOfferV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  ZwpPrimarySelectionOfferV1(this.context) : super(context.allocateClientId());
+  ZwpPrimarySelectionOfferV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// request that the data is transferred
+/// 
+/// To transfer the contents of the primary selection clipboard, the client
+/// issues this request and indicates the mime type that it wants to
+/// receive. The transfer happens through the passed file descriptor
+/// (typically created with the pipe system call). The source client writes
+/// the data in the mime type representation requested and then closes the
+/// file descriptor.
+/// 
+/// The receiving client reads from the read end of the pipe until EOF and
+/// closes its end, at which point the transfer is complete.
+/// 
+/// [mime_type]:
+/// [fd]:
   Future<void> receive(String mimeType, int fd) async {
+    print("ZwpPrimarySelectionOfferV1::receive  mimeType: $mimeType fd: $fd");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
         mimeType,
@@ -203,47 +359,108 @@ class ZwpPrimarySelectionOfferV1 extends Proxy implements Dispatcher{
         WaylandType.fd,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// destroy the primary selection offer
+/// 
+/// Destroy the primary selection offer.
+/// 
   Future<void> destroy() async {
+    print("ZwpPrimarySelectionOfferV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// advertise offered mime type
+/// advertise offered mime type
 /// 
 /// Sent immediately after creating announcing the
 /// wp_primary_selection_offer through
 /// wp_primary_selection_device.data_offer. One event is sent per offered
 /// mime type.
 /// 
- void onoffer(void Function(String mimeType) handler) {
+/// Event handler for Offer
+/// - [mime_type]:
+ void onOffer(ZwpPrimarySelectionOfferV1OfferEventHandler handler) {
    _offerHandler = handler;
  }
 
- void Function(String mimeType)? _offerHandler;
+ ZwpPrimarySelectionOfferV1OfferEventHandler? _offerHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_offerHandler != null) {
-         _offerHandler!(
+var event = ZwpPrimarySelectionOfferV1OfferEvent(
            getString(data, 0),
-         );
+        );
+         _offerHandler!(event);
        }
        break;
    }
  }
 }
+
+
+/// send the primary selection contents
+/// 
+/// Request for the current primary selection contents from the client.
+/// Send the specified mime type over the passed file descriptor, then
+/// close it.
+/// 
+class ZwpPrimarySelectionSourceV1SendEvent {
+/// 
+  final String mimeType;
+
+/// 
+  final int fd;
+
+  ZwpPrimarySelectionSourceV1SendEvent(
+this.mimeType,
+
+this.fd,
+
+);
+
+@override
+String toString(){
+  return """ZwpPrimarySelectionSourceV1SendEvent: {
+    mimeType: $mimeType,
+    fd: $fd,
+  }""";
+}
+
+}
+
+typedef ZwpPrimarySelectionSourceV1SendEventHandler = void Function(ZwpPrimarySelectionSourceV1SendEvent);
+
+/// request for primary selection contents was canceled
+/// 
+/// This primary selection source is no longer valid. The client should
+/// clean up and destroy this primary selection source.
+/// 
+class ZwpPrimarySelectionSourceV1CancelledEvent {
+  ZwpPrimarySelectionSourceV1CancelledEvent(
+);
+
+@override
+String toString(){
+  return """ZwpPrimarySelectionSourceV1CancelledEvent: {
+  }""";
+}
+
+}
+
+typedef ZwpPrimarySelectionSourceV1CancelledEventHandler = void Function(ZwpPrimarySelectionSourceV1CancelledEvent);
+
 
 /// offer to replace the contents of the primary selection
 /// 
@@ -254,11 +471,20 @@ class ZwpPrimarySelectionOfferV1 extends Proxy implements Dispatcher{
 class ZwpPrimarySelectionSourceV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  ZwpPrimarySelectionSourceV1(this.context) : super(context.allocateClientId());
+  ZwpPrimarySelectionSourceV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// add an offered mime type
+/// 
+/// This request adds a mime type to the set of mime types advertised to
+/// targets. Can be called several times to offer multiple types.
+/// 
+/// [mime_type]:
   Future<void> offer(String mimeType) async {
+    print("ZwpPrimarySelectionSourceV1::offer  mimeType: $mimeType");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
         mimeType,
@@ -267,59 +493,70 @@ class ZwpPrimarySelectionSourceV1 extends Proxy implements Dispatcher{
         WaylandType.string,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// destroy the primary selection source
+/// 
+/// Destroy the primary selection source.
+/// 
   Future<void> destroy() async {
+    print("ZwpPrimarySelectionSourceV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// send the primary selection contents
+/// send the primary selection contents
 /// 
 /// Request for the current primary selection contents from the client.
 /// Send the specified mime type over the passed file descriptor, then
 /// close it.
 /// 
- void onsend(void Function(String mimeType, int fd) handler) {
+/// Event handler for Send
+/// - [mime_type]:
+/// - [fd]:
+ void onSend(ZwpPrimarySelectionSourceV1SendEventHandler handler) {
    _sendHandler = handler;
  }
 
- void Function(String mimeType, int fd)? _sendHandler;
+ ZwpPrimarySelectionSourceV1SendEventHandler? _sendHandler;
 
- /// request for primary selection contents was canceled
+/// request for primary selection contents was canceled
 /// 
 /// This primary selection source is no longer valid. The client should
 /// clean up and destroy this primary selection source.
 /// 
- void oncancelled(void Function() handler) {
+/// Event handler for Cancelled
+ void onCancelled(ZwpPrimarySelectionSourceV1CancelledEventHandler handler) {
    _cancelledHandler = handler;
  }
 
- void Function()? _cancelledHandler;
+ ZwpPrimarySelectionSourceV1CancelledEventHandler? _cancelledHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_sendHandler != null) {
-         _sendHandler!(
+var event = ZwpPrimarySelectionSourceV1SendEvent(
            getString(data, 0),
            fd,
-         );
+        );
+         _sendHandler!(event);
        }
        break;
      case 1:
        if (_cancelledHandler != null) {
-         _cancelledHandler!(
-         );
+var event = ZwpPrimarySelectionSourceV1CancelledEvent(
+        );
+         _cancelledHandler!(event);
        }
        break;
    }

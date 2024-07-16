@@ -30,7 +30,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// protocol for tearing control
 /// 
 /// For some use cases like games or drawing tablets it can make sense to
@@ -52,24 +55,44 @@ import 'dart:typed_data';
 class WpTearingControlManagerV1 extends Proxy{
   final Context context;
 
-  WpTearingControlManagerV1(this.context) : super(context.allocateClientId());
+  WpTearingControlManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy tearing control factory object
+/// 
+/// Destroy this tearing control factory object. Other objects, including
+/// wp_tearing_control_v1 objects created by this factory, are not affected
+/// by this request.
+/// 
   Future<void> destroy() async {
+    print("WpTearingControlManagerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getTearingControl(Surface surface) async {
-  var id =  WpTearingControlManagerV1(context);
+/// extend surface interface for tearing control
+/// 
+/// Instantiate an interface extension for the given wl_surface to request
+/// asynchronous page flips for presentation.
+/// 
+/// If the given wl_surface already has a wp_tearing_control_v1 object
+/// associated, the tearing_control_exists protocol error is raised.
+/// 
+/// [id]:
+/// [surface]:
+  Future<WpTearingControlV1> getTearingControl(Surface surface) async {
+  var id =  WpTearingControlV1(context);
+    print("WpTearingControlManagerV1::getTearingControl  id: $id surface: $surface");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -80,7 +103,8 @@ class WpTearingControlManagerV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
@@ -89,9 +113,11 @@ class WpTearingControlManagerV1 extends Proxy{
 /// 
 
 enum WpTearingControlManagerV1error {
-  /// the surface already has a tearing object associated
+/// the surface already has a tearing object associated
   tearingControlExists,
 }
+
+
 
 /// per-surface tearing control interface
 /// 
@@ -107,11 +133,24 @@ enum WpTearingControlManagerV1error {
 class WpTearingControlV1 extends Proxy{
   final Context context;
 
-  WpTearingControlV1(this.context) : super(context.allocateClientId());
+  WpTearingControlV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// set presentation hint
+/// 
+/// Set the presentation hint for the associated wl_surface. This state is
+/// double-buffered, see wl_surface.commit.
+/// 
+/// The compositor is free to dynamically respect or ignore this hint based
+/// on various conditions like hardware capabilities, surface state and
+/// user preferences.
+/// 
+/// [hint]:
   Future<void> setPresentationHint(int hint) async {
+    print("WpTearingControlV1::setPresentationHint  hint: $hint");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
         hint,
@@ -120,19 +159,25 @@ class WpTearingControlV1 extends Proxy{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// destroy tearing control object
+/// 
+/// Destroy this surface tearing object and revert the presentation hint to
+/// vsync. The change will be applied on the next wl_surface.commit.
+/// 
   Future<void> destroy() async {
+    print("WpTearingControlV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }
@@ -144,9 +189,9 @@ class WpTearingControlV1 extends Proxy{
 /// 
 
 enum WpTearingControlV1presentationHint {
-  /// 
+/// 
   vsync,
-  /// 
+/// 
   async,
 }
 

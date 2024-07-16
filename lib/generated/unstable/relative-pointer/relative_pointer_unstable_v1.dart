@@ -31,7 +31,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// get relative pointer objects
 /// 
 /// A global interface used for getting the relative pointer object for a
@@ -40,24 +43,40 @@ import 'dart:typed_data';
 class ZwpRelativePointerManagerV1 extends Proxy{
   final Context context;
 
-  ZwpRelativePointerManagerV1(this.context) : super(context.allocateClientId());
+  ZwpRelativePointerManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the relative pointer manager object
+/// 
+/// Used by the client to notify the server that it will no longer use this
+/// relative pointer manager object.
+/// 
   Future<void> destroy() async {
+    print("ZwpRelativePointerManagerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getRelativePointer(Pointer pointer) async {
-  var id =  ZwpRelativePointerManagerV1(context);
+/// get a relative pointer object
+/// 
+/// Create a relative pointer interface given a wl_pointer object. See the
+/// wp_relative_pointer interface for more details.
+/// 
+/// [id]:
+/// [pointer]:
+  Future<ZwpRelativePointerV1> getRelativePointer(Pointer pointer) async {
+  var id =  ZwpRelativePointerV1(context);
+    print("ZwpRelativePointerManagerV1::getRelativePointer  id: $id pointer: $pointer");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -68,36 +87,14 @@ class ZwpRelativePointerManagerV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
 
-/// relative pointer object
-/// 
-/// A wp_relative_pointer object is an extension to the wl_pointer interface
-/// used for emitting relative pointer events. It shares the same focus as
-/// wl_pointer objects of the same seat and will only emit events when it has
-/// focus.
-/// 
-class ZwpRelativePointerV1 extends Proxy implements Dispatcher{
-  final Context context;
 
-  ZwpRelativePointerV1(this.context) : super(context.allocateClientId());
-
-  Future<void> destroy() async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      0,
-      [
-      ],
-      [
-      ],
-    );
-    context.sendMessage(message);
-  }
-
- /// relative pointer motion
+/// relative pointer motion
 /// 
 /// Relative x/y pointer motion from the pointer of the seat associated with
 /// this object.
@@ -130,25 +127,146 @@ class ZwpRelativePointerV1 extends Proxy implements Dispatcher{
 /// from a wl_pointer object of the same seat that the wp_relative_pointer
 /// object is associated with.
 /// 
- void onrelativeMotion(void Function(int utimeHi, int utimeLo, double dx, double dy, double dxUnaccel, double dyUnaccel) handler) {
+class ZwpRelativePointerV1RelativeMotionEvent {
+/// high 32 bits of a 64 bit timestamp with microsecond granularity
+  final int utimeHi;
+
+/// low 32 bits of a 64 bit timestamp with microsecond granularity
+  final int utimeLo;
+
+/// the x component of the motion vector
+  final double dx;
+
+/// the y component of the motion vector
+  final double dy;
+
+/// the x component of the unaccelerated motion vector
+  final double dxUnaccel;
+
+/// the y component of the unaccelerated motion vector
+  final double dyUnaccel;
+
+  ZwpRelativePointerV1RelativeMotionEvent(
+this.utimeHi,
+
+this.utimeLo,
+
+this.dx,
+
+this.dy,
+
+this.dxUnaccel,
+
+this.dyUnaccel,
+
+);
+
+@override
+String toString(){
+  return """ZwpRelativePointerV1RelativeMotionEvent: {
+    utimeHi: $utimeHi,
+    utimeLo: $utimeLo,
+    dx: $dx,
+    dy: $dy,
+    dxUnaccel: $dxUnaccel,
+    dyUnaccel: $dyUnaccel,
+  }""";
+}
+
+}
+
+typedef ZwpRelativePointerV1RelativeMotionEventHandler = void Function(ZwpRelativePointerV1RelativeMotionEvent);
+
+
+/// relative pointer object
+/// 
+/// A wp_relative_pointer object is an extension to the wl_pointer interface
+/// used for emitting relative pointer events. It shares the same focus as
+/// wl_pointer objects of the same seat and will only emit events when it has
+/// focus.
+/// 
+class ZwpRelativePointerV1 extends Proxy implements Dispatcher{
+  final Context context;
+
+  ZwpRelativePointerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
+
+/// release the relative pointer object
+/// 
+  Future<void> destroy() async {
+    print("ZwpRelativePointerV1::destroy ");
+    final message = WaylandMessage(
+      objectId,
+      0,
+      [
+      ],
+      [
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// relative pointer motion
+/// 
+/// Relative x/y pointer motion from the pointer of the seat associated with
+/// this object.
+/// 
+/// A relative motion is in the same dimension as regular wl_pointer motion
+/// events, except they do not represent an absolute position. For example,
+/// moving a pointer from (x, y) to (x', y') would have the equivalent
+/// relative motion (x' - x, y' - y). If a pointer motion caused the
+/// absolute pointer position to be clipped by for example the edge of the
+/// monitor, the relative motion is unaffected by the clipping and will
+/// represent the unclipped motion.
+/// 
+/// This event also contains non-accelerated motion deltas. The
+/// non-accelerated delta is, when applicable, the regular pointer motion
+/// delta as it was before having applied motion acceleration and other
+/// transformations such as normalization.
+/// 
+/// Note that the non-accelerated delta does not represent 'raw' events as
+/// they were read from some device. Pointer motion acceleration is device-
+/// and configuration-specific and non-accelerated deltas and accelerated
+/// deltas may have the same value on some devices.
+/// 
+/// Relative motions are not coupled to wl_pointer.motion events, and can be
+/// sent in combination with such events, but also independently. There may
+/// also be scenarios where wl_pointer.motion is sent, but there is no
+/// relative motion. The order of an absolute and relative motion event
+/// originating from the same physical motion is not guaranteed.
+/// 
+/// If the client needs button events or focus state, it can receive them
+/// from a wl_pointer object of the same seat that the wp_relative_pointer
+/// object is associated with.
+/// 
+/// Event handler for RelativeMotion
+/// - [utime_hi]: high 32 bits of a 64 bit timestamp with microsecond granularity
+/// - [utime_lo]: low 32 bits of a 64 bit timestamp with microsecond granularity
+/// - [dx]: the x component of the motion vector
+/// - [dy]: the y component of the motion vector
+/// - [dx_unaccel]: the x component of the unaccelerated motion vector
+/// - [dy_unaccel]: the y component of the unaccelerated motion vector
+ void onRelativeMotion(ZwpRelativePointerV1RelativeMotionEventHandler handler) {
    _relativeMotionHandler = handler;
  }
 
- void Function(int utimeHi, int utimeLo, double dx, double dy, double dxUnaccel, double dyUnaccel)? _relativeMotionHandler;
+ ZwpRelativePointerV1RelativeMotionEventHandler? _relativeMotionHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_relativeMotionHandler != null) {
-         _relativeMotionHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-           ByteData.view(data.buffer).getInt32(4, Endian.host),
-           fixedToDouble(ByteData.view(data.buffer).getInt32(8, Endian.host)),
-           fixedToDouble(ByteData.view(data.buffer).getInt32(12, Endian.host)),
-           fixedToDouble(ByteData.view(data.buffer).getInt32(16, Endian.host)),
-           fixedToDouble(ByteData.view(data.buffer).getInt32(20, Endian.host)),
-         );
+var event = ZwpRelativePointerV1RelativeMotionEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+           ByteData.view(data.buffer).getUint32(4, Endian.little),
+           fixedToDouble(ByteData.view(data.buffer).getInt32(8, Endian.little)),
+           fixedToDouble(ByteData.view(data.buffer).getInt32(12, Endian.little)),
+           fixedToDouble(ByteData.view(data.buffer).getInt32(16, Endian.little)),
+           fixedToDouble(ByteData.view(data.buffer).getInt32(20, Endian.little)),
+        );
+         _relativeMotionHandler!(event);
        }
        break;
    }

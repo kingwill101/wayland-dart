@@ -32,7 +32,119 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+/// open a non-master fd for this DRM node
+/// 
+/// The compositor will send this event when the wp_drm_lease_device_v1
+/// global is bound, although there are no guarantees as to how long this
+/// takes - the compositor might need to wait until regaining DRM master.
+/// The included fd is a non-master DRM file descriptor opened for this
+/// device and the compositor must not authenticate it.
+/// The purpose of this event is to give the client the ability to
+/// query DRM and discover information which may help them pick the
+/// appropriate DRM device or select the appropriate connectors therein.
+/// 
+class WpDrmLeaseDeviceV1DrmFdEvent {
+/// DRM file descriptor
+  final int fd;
+
+  WpDrmLeaseDeviceV1DrmFdEvent(
+this.fd,
+
+);
+
+@override
+String toString(){
+  return """WpDrmLeaseDeviceV1DrmFdEvent: {
+    fd: $fd,
+  }""";
+}
+
+}
+
+typedef WpDrmLeaseDeviceV1DrmFdEventHandler = void Function(WpDrmLeaseDeviceV1DrmFdEvent);
+
+/// advertise connectors available for leases
+/// 
+/// The compositor will use this event to advertise connectors available for
+/// lease by clients. This object may be passed into a lease request to
+/// indicate the client would like to lease that connector, see
+/// wp_drm_lease_request_v1.request_connector for details. While the
+/// compositor will make a best effort to not send disconnected connectors,
+/// no guarantees can be made.
+/// 
+/// The compositor must send the drm_fd event before sending connectors.
+/// After the drm_fd event it will send all available connectors but may
+/// send additional connectors at any time.
+/// 
+class WpDrmLeaseDeviceV1ConnectorEvent {
+/// 
+  final int id;
+
+  WpDrmLeaseDeviceV1ConnectorEvent(
+this.id,
+
+);
+
+@override
+String toString(){
+  return """WpDrmLeaseDeviceV1ConnectorEvent: {
+    id: $id,
+  }""";
+}
+
+}
+
+typedef WpDrmLeaseDeviceV1ConnectorEventHandler = void Function(WpDrmLeaseDeviceV1ConnectorEvent);
+
+/// signals grouping of connectors
+/// 
+/// The compositor will send this event to indicate that it has sent all
+/// currently available connectors after the client binds to the global or
+/// when it updates the connector list, for example on hotplug, drm master
+/// change or when a leased connector becomes available again. It will
+/// similarly send this event to group wp_drm_lease_connector_v1.withdrawn
+/// events of connectors of this device.
+/// 
+class WpDrmLeaseDeviceV1DoneEvent {
+  WpDrmLeaseDeviceV1DoneEvent(
+);
+
+@override
+String toString(){
+  return """WpDrmLeaseDeviceV1DoneEvent: {
+  }""";
+}
+
+}
+
+typedef WpDrmLeaseDeviceV1DoneEventHandler = void Function(WpDrmLeaseDeviceV1DoneEvent);
+
+/// the compositor has finished using the device
+/// 
+/// This event is sent in response to the release request and indicates
+/// that the compositor is done sending connector events.
+/// The compositor will destroy this object immediately after sending the
+/// event and it will become invalid. The client should release any
+/// resources associated with this device after receiving this event.
+/// 
+class WpDrmLeaseDeviceV1ReleasedEvent {
+  WpDrmLeaseDeviceV1ReleasedEvent(
+);
+
+@override
+String toString(){
+  return """WpDrmLeaseDeviceV1ReleasedEvent: {
+  }""";
+}
+
+}
+
+typedef WpDrmLeaseDeviceV1ReleasedEventHandler = void Function(WpDrmLeaseDeviceV1ReleasedEvent);
+
+
 /// lease device
 /// 
 /// This protocol is used by Wayland compositors which act as Direct
@@ -69,12 +181,22 @@ import 'dart:typed_data';
 class WpDrmLeaseDeviceV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  WpDrmLeaseDeviceV1(this.context) : super(context.allocateClientId());
+  WpDrmLeaseDeviceV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
-  Future<void> createLeaseRequest() async {
-  var id =  WpDrmLeaseDeviceV1(context);
+/// create a lease request object
+/// 
+/// Creates a lease request object.
+/// 
+/// See the documentation for wp_drm_lease_request_v1 for details.
+/// 
+/// [id]:
+  Future<WpDrmLeaseRequestV1> createLeaseRequest() async {
+  var id =  WpDrmLeaseRequestV1(context);
+    print("WpDrmLeaseDeviceV1::createLeaseRequest  id: $id");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
         id,
@@ -83,22 +205,33 @@ class WpDrmLeaseDeviceV1 extends Proxy implements Dispatcher{
         WaylandType.newId,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
+/// release this object
+/// 
+/// Indicates the client no longer wishes to use this object. In response
+/// the compositor will immediately send the released event and destroy
+/// this object. It can however not guarantee that the client won't receive
+/// connector events before the released event. The client must not send any
+/// requests after this one, doing so will raise a wl_display error.
+/// Existing connectors, lease request and leases will not be affected.
+/// 
   Future<void> release() async {
+    print("WpDrmLeaseDeviceV1::release ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// open a non-master fd for this DRM node
+/// open a non-master fd for this DRM node
 /// 
 /// The compositor will send this event when the wp_drm_lease_device_v1
 /// global is bound, although there are no guarantees as to how long this
@@ -109,13 +242,15 @@ class WpDrmLeaseDeviceV1 extends Proxy implements Dispatcher{
 /// query DRM and discover information which may help them pick the
 /// appropriate DRM device or select the appropriate connectors therein.
 /// 
- void ondrmFd(void Function(int fd) handler) {
+/// Event handler for DrmFd
+/// - [fd]: DRM file descriptor
+ void onDrmFd(WpDrmLeaseDeviceV1DrmFdEventHandler handler) {
    _drmFdHandler = handler;
  }
 
- void Function(int fd)? _drmFdHandler;
+ WpDrmLeaseDeviceV1DrmFdEventHandler? _drmFdHandler;
 
- /// advertise connectors available for leases
+/// advertise connectors available for leases
 /// 
 /// The compositor will use this event to advertise connectors available for
 /// lease by clients. This object may be passed into a lease request to
@@ -128,13 +263,15 @@ class WpDrmLeaseDeviceV1 extends Proxy implements Dispatcher{
 /// After the drm_fd event it will send all available connectors but may
 /// send additional connectors at any time.
 /// 
- void onconnector(void Function(int id) handler) {
+/// Event handler for Connector
+/// - [id]:
+ void onConnector(WpDrmLeaseDeviceV1ConnectorEventHandler handler) {
    _connectorHandler = handler;
  }
 
- void Function(int id)? _connectorHandler;
+ WpDrmLeaseDeviceV1ConnectorEventHandler? _connectorHandler;
 
- /// signals grouping of connectors
+/// signals grouping of connectors
 /// 
 /// The compositor will send this event to indicate that it has sent all
 /// currently available connectors after the client binds to the global or
@@ -143,13 +280,14 @@ class WpDrmLeaseDeviceV1 extends Proxy implements Dispatcher{
 /// similarly send this event to group wp_drm_lease_connector_v1.withdrawn
 /// events of connectors of this device.
 /// 
- void ondone(void Function() handler) {
+/// Event handler for Done
+ void onDone(WpDrmLeaseDeviceV1DoneEventHandler handler) {
    _doneHandler = handler;
  }
 
- void Function()? _doneHandler;
+ WpDrmLeaseDeviceV1DoneEventHandler? _doneHandler;
 
- /// the compositor has finished using the device
+/// the compositor has finished using the device
 /// 
 /// This event is sent in response to the release request and indicates
 /// that the compositor is done sending connector events.
@@ -157,44 +295,180 @@ class WpDrmLeaseDeviceV1 extends Proxy implements Dispatcher{
 /// event and it will become invalid. The client should release any
 /// resources associated with this device after receiving this event.
 /// 
- void onreleased(void Function() handler) {
+/// Event handler for Released
+ void onReleased(WpDrmLeaseDeviceV1ReleasedEventHandler handler) {
    _releasedHandler = handler;
  }
 
- void Function()? _releasedHandler;
+ WpDrmLeaseDeviceV1ReleasedEventHandler? _releasedHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_drmFdHandler != null) {
-         _drmFdHandler!(
+var event = WpDrmLeaseDeviceV1DrmFdEvent(
            fd,
-         );
+        );
+         _drmFdHandler!(event);
        }
        break;
      case 1:
        if (_connectorHandler != null) {
-         _connectorHandler!(
-           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.host)).id,
-         );
+var event = WpDrmLeaseDeviceV1ConnectorEvent(
+           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.little)).objectId,
+        );
+         _connectorHandler!(event);
        }
        break;
      case 2:
        if (_doneHandler != null) {
-         _doneHandler!(
-         );
+var event = WpDrmLeaseDeviceV1DoneEvent(
+        );
+         _doneHandler!(event);
        }
        break;
      case 3:
        if (_releasedHandler != null) {
-         _releasedHandler!(
-         );
+var event = WpDrmLeaseDeviceV1ReleasedEvent(
+        );
+         _releasedHandler!(event);
        }
        break;
    }
  }
 }
+
+
+/// name
+/// 
+/// The compositor sends this event once the connector is created to
+/// indicate the name of this connector. This will not change for the
+/// duration of the Wayland session, but is not guaranteed to be consistent
+/// between sessions.
+/// 
+/// If the compositor supports wl_output version 4 and this connector
+/// corresponds to a wl_output, the compositor should use the same name as
+/// for the wl_output.
+/// 
+class WpDrmLeaseConnectorV1NameEvent {
+/// connector name
+  final String name;
+
+  WpDrmLeaseConnectorV1NameEvent(
+this.name,
+
+);
+
+@override
+String toString(){
+  return """WpDrmLeaseConnectorV1NameEvent: {
+    name: $name,
+  }""";
+}
+
+}
+
+typedef WpDrmLeaseConnectorV1NameEventHandler = void Function(WpDrmLeaseConnectorV1NameEvent);
+
+/// description
+/// 
+/// The compositor sends this event once the connector is created to provide
+/// a human-readable description for this connector, which may be presented
+/// to the user. The compositor may send this event multiple times over the
+/// lifetime of this object to reflect changes in the description.
+/// 
+class WpDrmLeaseConnectorV1DescriptionEvent {
+/// connector description
+  final String description;
+
+  WpDrmLeaseConnectorV1DescriptionEvent(
+this.description,
+
+);
+
+@override
+String toString(){
+  return """WpDrmLeaseConnectorV1DescriptionEvent: {
+    description: $description,
+  }""";
+}
+
+}
+
+typedef WpDrmLeaseConnectorV1DescriptionEventHandler = void Function(WpDrmLeaseConnectorV1DescriptionEvent);
+
+/// connector_id
+/// 
+/// The compositor sends this event once the connector is created to
+/// indicate the DRM object ID which represents the underlying connector
+/// that is being offered. Note that the final lease may include additional
+/// object IDs, such as CRTCs and planes.
+/// 
+class WpDrmLeaseConnectorV1ConnectorIdEvent {
+/// DRM connector ID
+  final int connectorId;
+
+  WpDrmLeaseConnectorV1ConnectorIdEvent(
+this.connectorId,
+
+);
+
+@override
+String toString(){
+  return """WpDrmLeaseConnectorV1ConnectorIdEvent: {
+    connectorId: $connectorId,
+  }""";
+}
+
+}
+
+typedef WpDrmLeaseConnectorV1ConnectorIdEventHandler = void Function(WpDrmLeaseConnectorV1ConnectorIdEvent);
+
+/// all properties have been sent
+/// 
+/// This event is sent after all properties of a connector have been sent.
+/// This allows changes to the properties to be seen as atomic even if they
+/// happen via multiple events.
+/// 
+class WpDrmLeaseConnectorV1DoneEvent {
+  WpDrmLeaseConnectorV1DoneEvent(
+);
+
+@override
+String toString(){
+  return """WpDrmLeaseConnectorV1DoneEvent: {
+  }""";
+}
+
+}
+
+typedef WpDrmLeaseConnectorV1DoneEventHandler = void Function(WpDrmLeaseConnectorV1DoneEvent);
+
+/// lease offer withdrawn
+/// 
+/// Sent to indicate that the compositor will no longer honor requests for
+/// DRM leases which include this connector. The client may still issue a
+/// lease request including this connector, but the compositor will send
+/// wp_drm_lease_v1.finished without issuing a lease fd. Compositors are
+/// encouraged to send this event when they lose access to connector, for
+/// example when the connector is hot-unplugged, when the connector gets
+/// leased to a client or when the compositor loses DRM master.
+/// 
+class WpDrmLeaseConnectorV1WithdrawnEvent {
+  WpDrmLeaseConnectorV1WithdrawnEvent(
+);
+
+@override
+String toString(){
+  return """WpDrmLeaseConnectorV1WithdrawnEvent: {
+  }""";
+}
+
+}
+
+typedef WpDrmLeaseConnectorV1WithdrawnEventHandler = void Function(WpDrmLeaseConnectorV1WithdrawnEvent);
+
 
 /// a leasable DRM connector
 /// 
@@ -209,21 +483,32 @@ class WpDrmLeaseDeviceV1 extends Proxy implements Dispatcher{
 class WpDrmLeaseConnectorV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  WpDrmLeaseConnectorV1(this.context) : super(context.allocateClientId());
+  WpDrmLeaseConnectorV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy connector
+/// 
+/// The client may send this request to indicate that it will not use this
+/// connector. Clients are encouraged to send this after receiving the
+/// "withdrawn" event so that the server can release the resources
+/// associated with this connector offer. Neither existing lease requests
+/// nor leases will be affected.
+/// 
   Future<void> destroy() async {
+    print("WpDrmLeaseConnectorV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// name
+/// name
 /// 
 /// The compositor sends this event once the connector is created to
 /// indicate the name of this connector. This will not change for the
@@ -234,51 +519,58 @@ class WpDrmLeaseConnectorV1 extends Proxy implements Dispatcher{
 /// corresponds to a wl_output, the compositor should use the same name as
 /// for the wl_output.
 /// 
- void onname(void Function(String name) handler) {
+/// Event handler for Name
+/// - [name]: connector name
+ void onName(WpDrmLeaseConnectorV1NameEventHandler handler) {
    _nameHandler = handler;
  }
 
- void Function(String name)? _nameHandler;
+ WpDrmLeaseConnectorV1NameEventHandler? _nameHandler;
 
- /// description
+/// description
 /// 
 /// The compositor sends this event once the connector is created to provide
 /// a human-readable description for this connector, which may be presented
 /// to the user. The compositor may send this event multiple times over the
 /// lifetime of this object to reflect changes in the description.
 /// 
- void ondescription(void Function(String description) handler) {
+/// Event handler for Description
+/// - [description]: connector description
+ void onDescription(WpDrmLeaseConnectorV1DescriptionEventHandler handler) {
    _descriptionHandler = handler;
  }
 
- void Function(String description)? _descriptionHandler;
+ WpDrmLeaseConnectorV1DescriptionEventHandler? _descriptionHandler;
 
- /// connector_id
+/// connector_id
 /// 
 /// The compositor sends this event once the connector is created to
 /// indicate the DRM object ID which represents the underlying connector
 /// that is being offered. Note that the final lease may include additional
 /// object IDs, such as CRTCs and planes.
 /// 
- void onconnectorId(void Function(int connectorId) handler) {
+/// Event handler for ConnectorId
+/// - [connector_id]: DRM connector ID
+ void onConnectorId(WpDrmLeaseConnectorV1ConnectorIdEventHandler handler) {
    _connectorIdHandler = handler;
  }
 
- void Function(int connectorId)? _connectorIdHandler;
+ WpDrmLeaseConnectorV1ConnectorIdEventHandler? _connectorIdHandler;
 
- /// all properties have been sent
+/// all properties have been sent
 /// 
 /// This event is sent after all properties of a connector have been sent.
 /// This allows changes to the properties to be seen as atomic even if they
 /// happen via multiple events.
 /// 
- void ondone(void Function() handler) {
+/// Event handler for Done
+ void onDone(WpDrmLeaseConnectorV1DoneEventHandler handler) {
    _doneHandler = handler;
  }
 
- void Function()? _doneHandler;
+ WpDrmLeaseConnectorV1DoneEventHandler? _doneHandler;
 
- /// lease offer withdrawn
+/// lease offer withdrawn
 /// 
 /// Sent to indicate that the compositor will no longer honor requests for
 /// DRM leases which include this connector. The client may still issue a
@@ -288,51 +580,59 @@ class WpDrmLeaseConnectorV1 extends Proxy implements Dispatcher{
 /// example when the connector is hot-unplugged, when the connector gets
 /// leased to a client or when the compositor loses DRM master.
 /// 
- void onwithdrawn(void Function() handler) {
+/// Event handler for Withdrawn
+ void onWithdrawn(WpDrmLeaseConnectorV1WithdrawnEventHandler handler) {
    _withdrawnHandler = handler;
  }
 
- void Function()? _withdrawnHandler;
+ WpDrmLeaseConnectorV1WithdrawnEventHandler? _withdrawnHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_nameHandler != null) {
-         _nameHandler!(
+var event = WpDrmLeaseConnectorV1NameEvent(
            getString(data, 0),
-         );
+        );
+         _nameHandler!(event);
        }
        break;
      case 1:
        if (_descriptionHandler != null) {
-         _descriptionHandler!(
+var event = WpDrmLeaseConnectorV1DescriptionEvent(
            getString(data, 0),
-         );
+        );
+         _descriptionHandler!(event);
        }
        break;
      case 2:
        if (_connectorIdHandler != null) {
-         _connectorIdHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = WpDrmLeaseConnectorV1ConnectorIdEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _connectorIdHandler!(event);
        }
        break;
      case 3:
        if (_doneHandler != null) {
-         _doneHandler!(
-         );
+var event = WpDrmLeaseConnectorV1DoneEvent(
+        );
+         _doneHandler!(event);
        }
        break;
      case 4:
        if (_withdrawnHandler != null) {
-         _withdrawnHandler!(
-         );
+var event = WpDrmLeaseConnectorV1WithdrawnEvent(
+        );
+         _withdrawnHandler!(event);
        }
        break;
    }
  }
 }
+
+
 
 /// DRM lease request
 /// 
@@ -344,11 +644,28 @@ class WpDrmLeaseConnectorV1 extends Proxy implements Dispatcher{
 class WpDrmLeaseRequestV1 extends Proxy{
   final Context context;
 
-  WpDrmLeaseRequestV1(this.context) : super(context.allocateClientId());
+  WpDrmLeaseRequestV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// request a connector for this lease
+/// 
+/// Indicates that the client would like to lease the given connector.
+/// This is only used as a suggestion, the compositor may choose to
+/// include any resources in the lease it issues, or change the set of
+/// leased resources at any time. Compositors are however encouraged to
+/// include the requested connector and other resources necessary
+/// to drive the connected output in the lease.
+/// 
+/// Requesting a connector that was created from a different lease device
+/// than this lease request raises the wrong_device error. Requesting a
+/// connector twice will raise the duplicate_connector error.
+/// 
+/// [connector]:
   Future<void> requestConnector(WpDrmLeaseConnectorV1 connector) async {
+    print("WpDrmLeaseRequestV1::requestConnector  connector: $connector");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
         connector,
@@ -357,13 +674,25 @@ class WpDrmLeaseRequestV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> submit() async {
-  var id =  WpDrmLeaseRequestV1(context);
+/// submit the lease request
+/// 
+/// Submits the lease request and creates a new wp_drm_lease_v1 object.
+/// After calling submit the compositor will immediately destroy this
+/// object, issuing any more requests will cause a wl_display error.
+/// The compositor doesn't make any guarantees about the events of the
+/// lease object, clients cannot expect an immediate response.
+/// Not requesting any connectors before submitting the lease request
+/// will raise the empty_lease error.
+/// 
+/// [id]:
+  Future<WpDrmLeaseV1> submit() async {
+  var id =  WpDrmLeaseV1(context);
+    print("WpDrmLeaseRequestV1::submit  id: $id");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -372,7 +701,8 @@ class WpDrmLeaseRequestV1 extends Proxy{
         WaylandType.newId,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
@@ -381,13 +711,73 @@ class WpDrmLeaseRequestV1 extends Proxy{
 /// 
 
 enum WpDrmLeaseRequestV1error {
-  /// requested a connector from a different lease device
+/// requested a connector from a different lease device
   wrongDevice,
-  /// requested a connector twice
+/// requested a connector twice
   duplicateConnector,
-  /// requested a lease without requesting a connector
+/// requested a lease without requesting a connector
   emptyLease,
 }
+
+
+/// shares the DRM file descriptor
+/// 
+/// This event returns a file descriptor suitable for use with DRM-related
+/// ioctls. The client should use drmModeGetLease to enumerate the DRM
+/// objects which have been leased to them. The compositor guarantees it
+/// will not use the leased DRM objects itself until it sends the finished
+/// event. If the compositor cannot or will not grant a lease for the
+/// requested connectors, it will not send this event, instead sending the
+/// finished event.
+/// 
+/// The compositor will send this event at most once during this objects
+/// lifetime.
+/// 
+class WpDrmLeaseV1LeaseFdEvent {
+/// leased DRM file descriptor
+  final int leasedFd;
+
+  WpDrmLeaseV1LeaseFdEvent(
+this.leasedFd,
+
+);
+
+@override
+String toString(){
+  return """WpDrmLeaseV1LeaseFdEvent: {
+    leasedFd: $leasedFd,
+  }""";
+}
+
+}
+
+typedef WpDrmLeaseV1LeaseFdEventHandler = void Function(WpDrmLeaseV1LeaseFdEvent);
+
+/// sent when the lease has been revoked
+/// 
+/// The compositor uses this event to either reject a lease request, or if
+/// it previously sent a lease_fd, to notify the client that the lease has
+/// been revoked. If the client requires a new lease, they should destroy
+/// this object and submit a new lease request. The compositor will send
+/// no further events for this object after sending the finish event.
+/// Compositors should revoke the lease when any of the leased resources
+/// become unavailable, namely when a hot-unplug occurs or when the
+/// compositor loses DRM master.
+/// 
+class WpDrmLeaseV1FinishedEvent {
+  WpDrmLeaseV1FinishedEvent(
+);
+
+@override
+String toString(){
+  return """WpDrmLeaseV1FinishedEvent: {
+  }""";
+}
+
+}
+
+typedef WpDrmLeaseV1FinishedEventHandler = void Function(WpDrmLeaseV1FinishedEvent);
+
 
 /// a DRM lease
 /// 
@@ -403,21 +793,30 @@ enum WpDrmLeaseRequestV1error {
 class WpDrmLeaseV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  WpDrmLeaseV1(this.context) : super(context.allocateClientId());
+  WpDrmLeaseV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroys the lease object
+/// 
+/// The client should send this to indicate that it no longer wishes to use
+/// this lease. The compositor should use drmModeRevokeLease on the
+/// appropriate file descriptor, if necessary.
+/// 
   Future<void> destroy() async {
+    print("WpDrmLeaseV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// shares the DRM file descriptor
+/// shares the DRM file descriptor
 /// 
 /// This event returns a file descriptor suitable for use with DRM-related
 /// ioctls. The client should use drmModeGetLease to enumerate the DRM
@@ -430,13 +829,15 @@ class WpDrmLeaseV1 extends Proxy implements Dispatcher{
 /// The compositor will send this event at most once during this objects
 /// lifetime.
 /// 
- void onleaseFd(void Function(int leasedFd) handler) {
+/// Event handler for LeaseFd
+/// - [leased_fd]: leased DRM file descriptor
+ void onLeaseFd(WpDrmLeaseV1LeaseFdEventHandler handler) {
    _leaseFdHandler = handler;
  }
 
- void Function(int leasedFd)? _leaseFdHandler;
+ WpDrmLeaseV1LeaseFdEventHandler? _leaseFdHandler;
 
- /// sent when the lease has been revoked
+/// sent when the lease has been revoked
 /// 
 /// The compositor uses this event to either reject a lease request, or if
 /// it previously sent a lease_fd, to notify the client that the lease has
@@ -447,26 +848,29 @@ class WpDrmLeaseV1 extends Proxy implements Dispatcher{
 /// become unavailable, namely when a hot-unplug occurs or when the
 /// compositor loses DRM master.
 /// 
- void onfinished(void Function() handler) {
+/// Event handler for Finished
+ void onFinished(WpDrmLeaseV1FinishedEventHandler handler) {
    _finishedHandler = handler;
  }
 
- void Function()? _finishedHandler;
+ WpDrmLeaseV1FinishedEventHandler? _finishedHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_leaseFdHandler != null) {
-         _leaseFdHandler!(
+var event = WpDrmLeaseV1LeaseFdEvent(
            fd,
-         );
+        );
+         _leaseFdHandler!(event);
        }
        break;
      case 1:
        if (_finishedHandler != null) {
-         _finishedHandler!(
-         );
+var event = WpDrmLeaseV1FinishedEvent(
+        );
+         _finishedHandler!(event);
        }
        break;
    }

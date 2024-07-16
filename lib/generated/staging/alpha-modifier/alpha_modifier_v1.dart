@@ -30,7 +30,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// surface alpha modifier manager
 /// 
 /// This interface allows a client to set a factor for the alpha values on a
@@ -45,24 +48,41 @@ import 'dart:typed_data';
 class WpAlphaModifierV1 extends Proxy{
   final Context context;
 
-  WpAlphaModifierV1(this.context) : super(context.allocateClientId());
+  WpAlphaModifierV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the alpha modifier manager object
+/// 
+/// Destroy the alpha modifier manager. This doesn't destroy objects
+/// created with the manager.
+/// 
   Future<void> destroy() async {
+    print("WpAlphaModifierV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getSurface(Surface surface) async {
-  var id =  WpAlphaModifierV1(context);
+/// create a new toplevel decoration object
+/// 
+/// Create a new alpha modifier surface object associated with the
+/// given wl_surface. If there is already such an object associated with
+/// the wl_surface, the already_constructed error will be raised.
+/// 
+/// [id]:
+/// [surface]:
+  Future<WpAlphaModifierSurfaceV1> getSurface(Surface surface) async {
+  var id =  WpAlphaModifierSurfaceV1(context);
+    print("WpAlphaModifierV1::getSurface  id: $id surface: $surface");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -73,7 +93,8 @@ class WpAlphaModifierV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
@@ -82,9 +103,11 @@ class WpAlphaModifierV1 extends Proxy{
 /// 
 
 enum WpAlphaModifierV1error {
-  /// wl_surface already has a alpha modifier object
+/// wl_surface already has a alpha modifier object
   alreadyConstructed,
 }
+
+
 
 /// alpha modifier object for a surface
 /// 
@@ -99,23 +122,50 @@ enum WpAlphaModifierV1error {
 class WpAlphaModifierSurfaceV1 extends Proxy{
   final Context context;
 
-  WpAlphaModifierSurfaceV1(this.context) : super(context.allocateClientId());
+  WpAlphaModifierSurfaceV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the alpha modifier object
+/// 
+/// This destroys the object, and is equivalent to set_multiplier with
+/// a value of UINT32_MAX, with the same double-buffered semantics as
+/// set_multiplier.
+/// 
   Future<void> destroy() async {
+    print("WpAlphaModifierSurfaceV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// specify the alpha multiplier
+/// 
+/// Sets the alpha multiplier for the surface. The alpha multiplier is
+/// double-buffered state, see wl_surface.commit for details.
+/// 
+/// This factor is applied in the compositor's blending space, as an
+/// additional step after the processing of per-pixel alpha values for the
+/// wl_surface. The exact meaning of the factor is thus undefined, unless
+/// the blending space is specified in a different extension.
+/// 
+/// This multiplier is applied even if the buffer attached to the
+/// wl_surface doesn't have an alpha channel; in that case an alpha value
+/// of one is used instead.
+/// 
+/// Zero means completely transparent, UINT32_MAX means completely opaque.
+/// 
+/// [factor]:
   Future<void> setMultiplier(int factor) async {
+    print("WpAlphaModifierSurfaceV1::setMultiplier  factor: $factor");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         factor,
@@ -124,7 +174,7 @@ class WpAlphaModifierSurfaceV1 extends Proxy{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }
@@ -133,7 +183,7 @@ class WpAlphaModifierSurfaceV1 extends Proxy{
 /// 
 
 enum WpAlphaModifierSurfaceV1error {
-  /// wl_surface was destroyed
+/// wl_surface was destroyed
   noSurface,
 }
 

@@ -1,5 +1,5 @@
 gen:
-    dart run bin/scanner.dart scan --i=https://gitlab.freedesktop.org/wayland/wayland/-/raw/main/protocol/wayland.xml --o=wayland.dart --prefix=XdgShell --pkg=wayland
-    
+    dart --enable-asserts bin/scanner.dart scan --format=true --prefix=wl --pkg=client --protocols=protocols.yaml --clean=true
+
     
     

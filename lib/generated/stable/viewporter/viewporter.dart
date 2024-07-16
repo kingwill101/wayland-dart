@@ -30,7 +30,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// surface cropping and scaling
 /// 
 /// The global interface exposing surface cropping and scaling
@@ -43,24 +46,43 @@ import 'dart:typed_data';
 class WpViewporter extends Proxy{
   final Context context;
 
-  WpViewporter(this.context) : super(context.allocateClientId());
+  WpViewporter(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// unbind from the cropping and scaling interface
+/// 
+/// Informs the server that the client will not be using this
+/// protocol object anymore. This does not affect any other objects,
+/// wp_viewport objects included.
+/// 
   Future<void> destroy() async {
+    print("WpViewporter::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getViewport(Surface surface) async {
-  var id =  WpViewporter(context);
+/// extend surface interface for crop and scale
+/// 
+/// Instantiate an interface extension for the given wl_surface to
+/// crop and scale its content. If the given wl_surface already has
+/// a wp_viewport object associated, the viewport_exists
+/// protocol error is raised.
+/// 
+/// [id]: the new viewport interface id
+/// [surface]: the surface
+  Future<WpViewport> getViewport(Surface surface) async {
+  var id =  WpViewport(context);
+    print("WpViewporter::getViewport  id: $id surface: $surface");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -71,7 +93,8 @@ class WpViewporter extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
@@ -80,9 +103,11 @@ class WpViewporter extends Proxy{
 /// 
 
 enum WpViewportererror {
-  /// the surface already has a viewport object associated
+/// the surface already has a viewport object associated
   viewportExists,
 }
+
+
 
 /// crop and scale interface to a wl_surface
 /// 
@@ -144,23 +169,49 @@ enum WpViewportererror {
 class WpViewport extends Proxy{
   final Context context;
 
-  WpViewport(this.context) : super(context.allocateClientId());
+  WpViewport(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// remove scaling and cropping from the surface
+/// 
+/// The associated wl_surface's crop and scale state is removed.
+/// The change is applied on the next wl_surface.commit.
+/// 
   Future<void> destroy() async {
+    print("WpViewport::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set the source rectangle for cropping
+/// 
+/// Set the source rectangle of the associated wl_surface. See
+/// wp_viewport for the description, and relation to the wl_buffer
+/// size.
+/// 
+/// If all of x, y, width and height are -1.0, the source rectangle is
+/// unset instead. Any other set of values where width or height are zero
+/// or negative, or x or y are negative, raise the bad_value protocol
+/// error.
+/// 
+/// The crop and scale state is double-buffered, see wl_surface.commit.
+/// 
+/// [x]: source rectangle x
+/// [y]: source rectangle y
+/// [width]: source rectangle width
+/// [height]: source rectangle height
   Future<void> setSource(double x, double y, double width, double height) async {
+    print("WpViewport::setSource  x: $x y: $y width: $width height: $height");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         x,
@@ -175,12 +226,28 @@ class WpViewport extends Proxy{
         WaylandType.fixed,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set the surface size for scaling
+/// 
+/// Set the destination size of the associated wl_surface. See
+/// wp_viewport for the description, and relation to the wl_buffer
+/// size.
+/// 
+/// If width is -1 and height is -1, the destination size is unset
+/// instead. Any other pair of values for width and height that
+/// contains zero or negative values raises the bad_value protocol
+/// error.
+/// 
+/// The crop and scale state is double-buffered, see wl_surface.commit.
+/// 
+/// [width]: surface width
+/// [height]: surface height
   Future<void> setDestination(int width, int height) async {
+    print("WpViewport::setDestination  width: $width height: $height");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
         width,
@@ -191,7 +258,7 @@ class WpViewport extends Proxy{
         WaylandType.int,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }
@@ -200,13 +267,13 @@ class WpViewport extends Proxy{
 /// 
 
 enum WpViewporterror {
-  /// negative or zero values in width or height
+/// negative or zero values in width or height
   badValue,
-  /// destination size is not integer
+/// destination size is not integer
   badSize,
-  /// source rectangle extends outside of the content area
+/// source rectangle extends outside of the content area
   outOfBuffer,
-  /// the wl_surface was destroyed
+/// the wl_surface was destroyed
   noSurface,
 }
 

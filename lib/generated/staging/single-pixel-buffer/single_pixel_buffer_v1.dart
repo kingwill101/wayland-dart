@@ -30,7 +30,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// global factory for single-pixel buffers
 /// 
 /// The wp_single_pixel_buffer_manager_v1 interface is a factory for
@@ -39,24 +42,48 @@ import 'dart:typed_data';
 class WpSinglePixelBufferManagerV1 extends Proxy{
   final Context context;
 
-  WpSinglePixelBufferManagerV1(this.context) : super(context.allocateClientId());
+  WpSinglePixelBufferManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the manager
+/// 
+/// Destroy the wp_single_pixel_buffer_manager_v1 object.
+/// 
+/// The child objects created via this interface are unaffected.
+/// 
   Future<void> destroy() async {
+    print("WpSinglePixelBufferManagerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> createU32RgbaBuffer(int r, int g, int b, int a) async {
-  var id =  WpSinglePixelBufferManagerV1(context);
+/// create a 1×1 buffer from 32-bit RGBA values
+/// 
+/// Create a single-pixel buffer from four 32-bit RGBA values.
+/// 
+/// Unless specified in another protocol extension, the RGBA values use
+/// pre-multiplied alpha.
+/// 
+/// The width and height of the buffer are 1.
+/// 
+/// [id]:
+/// [r]: value of the buffer's red channel
+/// [g]: value of the buffer's green channel
+/// [b]: value of the buffer's blue channel
+/// [a]: value of the buffer's alpha channel
+  Future<Buffer> createU32RgbaBuffer(int r, int g, int b, int a) async {
+  var id =  Buffer(context);
+    print("WpSinglePixelBufferManagerV1::createU32RgbaBuffer  id: $id r: $r g: $g b: $b a: $a");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -73,7 +100,8 @@ class WpSinglePixelBufferManagerV1 extends Proxy{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }

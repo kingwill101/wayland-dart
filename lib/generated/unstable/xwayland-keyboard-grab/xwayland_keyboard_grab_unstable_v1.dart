@@ -30,7 +30,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// context object for keyboard grab manager
 /// 
 /// A global interface used for grabbing the keyboard.
@@ -38,24 +41,57 @@ import 'dart:typed_data';
 class ZwpXwaylandKeyboardGrabManagerV1 extends Proxy{
   final Context context;
 
-  ZwpXwaylandKeyboardGrabManagerV1(this.context) : super(context.allocateClientId());
+  ZwpXwaylandKeyboardGrabManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the keyboard grab manager
+/// 
+/// Destroy the keyboard grab manager.
+/// 
   Future<void> destroy() async {
+    print("ZwpXwaylandKeyboardGrabManagerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> grabKeyboard(Surface surface, Seat seat) async {
-  var id =  ZwpXwaylandKeyboardGrabManagerV1(context);
+/// grab the keyboard to a surface
+/// 
+/// The grab_keyboard request asks for a grab of the keyboard, forcing
+/// the keyboard focus for the given seat upon the given surface.
+/// 
+/// The protocol provides no guarantee that the grab is ever satisfied,
+/// and does not require the compositor to send an error if the grab
+/// cannot ever be satisfied. It is thus possible to request a keyboard
+/// grab that will never be effective.
+/// 
+/// The protocol:
+/// 
+/// * does not guarantee that the grab itself is applied for a surface,
+/// the grab request may be silently ignored by the compositor,
+/// * does not guarantee that any events are sent to this client even
+/// if the grab is applied to a surface,
+/// * does not guarantee that events sent to this client are exhaustive,
+/// a compositor may filter some events for its own consumption,
+/// * does not guarantee that events sent to this client are continuous,
+/// a compositor may change and reroute keyboard events while the grab
+/// is nominally active.
+/// 
+/// [id]:
+/// [surface]: surface to report keyboard events to
+/// [seat]: the seat for which the keyboard should be grabbed
+  Future<ZwpXwaylandKeyboardGrabV1> grabKeyboard(Surface surface, Seat seat) async {
+  var id =  ZwpXwaylandKeyboardGrabV1(context);
+    print("ZwpXwaylandKeyboardGrabManagerV1::grabKeyboard  id: $id surface: $surface seat: $seat");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -68,10 +104,13 @@ class ZwpXwaylandKeyboardGrabManagerV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
+
+
 
 /// interface for grabbing the keyboard
 /// 
@@ -80,18 +119,26 @@ class ZwpXwaylandKeyboardGrabManagerV1 extends Proxy{
 class ZwpXwaylandKeyboardGrabV1 extends Proxy{
   final Context context;
 
-  ZwpXwaylandKeyboardGrabV1(this.context) : super(context.allocateClientId());
+  ZwpXwaylandKeyboardGrabV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the grabbed keyboard object
+/// 
+/// Destroy the grabbed keyboard object. If applicable, the compositor
+/// will ungrab the keyboard.
+/// 
   Future<void> destroy() async {
+    print("ZwpXwaylandKeyboardGrabV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }

@@ -31,7 +31,10 @@ library client;
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
 import 'package:wayland/generated/stable/xdg-shell/xdg_shell.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// window decoration manager
 /// 
 /// This interface allows a compositor to announce support for server-side
@@ -60,24 +63,45 @@ import 'dart:typed_data';
 class ZxdgDecorationManagerV1 extends Proxy{
   final Context context;
 
-  ZxdgDecorationManagerV1(this.context) : super(context.allocateClientId());
+  ZxdgDecorationManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the decoration manager object
+/// 
+/// Destroy the decoration manager. This doesn't destroy objects created
+/// with the manager.
+/// 
   Future<void> destroy() async {
+    print("ZxdgDecorationManagerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getToplevelDecoration(XdgToplevel toplevel) async {
-  var id =  ZxdgDecorationManagerV1(context);
+/// create a new toplevel decoration object
+/// 
+/// Create a new decoration object associated with the given toplevel.
+/// 
+/// Creating an xdg_toplevel_decoration from an xdg_toplevel which has a
+/// buffer attached or committed is a client error, and any attempts by a
+/// client to attach or manipulate a buffer prior to the first
+/// xdg_toplevel_decoration.configure event must also be treated as
+/// errors.
+/// 
+/// [id]:
+/// [toplevel]:
+  Future<ZxdgToplevelDecorationV1> getToplevelDecoration(XdgToplevel toplevel) async {
+  var id =  ZxdgToplevelDecorationV1(context);
+    print("ZxdgDecorationManagerV1::getToplevelDecoration  id: $id toplevel: $toplevel");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -88,10 +112,43 @@ class ZxdgDecorationManagerV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
+
+
+/// notify a decoration mode change
+/// 
+/// The configure event configures the effective decoration mode. The
+/// configured state should not be applied immediately. Clients must send an
+/// ack_configure in response to this event. See xdg_surface.configure and
+/// xdg_surface.ack_configure for details.
+/// 
+/// A configure event can be sent at any time. The specified mode must be
+/// obeyed by the client.
+/// 
+class ZxdgToplevelDecorationV1ConfigureEvent {
+/// the decoration mode
+  final int mode;
+
+  ZxdgToplevelDecorationV1ConfigureEvent(
+this.mode,
+
+);
+
+@override
+String toString(){
+  return """ZxdgToplevelDecorationV1ConfigureEvent: {
+    mode: $mode,
+  }""";
+}
+
+}
+
+typedef ZxdgToplevelDecorationV1ConfigureEventHandler = void Function(ZxdgToplevelDecorationV1ConfigureEvent);
+
 
 /// decoration object for a toplevel surface
 /// 
@@ -105,23 +162,54 @@ class ZxdgDecorationManagerV1 extends Proxy{
 class ZxdgToplevelDecorationV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  ZxdgToplevelDecorationV1(this.context) : super(context.allocateClientId());
+  ZxdgToplevelDecorationV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the decoration object
+/// 
+/// Switch back to a mode without any server-side decorations at the next
+/// commit.
+/// 
   Future<void> destroy() async {
+    print("ZxdgToplevelDecorationV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set the decoration mode
+/// 
+/// Set the toplevel surface decoration mode. This informs the compositor
+/// that the client prefers the provided decoration mode.
+/// 
+/// After requesting a decoration mode, the compositor will respond by
+/// emitting an xdg_surface.configure event. The client should then update
+/// its content, drawing it without decorations if the received mode is
+/// server-side decorations. The client must also acknowledge the configure
+/// when committing the new content (see xdg_surface.ack_configure).
+/// 
+/// The compositor can decide not to use the client's mode and enforce a
+/// different mode instead.
+/// 
+/// Clients whose decoration mode depend on the xdg_toplevel state may send
+/// a set_mode request in response to an xdg_surface.configure event and wait
+/// for the next xdg_surface.configure event to prevent unwanted state.
+/// Such clients are responsible for preventing configure loops and must
+/// make sure not to send multiple successive set_mode requests with the
+/// same decoration mode.
+/// 
+/// [mode]: the decoration mode
   Future<void> setMode(int mode) async {
+    print("ZxdgToplevelDecorationV1::setMode  mode: $mode");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         mode,
@@ -130,22 +218,30 @@ class ZxdgToplevelDecorationV1 extends Proxy implements Dispatcher{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// unset the decoration mode
+/// 
+/// Unset the toplevel surface decoration mode. This informs the compositor
+/// that the client doesn't prefer a particular decoration mode.
+/// 
+/// This request has the same semantics as set_mode.
+/// 
   Future<void> unsetMode() async {
+    print("ZxdgToplevelDecorationV1::unsetMode ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// notify a decoration mode change
+/// notify a decoration mode change
 /// 
 /// The configure event configures the effective decoration mode. The
 /// configured state should not be applied immediately. Clients must send an
@@ -155,20 +251,23 @@ class ZxdgToplevelDecorationV1 extends Proxy implements Dispatcher{
 /// A configure event can be sent at any time. The specified mode must be
 /// obeyed by the client.
 /// 
- void onconfigure(void Function(int mode) handler) {
+/// Event handler for Configure
+/// - [mode]: the decoration mode
+ void onConfigure(ZxdgToplevelDecorationV1ConfigureEventHandler handler) {
    _configureHandler = handler;
  }
 
- void Function(int mode)? _configureHandler;
+ ZxdgToplevelDecorationV1ConfigureEventHandler? _configureHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_configureHandler != null) {
-         _configureHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZxdgToplevelDecorationV1ConfigureEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _configureHandler!(event);
        }
        break;
    }
@@ -179,11 +278,11 @@ class ZxdgToplevelDecorationV1 extends Proxy implements Dispatcher{
 /// 
 
 enum ZxdgToplevelDecorationV1error {
-  /// xdg_toplevel has a buffer attached before configure
+/// xdg_toplevel has a buffer attached before configure
   unconfiguredBuffer,
-  /// xdg_toplevel already has a decoration object
+/// xdg_toplevel already has a decoration object
   alreadyConstructed,
-  /// xdg_toplevel destroyed before the decoration object
+/// xdg_toplevel destroyed before the decoration object
   orphaned,
 }
 
@@ -193,9 +292,9 @@ enum ZxdgToplevelDecorationV1error {
 /// 
 
 enum ZxdgToplevelDecorationV1mode {
-  /// no server-side window decoration
+/// no server-side window decoration
   clientSide,
-  /// server-side window decoration
+/// server-side window decoration
   serverSide,
 }
 

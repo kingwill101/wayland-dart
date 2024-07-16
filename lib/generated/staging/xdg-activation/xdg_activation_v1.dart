@@ -31,7 +31,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// interface for activating surfaces
 /// 
 /// A global interface used for informing the compositor about applications
@@ -41,24 +44,43 @@ import 'dart:typed_data';
 class XdgActivationV1 extends Proxy{
   final Context context;
 
-  XdgActivationV1(this.context) : super(context.allocateClientId());
+  XdgActivationV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the xdg_activation object
+/// 
+/// Notify the compositor that the xdg_activation object will no longer be
+/// used.
+/// 
+/// The child objects created via this interface are unaffected and should
+/// be destroyed separately.
+/// 
   Future<void> destroy() async {
+    print("XdgActivationV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getActivationToken() async {
-  var id =  XdgActivationV1(context);
+/// requests a token
+/// 
+/// Creates an xdg_activation_token_v1 object that will provide
+/// the initiating client with a unique token for this activation. This
+/// token should be offered to the clients to be activated.
+/// 
+/// [id]:
+  Future<XdgActivationTokenV1> getActivationToken() async {
+  var id =  XdgActivationTokenV1(context);
+    print("XdgActivationV1::getActivationToken  id: $id");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -67,12 +89,29 @@ class XdgActivationV1 extends Proxy{
         WaylandType.newId,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
+/// notify new interaction being available
+/// 
+/// Requests surface activation. It's up to the compositor to display
+/// this information as desired, for example by placing the surface above
+/// the rest.
+/// 
+/// The compositor may know who requested this by checking the activation
+/// token and might decide not to follow through with the activation if it's
+/// considered unwanted.
+/// 
+/// Compositors can ignore unknown activation tokens when an invalid
+/// token is passed.
+/// 
+/// [token]: the activation token of the initiating client
+/// [surface]: the wl_surface to activate
   Future<void> activate(String token, Surface surface) async {
+    print("XdgActivationV1::activate  token: $token surface: $surface");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
         token,
@@ -83,10 +122,37 @@ class XdgActivationV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }
+
+
+/// the exported activation token
+/// 
+/// The 'done' event contains the unique token of this activation request
+/// and notifies that the provider is done.
+/// 
+class XdgActivationTokenV1DoneEvent {
+/// the exported activation token
+  final String token;
+
+  XdgActivationTokenV1DoneEvent(
+this.token,
+
+);
+
+@override
+String toString(){
+  return """XdgActivationTokenV1DoneEvent: {
+    token: $token,
+  }""";
+}
+
+}
+
+typedef XdgActivationTokenV1DoneEventHandler = void Function(XdgActivationTokenV1DoneEvent);
+
 
 /// an exported activation handle
 /// 
@@ -102,11 +168,31 @@ class XdgActivationV1 extends Proxy{
 class XdgActivationTokenV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  XdgActivationTokenV1(this.context) : super(context.allocateClientId());
+  XdgActivationTokenV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// specifies the seat and serial of the activating event
+/// 
+/// Provides information about the seat and serial event that requested the
+/// token.
+/// 
+/// The serial can come from an input or focus event. For instance, if a
+/// click triggers the launch of a third-party client, the launcher client
+/// should send a set_serial request with the serial and seat from the
+/// wl_pointer.button event.
+/// 
+/// Some compositors might refuse to activate toplevels when the token
+/// doesn't have a valid and recent enough event serial.
+/// 
+/// Must be sent before commit. This information is optional.
+/// 
+/// [serial]: the serial of the event that triggered the activation
+/// [seat]: the wl_seat of the event
   Future<void> setSerial(int serial, Seat seat) async {
+    print("XdgActivationTokenV1::setSerial  serial: $serial seat: $seat");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
         serial,
@@ -117,12 +203,21 @@ class XdgActivationTokenV1 extends Proxy implements Dispatcher{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// specifies the application being activated
+/// 
+/// The requesting client can specify an app_id to associate the token
+/// being created with it.
+/// 
+/// Must be sent before commit. This information is optional.
+/// 
+/// [app_id]: the application id of the client being activated.
   Future<void> setAppId(String appId) async {
+    print("XdgActivationTokenV1::setAppId  appId: $appId");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         appId,
@@ -131,12 +226,24 @@ class XdgActivationTokenV1 extends Proxy implements Dispatcher{
         WaylandType.string,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// specifies the surface requesting activation
+/// 
+/// This request sets the surface requesting the activation. Note, this is
+/// different from the surface that will be activated.
+/// 
+/// Some compositors might refuse to activate toplevels when the token
+/// doesn't have a requesting surface.
+/// 
+/// Must be sent before commit. This information is optional.
+/// 
+/// [surface]: the requesting surface
   Future<void> setSurface(Surface surface) async {
+    print("XdgActivationTokenV1::setSurface  surface: $surface");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
         surface,
@@ -145,52 +252,67 @@ class XdgActivationTokenV1 extends Proxy implements Dispatcher{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// issues the token request
+/// 
+/// Requests an activation token based on the different parameters that
+/// have been offered through set_serial, set_surface and set_app_id.
+/// 
   Future<void> commit() async {
+    print("XdgActivationTokenV1::commit ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       3,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// destroy the xdg_activation_token_v1 object
+/// 
+/// Notify the compositor that the xdg_activation_token_v1 object will no
+/// longer be used. The received token stays valid.
+/// 
   Future<void> destroy() async {
+    print("XdgActivationTokenV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       4,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// the exported activation token
+/// the exported activation token
 /// 
 /// The 'done' event contains the unique token of this activation request
 /// and notifies that the provider is done.
 /// 
- void ondone(void Function(String token) handler) {
+/// Event handler for Done
+/// - [token]: the exported activation token
+ void onDone(XdgActivationTokenV1DoneEventHandler handler) {
    _doneHandler = handler;
  }
 
- void Function(String token)? _doneHandler;
+ XdgActivationTokenV1DoneEventHandler? _doneHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_doneHandler != null) {
-         _doneHandler!(
+var event = XdgActivationTokenV1DoneEvent(
            getString(data, 0),
-         );
+        );
+         _doneHandler!(event);
        }
        break;
    }
@@ -201,7 +323,7 @@ class XdgActivationTokenV1 extends Proxy implements Dispatcher{
 /// 
 
 enum XdgActivationTokenV1error {
-  /// The token has already been used previously
+/// The token has already been used previously
   alreadyUsed,
 }
 

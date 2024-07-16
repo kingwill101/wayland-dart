@@ -30,7 +30,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// interface for exporting surfaces
 /// 
 /// A global interface used for exporting surfaces that can later be imported
@@ -39,24 +42,46 @@ import 'dart:typed_data';
 class ZxdgExporterV1 extends Proxy{
   final Context context;
 
-  ZxdgExporterV1(this.context) : super(context.allocateClientId());
+  ZxdgExporterV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the xdg_exporter object
+/// 
+/// Notify the compositor that the xdg_exporter object will no longer be
+/// used.
+/// 
   Future<void> destroy() async {
+    print("ZxdgExporterV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> export(Surface surface) async {
-  var id =  ZxdgExporterV1(context);
+/// export a surface
+/// 
+/// The export request exports the passed surface so that it can later be
+/// imported via xdg_importer. When called, a new xdg_exported object will
+/// be created and xdg_exported.handle will be sent immediately. See the
+/// corresponding interface and event for details.
+/// 
+/// A surface may be exported multiple times, and each exported handle may
+/// be used to create an xdg_imported multiple times. Only xdg_surface
+/// surfaces may be exported.
+/// 
+/// [id]: the new xdg_exported object
+/// [surface]: the surface to export
+  Future<ZxdgExportedV1> export(Surface surface) async {
+  var id =  ZxdgExportedV1(context);
+    print("ZxdgExporterV1::export  id: $id surface: $surface");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -67,10 +92,13 @@ class ZxdgExporterV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
+
+
 
 /// interface for importing surfaces
 /// 
@@ -81,24 +109,43 @@ class ZxdgExporterV1 extends Proxy{
 class ZxdgImporterV1 extends Proxy{
   final Context context;
 
-  ZxdgImporterV1(this.context) : super(context.allocateClientId());
+  ZxdgImporterV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the xdg_importer object
+/// 
+/// Notify the compositor that the xdg_importer object will no longer be
+/// used.
+/// 
   Future<void> destroy() async {
+    print("ZxdgImporterV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> import(String handle) async {
-  var id =  ZxdgImporterV1(context);
+/// import a surface
+/// 
+/// The import request imports a surface from any client given a handle
+/// retrieved by exporting said surface using xdg_exporter.export. When
+/// called, a new xdg_imported object will be created. This new object
+/// represents the imported surface, and the importing client can
+/// manipulate its relationship using it. See xdg_imported for details.
+/// 
+/// [id]: the new xdg_imported object
+/// [handle]: the exported surface handle
+  Future<ZxdgImportedV1> import(String handle) async {
+  var id =  ZxdgImportedV1(context);
+    print("ZxdgImporterV1::import  id: $id handle: $handle");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -109,10 +156,40 @@ class ZxdgImporterV1 extends Proxy{
         WaylandType.string,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
+
+
+/// the exported surface handle
+/// 
+/// The handle event contains the unique handle of this exported surface
+/// reference. It may be shared with any client, which then can use it to
+/// import the surface by calling xdg_importer.import. A handle may be
+/// used to import the surface multiple times.
+/// 
+class ZxdgExportedV1HandleEvent {
+/// the exported surface handle
+  final String handle;
+
+  ZxdgExportedV1HandleEvent(
+this.handle,
+
+);
+
+@override
+String toString(){
+  return """ZxdgExportedV1HandleEvent: {
+    handle: $handle,
+  }""";
+}
+
+}
+
+typedef ZxdgExportedV1HandleEventHandler = void Function(ZxdgExportedV1HandleEvent);
+
 
 /// an exported surface handle
 /// 
@@ -124,46 +201,81 @@ class ZxdgImporterV1 extends Proxy{
 class ZxdgExportedV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  ZxdgExportedV1(this.context) : super(context.allocateClientId());
+  ZxdgExportedV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// unexport the exported surface
+/// 
+/// Revoke the previously exported surface. This invalidates any
+/// relationship the importer may have set up using the xdg_imported created
+/// given the handle sent via xdg_exported.handle.
+/// 
   Future<void> destroy() async {
+    print("ZxdgExportedV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// the exported surface handle
+/// the exported surface handle
 /// 
 /// The handle event contains the unique handle of this exported surface
 /// reference. It may be shared with any client, which then can use it to
 /// import the surface by calling xdg_importer.import. A handle may be
 /// used to import the surface multiple times.
 /// 
- void onhandle(void Function(String handle) handler) {
+/// Event handler for Handle
+/// - [handle]: the exported surface handle
+ void onHandle(ZxdgExportedV1HandleEventHandler handler) {
    _handleHandler = handler;
  }
 
- void Function(String handle)? _handleHandler;
+ ZxdgExportedV1HandleEventHandler? _handleHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_handleHandler != null) {
-         _handleHandler!(
+var event = ZxdgExportedV1HandleEvent(
            getString(data, 0),
-         );
+        );
+         _handleHandler!(event);
        }
        break;
    }
  }
 }
+
+
+/// the imported surface handle has been destroyed
+/// 
+/// The imported surface handle has been destroyed and any relationship set
+/// up has been invalidated. This may happen for various reasons, for
+/// example if the exported surface or the exported surface handle has been
+/// destroyed, if the handle used for importing was invalid.
+/// 
+class ZxdgImportedV1DestroyedEvent {
+  ZxdgImportedV1DestroyedEvent(
+);
+
+@override
+String toString(){
+  return """ZxdgImportedV1DestroyedEvent: {
+  }""";
+}
+
+}
+
+typedef ZxdgImportedV1DestroyedEventHandler = void Function(ZxdgImportedV1DestroyedEvent);
+
 
 /// an imported surface handle
 /// 
@@ -174,23 +286,41 @@ class ZxdgExportedV1 extends Proxy implements Dispatcher{
 class ZxdgImportedV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  ZxdgImportedV1(this.context) : super(context.allocateClientId());
+  ZxdgImportedV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the xdg_imported object
+/// 
+/// Notify the compositor that it will no longer use the xdg_imported
+/// object. Any relationship that may have been set up will at this point
+/// be invalidated.
+/// 
   Future<void> destroy() async {
+    print("ZxdgImportedV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set as the parent of some surface
+/// 
+/// Set the imported surface as the parent of some surface of the client.
+/// The passed surface must be a toplevel xdg_surface. Calling this function
+/// sets up a surface to surface relation with the same stacking and positioning
+/// semantics as xdg_surface.set_parent.
+/// 
+/// [surface]: the child surface
   Future<void> setParentOf(Surface surface) async {
+    print("ZxdgImportedV1::setParentOf  surface: $surface");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         surface,
@@ -199,29 +329,31 @@ class ZxdgImportedV1 extends Proxy implements Dispatcher{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// the imported surface handle has been destroyed
+/// the imported surface handle has been destroyed
 /// 
 /// The imported surface handle has been destroyed and any relationship set
 /// up has been invalidated. This may happen for various reasons, for
 /// example if the exported surface or the exported surface handle has been
 /// destroyed, if the handle used for importing was invalid.
 /// 
- void ondestroyed(void Function() handler) {
+/// Event handler for Destroyed
+ void onDestroyed(ZxdgImportedV1DestroyedEventHandler handler) {
    _destroyedHandler = handler;
  }
 
- void Function()? _destroyedHandler;
+ ZxdgImportedV1DestroyedEventHandler? _destroyedHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_destroyedHandler != null) {
-         _destroyedHandler!(
-         );
+var event = ZxdgImportedV1DestroyedEvent(
+        );
+         _destroyedHandler!(event);
        }
        break;
    }

@@ -30,7 +30,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// manage xdg_output objects
 /// 
 /// A global factory interface for xdg_output objects.
@@ -38,24 +41,41 @@ import 'dart:typed_data';
 class ZxdgOutputManagerV1 extends Proxy{
   final Context context;
 
-  ZxdgOutputManagerV1(this.context) : super(context.allocateClientId());
+  ZxdgOutputManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the xdg_output_manager object
+/// 
+/// Using this request a client can tell the server that it is not
+/// going to use the xdg_output_manager object anymore.
+/// 
+/// Any objects already created through this instance are not affected.
+/// 
   Future<void> destroy() async {
+    print("ZxdgOutputManagerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getXdgOutput(Output output) async {
-  var id =  ZxdgOutputManagerV1(context);
+/// create an xdg output from a wl_output
+/// 
+/// This creates a new xdg_output object for the given wl_output.
+/// 
+/// [id]:
+/// [output]:
+  Future<ZxdgOutputV1> getXdgOutput(Output output) async {
+  var id =  ZxdgOutputV1(context);
+    print("ZxdgOutputManagerV1::getXdgOutput  id: $id output: $output");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -66,41 +86,14 @@ class ZxdgOutputManagerV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
 
-/// compositor logical output region
-/// 
-/// An xdg_output describes part of the compositor geometry.
-/// 
-/// This typically corresponds to a monitor that displays part of the
-/// compositor space.
-/// 
-/// For objects version 3 onwards, after all xdg_output properties have been
-/// sent (when the object is created and when properties are updated), a
-/// wl_output.done event is sent. This allows changes to the output
-/// properties to be seen as atomic, even if they happen via multiple events.
-/// 
-class ZxdgOutputV1 extends Proxy implements Dispatcher{
-  final Context context;
 
-  ZxdgOutputV1(this.context) : super(context.allocateClientId());
-
-  Future<void> destroy() async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      0,
-      [
-      ],
-      [
-      ],
-    );
-    context.sendMessage(message);
-  }
-
- /// position of the output within the global compositor space
+/// position of the output within the global compositor space
 /// 
 /// The position event describes the location of the wl_output within
 /// the global compositor space.
@@ -109,13 +102,33 @@ class ZxdgOutputV1 extends Proxy implements Dispatcher{
 /// (see xdg_output_manager.get_xdg_output) and whenever the location
 /// of the output changes within the global compositor space.
 /// 
- void onlogicalPosition(void Function(int x, int y) handler) {
-   _logicalPositionHandler = handler;
- }
+class ZxdgOutputV1LogicalPositionEvent {
+/// x position within the global compositor space
+  final int x;
 
- void Function(int x, int y)? _logicalPositionHandler;
+/// y position within the global compositor space
+  final int y;
 
- /// size of the output in the global compositor space
+  ZxdgOutputV1LogicalPositionEvent(
+this.x,
+
+this.y,
+
+);
+
+@override
+String toString(){
+  return """ZxdgOutputV1LogicalPositionEvent: {
+    x: $x,
+    y: $y,
+  }""";
+}
+
+}
+
+typedef ZxdgOutputV1LogicalPositionEventHandler = void Function(ZxdgOutputV1LogicalPositionEvent);
+
+/// size of the output in the global compositor space
 /// 
 /// The logical_size event describes the size of the output in the
 /// global compositor space.
@@ -148,13 +161,33 @@ class ZxdgOutputV1 extends Proxy implements Dispatcher{
 /// applied scale or because of a change in the corresponding output
 /// mode(see wl_output.mode) or transform (see wl_output.transform).
 /// 
- void onlogicalSize(void Function(int width, int height) handler) {
-   _logicalSizeHandler = handler;
- }
+class ZxdgOutputV1LogicalSizeEvent {
+/// width in global compositor space
+  final int width;
 
- void Function(int width, int height)? _logicalSizeHandler;
+/// height in global compositor space
+  final int height;
 
- /// all information about the output have been sent
+  ZxdgOutputV1LogicalSizeEvent(
+this.width,
+
+this.height,
+
+);
+
+@override
+String toString(){
+  return """ZxdgOutputV1LogicalSizeEvent: {
+    width: $width,
+    height: $height,
+  }""";
+}
+
+}
+
+typedef ZxdgOutputV1LogicalSizeEventHandler = void Function(ZxdgOutputV1LogicalSizeEvent);
+
+/// all information about the output have been sent
 /// 
 /// This event is sent after all other properties of an xdg_output
 /// have been sent.
@@ -166,13 +199,21 @@ class ZxdgOutputV1 extends Proxy implements Dispatcher{
 /// are not required to send it anymore and must send wl_output.done
 /// instead.
 /// 
- void ondone(void Function() handler) {
-   _doneHandler = handler;
- }
+class ZxdgOutputV1DoneEvent {
+  ZxdgOutputV1DoneEvent(
+);
 
- void Function()? _doneHandler;
+@override
+String toString(){
+  return """ZxdgOutputV1DoneEvent: {
+  }""";
+}
 
- /// name of this output
+}
+
+typedef ZxdgOutputV1DoneEventHandler = void Function(ZxdgOutputV1DoneEvent);
+
+/// name of this output
 /// 
 /// Many compositors will assign names to their outputs, show them to the
 /// user, allow them to be configured by name, etc. The client may wish to
@@ -196,13 +237,27 @@ class ZxdgOutputV1 extends Proxy implements Dispatcher{
 /// This event is deprecated, instead clients should use wl_output.name.
 /// Compositors must still support this event.
 /// 
- void onname(void Function(String name) handler) {
-   _nameHandler = handler;
- }
+class ZxdgOutputV1NameEvent {
+/// output name
+  final String name;
 
- void Function(String name)? _nameHandler;
+  ZxdgOutputV1NameEvent(
+this.name,
 
- /// human-readable description of this output
+);
+
+@override
+String toString(){
+  return """ZxdgOutputV1NameEvent: {
+    name: $name,
+  }""";
+}
+
+}
+
+typedef ZxdgOutputV1NameEventHandler = void Function(ZxdgOutputV1NameEvent);
+
+/// human-readable description of this output
 /// 
 /// Many compositors can produce human-readable descriptions of their
 /// outputs.  The client may wish to know this description as well, to
@@ -223,49 +278,246 @@ class ZxdgOutputV1 extends Proxy implements Dispatcher{
 /// This event is deprecated, instead clients should use
 /// wl_output.description. Compositors must still support this event.
 /// 
- void ondescription(void Function(String description) handler) {
+class ZxdgOutputV1DescriptionEvent {
+/// output description
+  final String description;
+
+  ZxdgOutputV1DescriptionEvent(
+this.description,
+
+);
+
+@override
+String toString(){
+  return """ZxdgOutputV1DescriptionEvent: {
+    description: $description,
+  }""";
+}
+
+}
+
+typedef ZxdgOutputV1DescriptionEventHandler = void Function(ZxdgOutputV1DescriptionEvent);
+
+
+/// compositor logical output region
+/// 
+/// An xdg_output describes part of the compositor geometry.
+/// 
+/// This typically corresponds to a monitor that displays part of the
+/// compositor space.
+/// 
+/// For objects version 3 onwards, after all xdg_output properties have been
+/// sent (when the object is created and when properties are updated), a
+/// wl_output.done event is sent. This allows changes to the output
+/// properties to be seen as atomic, even if they happen via multiple events.
+/// 
+class ZxdgOutputV1 extends Proxy implements Dispatcher{
+  final Context context;
+
+  ZxdgOutputV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
+
+/// destroy the xdg_output object
+/// 
+/// Using this request a client can tell the server that it is not
+/// going to use the xdg_output object anymore.
+/// 
+  Future<void> destroy() async {
+    print("ZxdgOutputV1::destroy ");
+    final message = WaylandMessage(
+      objectId,
+      0,
+      [
+      ],
+      [
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// position of the output within the global compositor space
+/// 
+/// The position event describes the location of the wl_output within
+/// the global compositor space.
+/// 
+/// The logical_position event is sent after creating an xdg_output
+/// (see xdg_output_manager.get_xdg_output) and whenever the location
+/// of the output changes within the global compositor space.
+/// 
+/// Event handler for LogicalPosition
+/// - [x]: x position within the global compositor space
+/// - [y]: y position within the global compositor space
+ void onLogicalPosition(ZxdgOutputV1LogicalPositionEventHandler handler) {
+   _logicalPositionHandler = handler;
+ }
+
+ ZxdgOutputV1LogicalPositionEventHandler? _logicalPositionHandler;
+
+/// size of the output in the global compositor space
+/// 
+/// The logical_size event describes the size of the output in the
+/// global compositor space.
+/// 
+/// Most regular Wayland clients should not pay attention to the
+/// logical size and would rather rely on xdg_shell interfaces.
+/// 
+/// Some clients such as Xwayland, however, need this to configure
+/// their surfaces in the global compositor space as the compositor
+/// may apply a different scale from what is advertised by the output
+/// scaling property (to achieve fractional scaling, for example).
+/// 
+/// For example, for a wl_output mode 3840×2160 and a scale factor 2:
+/// 
+/// - A compositor not scaling the monitor viewport in its compositing space
+/// will advertise a logical size of 3840×2160,
+/// 
+/// - A compositor scaling the monitor viewport with scale factor 2 will
+/// advertise a logical size of 1920×1080,
+/// 
+/// - A compositor scaling the monitor viewport using a fractional scale of
+/// 1.5 will advertise a logical size of 2560×1440.
+/// 
+/// For example, for a wl_output mode 1920×1080 and a 90 degree rotation,
+/// the compositor will advertise a logical size of 1080x1920.
+/// 
+/// The logical_size event is sent after creating an xdg_output
+/// (see xdg_output_manager.get_xdg_output) and whenever the logical
+/// size of the output changes, either as a result of a change in the
+/// applied scale or because of a change in the corresponding output
+/// mode(see wl_output.mode) or transform (see wl_output.transform).
+/// 
+/// Event handler for LogicalSize
+/// - [width]: width in global compositor space
+/// - [height]: height in global compositor space
+ void onLogicalSize(ZxdgOutputV1LogicalSizeEventHandler handler) {
+   _logicalSizeHandler = handler;
+ }
+
+ ZxdgOutputV1LogicalSizeEventHandler? _logicalSizeHandler;
+
+/// all information about the output have been sent
+/// 
+/// This event is sent after all other properties of an xdg_output
+/// have been sent.
+/// 
+/// This allows changes to the xdg_output properties to be seen as
+/// atomic, even if they happen via multiple events.
+/// 
+/// For objects version 3 onwards, this event is deprecated. Compositors
+/// are not required to send it anymore and must send wl_output.done
+/// instead.
+/// 
+/// Event handler for Done
+ void onDone(ZxdgOutputV1DoneEventHandler handler) {
+   _doneHandler = handler;
+ }
+
+ ZxdgOutputV1DoneEventHandler? _doneHandler;
+
+/// name of this output
+/// 
+/// Many compositors will assign names to their outputs, show them to the
+/// user, allow them to be configured by name, etc. The client may wish to
+/// know this name as well to offer the user similar behaviors.
+/// 
+/// The naming convention is compositor defined, but limited to
+/// alphanumeric characters and dashes (-). Each name is unique among all
+/// wl_output globals, but if a wl_output global is destroyed the same name
+/// may be reused later. The names will also remain consistent across
+/// sessions with the same hardware and software configuration.
+/// 
+/// Examples of names include 'HDMI-A-1', 'WL-1', 'X11-1', etc. However, do
+/// not assume that the name is a reflection of an underlying DRM
+/// connector, X11 connection, etc.
+/// 
+/// The name event is sent after creating an xdg_output (see
+/// xdg_output_manager.get_xdg_output). This event is only sent once per
+/// xdg_output, and the name does not change over the lifetime of the
+/// wl_output global.
+/// 
+/// This event is deprecated, instead clients should use wl_output.name.
+/// Compositors must still support this event.
+/// 
+/// Event handler for Name
+/// - [name]: output name
+ void onName(ZxdgOutputV1NameEventHandler handler) {
+   _nameHandler = handler;
+ }
+
+ ZxdgOutputV1NameEventHandler? _nameHandler;
+
+/// human-readable description of this output
+/// 
+/// Many compositors can produce human-readable descriptions of their
+/// outputs.  The client may wish to know this description as well, to
+/// communicate the user for various purposes.
+/// 
+/// The description is a UTF-8 string with no convention defined for its
+/// contents. Examples might include 'Foocorp 11" Display' or 'Virtual X11
+/// output via :1'.
+/// 
+/// The description event is sent after creating an xdg_output (see
+/// xdg_output_manager.get_xdg_output) and whenever the description
+/// changes. The description is optional, and may not be sent at all.
+/// 
+/// For objects of version 2 and lower, this event is only sent once per
+/// xdg_output, and the description does not change over the lifetime of
+/// the wl_output global.
+/// 
+/// This event is deprecated, instead clients should use
+/// wl_output.description. Compositors must still support this event.
+/// 
+/// Event handler for Description
+/// - [description]: output description
+ void onDescription(ZxdgOutputV1DescriptionEventHandler handler) {
    _descriptionHandler = handler;
  }
 
- void Function(String description)? _descriptionHandler;
+ ZxdgOutputV1DescriptionEventHandler? _descriptionHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_logicalPositionHandler != null) {
-         _logicalPositionHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-           ByteData.view(data.buffer).getInt32(4, Endian.host),
-         );
+var event = ZxdgOutputV1LogicalPositionEvent(
+           ByteData.view(data.buffer).getInt32(0, Endian.little),
+           ByteData.view(data.buffer).getInt32(4, Endian.little),
+        );
+         _logicalPositionHandler!(event);
        }
        break;
      case 1:
        if (_logicalSizeHandler != null) {
-         _logicalSizeHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-           ByteData.view(data.buffer).getInt32(4, Endian.host),
-         );
+var event = ZxdgOutputV1LogicalSizeEvent(
+           ByteData.view(data.buffer).getInt32(0, Endian.little),
+           ByteData.view(data.buffer).getInt32(4, Endian.little),
+        );
+         _logicalSizeHandler!(event);
        }
        break;
      case 2:
        if (_doneHandler != null) {
-         _doneHandler!(
-         );
+var event = ZxdgOutputV1DoneEvent(
+        );
+         _doneHandler!(event);
        }
        break;
      case 3:
        if (_nameHandler != null) {
-         _nameHandler!(
+var event = ZxdgOutputV1NameEvent(
            getString(data, 0),
-         );
+        );
+         _nameHandler!(event);
        }
        break;
      case 4:
        if (_descriptionHandler != null) {
-         _descriptionHandler!(
+var event = ZxdgOutputV1DescriptionEvent(
            getString(data, 0),
-         );
+        );
+         _descriptionHandler!(event);
        }
        break;
    }

@@ -32,61 +32,10 @@ library client;
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
 import 'package:wayland/generated/stable/xdg-shell/xdg_shell.dart';
+import 'dart:async';
 import 'dart:typed_data';
-/// interface to manage toplevel icons
-/// 
-/// This interface allows clients to create toplevel window icons and set
-/// them on toplevel windows to be displayed to the user.
-/// 
-class XdgToplevelIconManagerV1 extends Proxy implements Dispatcher{
-  final Context context;
 
-  XdgToplevelIconManagerV1(this.context) : super(context.allocateClientId());
-
-  Future<void> destroy() async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      0,
-      [
-      ],
-      [
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> createIcon() async {
-  var id =  XdgToplevelIconManagerV1(context);
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      1,
-      [
-        id,
-      ],
-      [
-        WaylandType.newId,
-      ],
-    );
-    context.sendMessage(message);
-  }
-
-  Future<void> setIcon(XdgToplevel toplevel, XdgToplevelIconV1 icon) async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      2,
-      [
-        toplevel,
-        icon,
-      ],
-      [
-        WaylandType.object,
-        WaylandType.object,
-      ],
-    );
-    context.sendMessage(message);
-  }
-
- /// describes a supported & preferred icon size
+/// describes a supported & preferred icon size
 /// 
 /// This event indicates an icon size the compositor prefers to be
 /// available if the client has scalable icons and can render to any size.
@@ -101,41 +50,197 @@ class XdgToplevelIconManagerV1 extends Proxy implements Dispatcher{
 /// If the compositor has no size preferences, it must still send the
 /// 'done' event, without any preceding 'icon_size' events.
 /// 
- void oniconSize(void Function(int size) handler) {
-   _iconSizeHandler = handler;
- }
+class XdgToplevelIconManagerV1IconSizeEvent {
+/// the edge size of the square icon in surface-local coordinates, e.g. 64
+  final int size;
 
- void Function(int size)? _iconSizeHandler;
+  XdgToplevelIconManagerV1IconSizeEvent(
+this.size,
 
- /// all information has been sent
+);
+
+@override
+String toString(){
+  return """XdgToplevelIconManagerV1IconSizeEvent: {
+    size: $size,
+  }""";
+}
+
+}
+
+typedef XdgToplevelIconManagerV1IconSizeEventHandler = void Function(XdgToplevelIconManagerV1IconSizeEvent);
+
+/// all information has been sent
 /// 
 /// This event is sent after all 'icon_size' events have been sent.
 /// 
- void ondone(void Function() handler) {
+class XdgToplevelIconManagerV1DoneEvent {
+  XdgToplevelIconManagerV1DoneEvent(
+);
+
+@override
+String toString(){
+  return """XdgToplevelIconManagerV1DoneEvent: {
+  }""";
+}
+
+}
+
+typedef XdgToplevelIconManagerV1DoneEventHandler = void Function(XdgToplevelIconManagerV1DoneEvent);
+
+
+/// interface to manage toplevel icons
+/// 
+/// This interface allows clients to create toplevel window icons and set
+/// them on toplevel windows to be displayed to the user.
+/// 
+class XdgToplevelIconManagerV1 extends Proxy implements Dispatcher{
+  final Context context;
+
+  XdgToplevelIconManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
+
+/// destroy the toplevel icon manager
+/// 
+/// Destroy the toplevel icon manager.
+/// This does not destroy objects created with the manager.
+/// 
+  Future<void> destroy() async {
+    print("XdgToplevelIconManagerV1::destroy ");
+    final message = WaylandMessage(
+      objectId,
+      0,
+      [
+      ],
+      [
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// create a new icon instance
+/// 
+/// Creates a new icon object. This icon can then be attached to a
+/// xdg_toplevel via the 'set_icon' request.
+/// 
+/// [id]:
+  Future<XdgToplevelIconV1> createIcon() async {
+  var id =  XdgToplevelIconV1(context);
+    print("XdgToplevelIconManagerV1::createIcon  id: $id");
+    final message = WaylandMessage(
+      objectId,
+      1,
+      [
+        id,
+      ],
+      [
+        WaylandType.newId,
+      ],
+    );
+    await context.sendMessage(message);
+    return id;
+  }
+
+/// set an icon on a toplevel window
+/// 
+/// This request assigns the icon 'icon' to 'toplevel', or clears the
+/// toplevel icon if 'icon' was null.
+/// This state is double-buffered and is applied on the next
+/// wl_surface.commit of the toplevel.
+/// 
+/// After making this call, the xdg_toplevel_icon_v1 provided as 'icon'
+/// can be destroyed by the client without 'toplevel' losing its icon.
+/// The xdg_toplevel_icon_v1 is immutable from this point, and any
+/// future attempts to change it must raise the
+/// 'xdg_toplevel_icon_v1.immutable' protocol error.
+/// 
+/// The compositor must set the toplevel icon from either the pixel data
+/// the icon provides, or by loading a stock icon using the icon name.
+/// See the description of 'xdg_toplevel_icon_v1' for details.
+/// 
+/// If 'icon' is set to null, the icon of the respective toplevel is reset
+/// to its default icon (usually the icon of the application, derived from
+/// its desktop-entry file, or a placeholder icon).
+/// If this request is passed an icon with no pixel buffers or icon name
+/// assigned, the icon must be reset just like if 'icon' was null.
+/// 
+/// [toplevel]: the toplevel to act on
+/// [icon]:
+  Future<void> setIcon(XdgToplevel toplevel, XdgToplevelIconV1 icon) async {
+    print("XdgToplevelIconManagerV1::setIcon  toplevel: $toplevel icon: $icon");
+    final message = WaylandMessage(
+      objectId,
+      2,
+      [
+        toplevel,
+        icon,
+      ],
+      [
+        WaylandType.object,
+        WaylandType.object,
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// describes a supported & preferred icon size
+/// 
+/// This event indicates an icon size the compositor prefers to be
+/// available if the client has scalable icons and can render to any size.
+/// 
+/// When the 'xdg_toplevel_icon_manager_v1' object is created, the
+/// compositor may send one or more 'icon_size' events to describe the list
+/// of preferred icon sizes. If the compositor has no size preference, it
+/// may not send any 'icon_size' event, and it is up to the client to
+/// decide a suitable icon size.
+/// 
+/// A sequence of 'icon_size' events must be finished with a 'done' event.
+/// If the compositor has no size preferences, it must still send the
+/// 'done' event, without any preceding 'icon_size' events.
+/// 
+/// Event handler for IconSize
+/// - [size]: the edge size of the square icon in surface-local coordinates, e.g. 64
+ void onIconSize(XdgToplevelIconManagerV1IconSizeEventHandler handler) {
+   _iconSizeHandler = handler;
+ }
+
+ XdgToplevelIconManagerV1IconSizeEventHandler? _iconSizeHandler;
+
+/// all information has been sent
+/// 
+/// This event is sent after all 'icon_size' events have been sent.
+/// 
+/// Event handler for Done
+ void onDone(XdgToplevelIconManagerV1DoneEventHandler handler) {
    _doneHandler = handler;
  }
 
- void Function()? _doneHandler;
+ XdgToplevelIconManagerV1DoneEventHandler? _doneHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_iconSizeHandler != null) {
-         _iconSizeHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = XdgToplevelIconManagerV1IconSizeEvent(
+           ByteData.view(data.buffer).getInt32(0, Endian.little),
+        );
+         _iconSizeHandler!(event);
        }
        break;
      case 1:
        if (_doneHandler != null) {
-         _doneHandler!(
-         );
+var event = XdgToplevelIconManagerV1DoneEvent(
+        );
+         _doneHandler!(event);
        }
        break;
    }
  }
 }
+
+
 
 /// a toplevel window icon
 /// 
@@ -151,23 +256,52 @@ class XdgToplevelIconManagerV1 extends Proxy implements Dispatcher{
 class XdgToplevelIconV1 extends Proxy{
   final Context context;
 
-  XdgToplevelIconV1(this.context) : super(context.allocateClientId());
+  XdgToplevelIconV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the icon object
+/// 
+/// Destroys the 'xdg_toplevel_icon_v1' object.
+/// The icon must still remain set on every toplevel it was assigned to,
+/// until the toplevel icon is reset explicitly.
+/// 
   Future<void> destroy() async {
+    print("XdgToplevelIconV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set an icon name
+/// 
+/// This request assigns an icon name to this icon.
+/// Any previously set name is overridden.
+/// 
+/// The compositor must resolve 'icon_name' according to the lookup rules
+/// described in the XDG icon theme specification[1] using the
+/// environment's current icon theme.
+/// 
+/// If the compositor does not support icon names or cannot resolve
+/// 'icon_name' according to the XDG icon theme specification it must
+/// fall back to using pixel buffer data instead.
+/// 
+/// If this request is made after the icon has been assigned to a toplevel
+/// via 'set_icon', a 'immutable' error must be raised.
+/// 
+/// [1]: https://specifications.freedesktop.org/icon-theme-spec/icon-theme-spec-latest.html
+/// 
+/// [icon_name]:
   Future<void> setName(String iconName) async {
+    print("XdgToplevelIconV1::setName  iconName: $iconName");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         iconName,
@@ -176,12 +310,39 @@ class XdgToplevelIconV1 extends Proxy{
         WaylandType.string,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// add icon data from a pixel buffer
+/// 
+/// This request adds pixel data supplied as wl_buffer to the icon.
+/// 
+/// The client should add pixel data for all icon sizes and scales that
+/// it can provide, or which are explicitly requested by the compositor
+/// via 'icon_size' events on xdg_toplevel_icon_manager_v1.
+/// 
+/// The wl_buffer supplying pixel data as 'buffer' must be backed by wl_shm
+/// and must be a square (width and height being equal).
+/// If any of these buffer requirements are not fulfilled, a 'invalid_buffer'
+/// error must be raised.
+/// 
+/// If this icon instance already has a buffer of the same size and scale
+/// from a previous 'add_buffer' request, data from the last request
+/// overrides the preexisting pixel data.
+/// 
+/// The wl_buffer must be kept alive for as long as the xdg_toplevel_icon
+/// it is associated with is not destroyed. The buffer contents must not be
+/// modified after it was assigned to the icon.
+/// 
+/// If this request is made after the icon has been assigned to a toplevel
+/// via 'set_icon', a 'immutable' error must be raised.
+/// 
+/// [buffer]:
+/// [scale]: the scaling factor of the icon, e.g. 1
   Future<void> addBuffer(Buffer buffer, int scale) async {
+    print("XdgToplevelIconV1::addBuffer  buffer: $buffer scale: $scale");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
         buffer,
@@ -192,7 +353,7 @@ class XdgToplevelIconV1 extends Proxy{
         WaylandType.int,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }
@@ -201,9 +362,9 @@ class XdgToplevelIconV1 extends Proxy{
 /// 
 
 enum XdgToplevelIconV1error {
-  /// the provided buffer does not satisfy requirements
+/// the provided buffer does not satisfy requirements
   invalidBuffer,
-  /// the icon has already been assigned to a toplevel and must not be changed
+/// the icon has already been assigned to a toplevel and must not be changed
   immutable,
 }
 

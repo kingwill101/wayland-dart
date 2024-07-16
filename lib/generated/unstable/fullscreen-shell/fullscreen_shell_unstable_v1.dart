@@ -32,7 +32,41 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+/// advertises a capability of the compositor
+/// 
+/// Advertises a single capability of the compositor.
+/// 
+/// When the wl_fullscreen_shell interface is bound, this event is emitted
+/// once for each capability advertised.  Valid capabilities are given by
+/// the wl_fullscreen_shell.capability enum.  If clients want to take
+/// advantage of any of these capabilities, they should use a
+/// wl_display.sync request immediately after binding to ensure that they
+/// receive all the capability events.
+/// 
+class ZwpFullscreenShellV1CapabilityEvent {
+/// 
+  final int capability;
+
+  ZwpFullscreenShellV1CapabilityEvent(
+this.capability,
+
+);
+
+@override
+String toString(){
+  return """ZwpFullscreenShellV1CapabilityEvent: {
+    capability: $capability,
+  }""";
+}
+
+}
+
+typedef ZwpFullscreenShellV1CapabilityEventHandler = void Function(ZwpFullscreenShellV1CapabilityEvent);
+
+
 /// displays a single surface per output
 /// 
 /// Displays a single surface per output.
@@ -72,23 +106,62 @@ import 'dart:typed_data';
 class ZwpFullscreenShellV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  ZwpFullscreenShellV1(this.context) : super(context.allocateClientId());
+  ZwpFullscreenShellV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// release the wl_fullscreen_shell interface
+/// 
+/// Release the binding from the wl_fullscreen_shell interface.
+/// 
+/// This destroys the server-side object and frees this binding.  If
+/// the client binds to wl_fullscreen_shell multiple times, it may wish
+/// to free some of those bindings.
+/// 
   Future<void> release() async {
+    print("ZwpFullscreenShellV1::release ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// present surface for display
+/// 
+/// Present a surface on the given output.
+/// 
+/// If the output is null, the compositor will present the surface on
+/// whatever display (or displays) it thinks best.  In particular, this
+/// may replace any or all surfaces currently presented so it should
+/// not be used in combination with placing surfaces on specific
+/// outputs.
+/// 
+/// The method parameter is a hint to the compositor for how the surface
+/// is to be presented.  In particular, it tells the compositor how to
+/// handle a size mismatch between the presented surface and the
+/// output.  The compositor is free to ignore this parameter.
+/// 
+/// The "zoom", "zoom_crop", and "stretch" methods imply a scaling
+/// operation on the surface.  This will override any kind of output
+/// scaling, so the buffer_scale property of the surface is effectively
+/// ignored.
+/// 
+/// This request gives the surface the role of a fullscreen shell surface.
+/// If the surface already has another role, it raises a role protocol
+/// error.
+/// 
+/// [surface]:
+/// [method]:
+/// [output]:
   Future<void> presentSurface(Surface surface, int method, Output output) async {
+    print("ZwpFullscreenShellV1::presentSurface  surface: $surface method: $method output: $output");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         surface,
@@ -101,13 +174,62 @@ class ZwpFullscreenShellV1 extends Proxy implements Dispatcher{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> presentSurfaceForMode(Surface surface, Output output, int framerate) async {
-  var feedback =  ZwpFullscreenShellV1(context);
+/// present surface for display at a particular mode
+/// 
+/// Presents a surface on the given output for a particular mode.
+/// 
+/// If the current size of the output differs from that of the surface,
+/// the compositor will attempt to change the size of the output to
+/// match the surface.  The result of the mode-switch operation will be
+/// returned via the provided wl_fullscreen_shell_mode_feedback object.
+/// 
+/// If the current output mode matches the one requested or if the
+/// compositor successfully switches the mode to match the surface,
+/// then the mode_successful event will be sent and the output will
+/// contain the contents of the given surface.  If the compositor
+/// cannot match the output size to the surface size, the mode_failed
+/// will be sent and the output will contain the contents of the
+/// previously presented surface (if any).  If another surface is
+/// presented on the given output before either of these has a chance
+/// to happen, the present_cancelled event will be sent.
+/// 
+/// Due to race conditions and other issues unknown to the client, no
+/// mode-switch operation is guaranteed to succeed.  However, if the
+/// mode is one advertised by wl_output.mode or if the compositor
+/// advertises the ARBITRARY_MODES capability, then the client should
+/// expect that the mode-switch operation will usually succeed.
+/// 
+/// If the size of the presented surface changes, the resulting output
+/// is undefined.  The compositor may attempt to change the output mode
+/// to compensate.  However, there is no guarantee that a suitable mode
+/// will be found and the client has no way to be notified of success
+/// or failure.
+/// 
+/// The framerate parameter specifies the desired framerate for the
+/// output in mHz.  The compositor is free to ignore this parameter.  A
+/// value of 0 indicates that the client has no preference.
+/// 
+/// If the value of wl_output.scale differs from wl_surface.buffer_scale,
+/// then the compositor may choose a mode that matches either the buffer
+/// size or the surface size.  In either case, the surface will fill the
+/// output.
+/// 
+/// This request gives the surface the role of a fullscreen shell surface.
+/// If the surface already has another role, it raises a role protocol
+/// error.
+/// 
+/// [surface]:
+/// [output]:
+/// [framerate]:
+/// [feedback]:
+  Future<ZwpFullscreenShellModeFeedbackV1> presentSurfaceForMode(Surface surface, Output output, int framerate) async {
+  var feedback =  ZwpFullscreenShellModeFeedbackV1(context);
+    print("ZwpFullscreenShellV1::presentSurfaceForMode  surface: $surface output: $output framerate: $framerate feedback: $feedback");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
         surface,
@@ -122,10 +244,11 @@ class ZwpFullscreenShellV1 extends Proxy implements Dispatcher{
         WaylandType.newId,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return feedback;
   }
 
- /// advertises a capability of the compositor
+/// advertises a capability of the compositor
 /// 
 /// Advertises a single capability of the compositor.
 /// 
@@ -136,20 +259,23 @@ class ZwpFullscreenShellV1 extends Proxy implements Dispatcher{
 /// wl_display.sync request immediately after binding to ensure that they
 /// receive all the capability events.
 /// 
- void oncapability(void Function(int capability) handler) {
+/// Event handler for Capability
+/// - [capability]:
+ void onCapability(ZwpFullscreenShellV1CapabilityEventHandler handler) {
    _capabilityHandler = handler;
  }
 
- void Function(int capability)? _capabilityHandler;
+ ZwpFullscreenShellV1CapabilityEventHandler? _capabilityHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_capabilityHandler != null) {
-         _capabilityHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZwpFullscreenShellV1CapabilityEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _capabilityHandler!(event);
        }
        break;
    }
@@ -182,9 +308,9 @@ class ZwpFullscreenShellV1 extends Proxy implements Dispatcher{
 /// 
 
 enum ZwpFullscreenShellV1capability {
-  /// compositor is capable of almost any output mode
+/// compositor is capable of almost any output mode
   arbitraryModes,
-  /// compositor has a separate cursor plane
+/// compositor has a separate cursor plane
   cursorPlane,
 }
 
@@ -196,15 +322,15 @@ enum ZwpFullscreenShellV1capability {
 /// 
 
 enum ZwpFullscreenShellV1presentMethod {
-  /// no preference, apply default policy
+/// no preference, apply default policy
   defaulted,
-  /// center the surface on the output
+/// center the surface on the output
   center,
-  /// scale the surface, preserving aspect ratio, to the largest size that will fit on the output
+/// scale the surface, preserving aspect ratio, to the largest size that will fit on the output
   zoom,
-  /// scale the surface, preserving aspect ratio, to fully fill the output cropping if needed
+/// scale the surface, preserving aspect ratio, to fully fill the output cropping if needed
   zoomCrop,
-  /// scale the surface to the size of the output ignoring aspect ratio
+/// scale the surface to the size of the output ignoring aspect ratio
   stretch,
 }
 
@@ -214,20 +340,14 @@ enum ZwpFullscreenShellV1presentMethod {
 /// 
 
 enum ZwpFullscreenShellV1error {
-  /// present_method is not known
+/// present_method is not known
   invalidMethod,
-  /// given wl_surface has another role
+/// given wl_surface has another role
   role,
 }
 
-/// 
-/// 
-class ZwpFullscreenShellModeFeedbackV1 extends Proxy implements Dispatcher{
-  final Context context;
 
-  ZwpFullscreenShellModeFeedbackV1(this.context) : super(context.allocateClientId());
-
- /// mode switch succeeded
+/// mode switch succeeded
 /// 
 /// This event indicates that the attempted mode switch operation was
 /// successful.  A surface of the size requested in the mode switch
@@ -236,13 +356,21 @@ class ZwpFullscreenShellModeFeedbackV1 extends Proxy implements Dispatcher{
 /// Upon receiving this event, the client should destroy the
 /// wl_fullscreen_shell_mode_feedback object.
 /// 
- void onmodeSuccessful(void Function() handler) {
-   _modeSuccessfulHandler = handler;
- }
+class ZwpFullscreenShellModeFeedbackV1ModeSuccessfulEvent {
+  ZwpFullscreenShellModeFeedbackV1ModeSuccessfulEvent(
+);
 
- void Function()? _modeSuccessfulHandler;
+@override
+String toString(){
+  return """ZwpFullscreenShellModeFeedbackV1ModeSuccessfulEvent: {
+  }""";
+}
 
- /// mode switch failed
+}
+
+typedef ZwpFullscreenShellModeFeedbackV1ModeSuccessfulEventHandler = void Function(ZwpFullscreenShellModeFeedbackV1ModeSuccessfulEvent);
+
+/// mode switch failed
 /// 
 /// This event indicates that the attempted mode switch operation
 /// failed.  This may be because the requested output mode is not
@@ -251,13 +379,21 @@ class ZwpFullscreenShellModeFeedbackV1 extends Proxy implements Dispatcher{
 /// Upon receiving this event, the client should destroy the
 /// wl_fullscreen_shell_mode_feedback object.
 /// 
- void onmodeFailed(void Function() handler) {
-   _modeFailedHandler = handler;
- }
+class ZwpFullscreenShellModeFeedbackV1ModeFailedEvent {
+  ZwpFullscreenShellModeFeedbackV1ModeFailedEvent(
+);
 
- void Function()? _modeFailedHandler;
+@override
+String toString(){
+  return """ZwpFullscreenShellModeFeedbackV1ModeFailedEvent: {
+  }""";
+}
 
- /// mode switch cancelled
+}
+
+typedef ZwpFullscreenShellModeFeedbackV1ModeFailedEventHandler = void Function(ZwpFullscreenShellModeFeedbackV1ModeFailedEvent);
+
+/// mode switch cancelled
 /// 
 /// This event indicates that the attempted mode switch operation was
 /// cancelled.  Most likely this is because the client requested a
@@ -266,31 +402,100 @@ class ZwpFullscreenShellModeFeedbackV1 extends Proxy implements Dispatcher{
 /// Upon receiving this event, the client should destroy the
 /// wl_fullscreen_shell_mode_feedback object.
 /// 
- void onpresentCancelled(void Function() handler) {
+class ZwpFullscreenShellModeFeedbackV1PresentCancelledEvent {
+  ZwpFullscreenShellModeFeedbackV1PresentCancelledEvent(
+);
+
+@override
+String toString(){
+  return """ZwpFullscreenShellModeFeedbackV1PresentCancelledEvent: {
+  }""";
+}
+
+}
+
+typedef ZwpFullscreenShellModeFeedbackV1PresentCancelledEventHandler = void Function(ZwpFullscreenShellModeFeedbackV1PresentCancelledEvent);
+
+
+/// 
+/// 
+class ZwpFullscreenShellModeFeedbackV1 extends Proxy implements Dispatcher{
+  final Context context;
+
+  ZwpFullscreenShellModeFeedbackV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
+
+/// mode switch succeeded
+/// 
+/// This event indicates that the attempted mode switch operation was
+/// successful.  A surface of the size requested in the mode switch
+/// will fill the output without scaling.
+/// 
+/// Upon receiving this event, the client should destroy the
+/// wl_fullscreen_shell_mode_feedback object.
+/// 
+/// Event handler for ModeSuccessful
+ void onModeSuccessful(ZwpFullscreenShellModeFeedbackV1ModeSuccessfulEventHandler handler) {
+   _modeSuccessfulHandler = handler;
+ }
+
+ ZwpFullscreenShellModeFeedbackV1ModeSuccessfulEventHandler? _modeSuccessfulHandler;
+
+/// mode switch failed
+/// 
+/// This event indicates that the attempted mode switch operation
+/// failed.  This may be because the requested output mode is not
+/// possible or it may mean that the compositor does not want to allow it.
+/// 
+/// Upon receiving this event, the client should destroy the
+/// wl_fullscreen_shell_mode_feedback object.
+/// 
+/// Event handler for ModeFailed
+ void onModeFailed(ZwpFullscreenShellModeFeedbackV1ModeFailedEventHandler handler) {
+   _modeFailedHandler = handler;
+ }
+
+ ZwpFullscreenShellModeFeedbackV1ModeFailedEventHandler? _modeFailedHandler;
+
+/// mode switch cancelled
+/// 
+/// This event indicates that the attempted mode switch operation was
+/// cancelled.  Most likely this is because the client requested a
+/// second mode switch before the first one completed.
+/// 
+/// Upon receiving this event, the client should destroy the
+/// wl_fullscreen_shell_mode_feedback object.
+/// 
+/// Event handler for PresentCancelled
+ void onPresentCancelled(ZwpFullscreenShellModeFeedbackV1PresentCancelledEventHandler handler) {
    _presentCancelledHandler = handler;
  }
 
- void Function()? _presentCancelledHandler;
+ ZwpFullscreenShellModeFeedbackV1PresentCancelledEventHandler? _presentCancelledHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_modeSuccessfulHandler != null) {
-         _modeSuccessfulHandler!(
-         );
+var event = ZwpFullscreenShellModeFeedbackV1ModeSuccessfulEvent(
+        );
+         _modeSuccessfulHandler!(event);
        }
        break;
      case 1:
        if (_modeFailedHandler != null) {
-         _modeFailedHandler!(
-         );
+var event = ZwpFullscreenShellModeFeedbackV1ModeFailedEvent(
+        );
+         _modeFailedHandler!(event);
        }
        break;
      case 2:
        if (_presentCancelledHandler != null) {
-         _presentCancelledHandler!(
-         );
+var event = ZwpFullscreenShellModeFeedbackV1PresentCancelledEvent(
+        );
+         _presentCancelledHandler!(event);
        }
        break;
    }

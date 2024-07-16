@@ -30,7 +30,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// control behavior when display idles
 /// 
 /// This interface permits inhibiting the idle behavior such as screen
@@ -49,24 +52,38 @@ import 'dart:typed_data';
 class ZwpIdleInhibitManagerV1 extends Proxy{
   final Context context;
 
-  ZwpIdleInhibitManagerV1(this.context) : super(context.allocateClientId());
+  ZwpIdleInhibitManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the idle inhibitor object
+/// 
+/// Destroy the inhibit manager.
+/// 
   Future<void> destroy() async {
+    print("ZwpIdleInhibitManagerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> createInhibitor(Surface surface) async {
-  var id =  ZwpIdleInhibitManagerV1(context);
+/// create a new inhibitor object
+/// 
+/// Create a new inhibitor object associated with the given surface.
+/// 
+/// [id]:
+/// [surface]: the surface that inhibits the idle behavior
+  Future<ZwpIdleInhibitorV1> createInhibitor(Surface surface) async {
+  var id =  ZwpIdleInhibitorV1(context);
+    print("ZwpIdleInhibitManagerV1::createInhibitor  id: $id surface: $surface");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -77,10 +94,13 @@ class ZwpIdleInhibitManagerV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
+
+
 
 /// context object for inhibiting idle behavior
 /// 
@@ -100,18 +120,25 @@ class ZwpIdleInhibitManagerV1 extends Proxy{
 class ZwpIdleInhibitorV1 extends Proxy{
   final Context context;
 
-  ZwpIdleInhibitorV1(this.context) : super(context.allocateClientId());
+  ZwpIdleInhibitorV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the idle inhibitor object
+/// 
+/// Remove the inhibitor effect from the associated wl_surface.
+/// 
   Future<void> destroy() async {
+    print("ZwpIdleInhibitorV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }

@@ -30,7 +30,156 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+/// surrounding text event
+/// 
+/// The plain surrounding text around the input position. Cursor is the
+/// position in bytes within the surrounding text relative to the beginning
+/// of the text. Anchor is the position in bytes of the selection anchor
+/// within the surrounding text relative to the beginning of the text. If
+/// there is no selected text then anchor is the same as cursor.
+/// 
+class ZwpInputMethodContextV1SurroundingTextEvent {
+/// 
+  final String text;
+
+/// 
+  final int cursor;
+
+/// 
+  final int anchor;
+
+  ZwpInputMethodContextV1SurroundingTextEvent(
+this.text,
+
+this.cursor,
+
+this.anchor,
+
+);
+
+@override
+String toString(){
+  return """ZwpInputMethodContextV1SurroundingTextEvent: {
+    text: $text,
+    cursor: $cursor,
+    anchor: $anchor,
+  }""";
+}
+
+}
+
+typedef ZwpInputMethodContextV1SurroundingTextEventHandler = void Function(ZwpInputMethodContextV1SurroundingTextEvent);
+
+class ZwpInputMethodContextV1ResetEvent {
+  ZwpInputMethodContextV1ResetEvent(
+);
+
+@override
+String toString(){
+  return """ZwpInputMethodContextV1ResetEvent: {
+  }""";
+}
+
+}
+
+typedef ZwpInputMethodContextV1ResetEventHandler = void Function(ZwpInputMethodContextV1ResetEvent);
+
+class ZwpInputMethodContextV1ContentTypeEvent {
+/// 
+  final int hint;
+
+/// 
+  final int purpose;
+
+  ZwpInputMethodContextV1ContentTypeEvent(
+this.hint,
+
+this.purpose,
+
+);
+
+@override
+String toString(){
+  return """ZwpInputMethodContextV1ContentTypeEvent: {
+    hint: $hint,
+    purpose: $purpose,
+  }""";
+}
+
+}
+
+typedef ZwpInputMethodContextV1ContentTypeEventHandler = void Function(ZwpInputMethodContextV1ContentTypeEvent);
+
+class ZwpInputMethodContextV1InvokeActionEvent {
+/// 
+  final int button;
+
+/// 
+  final int index;
+
+  ZwpInputMethodContextV1InvokeActionEvent(
+this.button,
+
+this.index,
+
+);
+
+@override
+String toString(){
+  return """ZwpInputMethodContextV1InvokeActionEvent: {
+    button: $button,
+    index: $index,
+  }""";
+}
+
+}
+
+typedef ZwpInputMethodContextV1InvokeActionEventHandler = void Function(ZwpInputMethodContextV1InvokeActionEvent);
+
+class ZwpInputMethodContextV1CommitStateEvent {
+/// serial of text input state
+  final int serial;
+
+  ZwpInputMethodContextV1CommitStateEvent(
+this.serial,
+
+);
+
+@override
+String toString(){
+  return """ZwpInputMethodContextV1CommitStateEvent: {
+    serial: $serial,
+  }""";
+}
+
+}
+
+typedef ZwpInputMethodContextV1CommitStateEventHandler = void Function(ZwpInputMethodContextV1CommitStateEvent);
+
+class ZwpInputMethodContextV1PreferredLanguageEvent {
+/// 
+  final String language;
+
+  ZwpInputMethodContextV1PreferredLanguageEvent(
+this.language,
+
+);
+
+@override
+String toString(){
+  return """ZwpInputMethodContextV1PreferredLanguageEvent: {
+    language: $language,
+  }""";
+}
+
+}
+
+typedef ZwpInputMethodContextV1PreferredLanguageEventHandler = void Function(ZwpInputMethodContextV1PreferredLanguageEvent);
+
+
 /// input method context
 /// 
 /// Corresponds to a text input on the input method side. An input method context
@@ -60,23 +209,43 @@ import 'dart:typed_data';
 class ZwpInputMethodContextV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  ZwpInputMethodContextV1(this.context) : super(context.allocateClientId());
+  ZwpInputMethodContextV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// 
+/// 
   Future<void> destroy() async {
+    print("ZwpInputMethodContextV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// commit string
+/// 
+/// Send the commit string text for insertion to the application.
+/// 
+/// The text to commit could be either just a single character after a key
+/// press or the result of some composing (pre-edit). It could be also an
+/// empty text when some text should be removed (see
+/// delete_surrounding_text) or when the input cursor should be moved (see
+/// cursor_position).
+/// 
+/// Any previously set composing text will be removed.
+/// 
+/// [serial]: serial of the latest known text input state
+/// [text]:
   Future<void> commitString(int serial, String text) async {
+    print("ZwpInputMethodContextV1::commitString  serial: $serial text: $text");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         serial,
@@ -87,12 +256,26 @@ class ZwpInputMethodContextV1 extends Proxy implements Dispatcher{
         WaylandType.string,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// pre-edit string
+/// 
+/// Send the pre-edit string text to the application text input.
+/// 
+/// The commit text can be used to replace the pre-edit text on reset (for
+/// example on unfocus).
+/// 
+/// Previously sent preedit_style and preedit_cursor requests are also
+/// processed by the text_input.
+/// 
+/// [serial]: serial of the latest known text input state
+/// [text]:
+/// [commit]:
   Future<void> preeditString(int serial, String text, String commit) async {
+    print("ZwpInputMethodContextV1::preeditString  serial: $serial text: $text commit: $commit");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
         serial,
@@ -105,12 +288,25 @@ class ZwpInputMethodContextV1 extends Proxy implements Dispatcher{
         WaylandType.string,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// pre-edit styling
+/// 
+/// Set the styling information on composing text. The style is applied for
+/// length in bytes from index relative to the beginning of
+/// the composing text (as byte offset). Multiple styles can
+/// be applied to a composing text.
+/// 
+/// This request should be sent before sending a preedit_string request.
+/// 
+/// [index]:
+/// [length]:
+/// [style]:
   Future<void> preeditStyling(int index, int length, int style) async {
+    print("ZwpInputMethodContextV1::preeditStyling  index: $index length: $length style: $style");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       3,
       [
         index,
@@ -123,12 +319,23 @@ class ZwpInputMethodContextV1 extends Proxy implements Dispatcher{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// pre-edit cursor
+/// 
+/// Set the cursor position inside the composing text (as byte offset)
+/// relative to the start of the composing text.
+/// 
+/// When index is negative no cursor should be displayed.
+/// 
+/// This request should be sent before sending a preedit_string request.
+/// 
+/// [index]:
   Future<void> preeditCursor(int index) async {
+    print("ZwpInputMethodContextV1::preeditCursor  index: $index");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       4,
       [
         index,
@@ -137,12 +344,22 @@ class ZwpInputMethodContextV1 extends Proxy implements Dispatcher{
         WaylandType.int,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// delete text
+/// 
+/// Remove the surrounding text.
+/// 
+/// This request will be handled on the text_input side directly following
+/// a commit_string request.
+/// 
+/// [index]:
+/// [length]:
   Future<void> deleteSurroundingText(int index, int length) async {
+    print("ZwpInputMethodContextV1::deleteSurroundingText  index: $index length: $length");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       5,
       [
         index,
@@ -153,12 +370,28 @@ class ZwpInputMethodContextV1 extends Proxy implements Dispatcher{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set cursor to a new position
+/// 
+/// Set the cursor and anchor to a new position. Index is the new cursor
+/// position in bytes (when >= 0 this is relative to the end of the inserted text,
+/// otherwise it is relative to the beginning of the inserted text). Anchor is
+/// the new anchor position in bytes (when >= 0 this is relative to the end of the
+/// inserted text, otherwise it is relative to the beginning of the inserted
+/// text). When there should be no selected text, anchor should be the same
+/// as index.
+/// 
+/// This request will be handled on the text_input side directly following
+/// a commit_string request.
+/// 
+/// [index]:
+/// [anchor]:
   Future<void> cursorPosition(int index, int anchor) async {
+    print("ZwpInputMethodContextV1::cursorPosition  index: $index anchor: $anchor");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       6,
       [
         index,
@@ -169,12 +402,16 @@ class ZwpInputMethodContextV1 extends Proxy implements Dispatcher{
         WaylandType.int,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// 
+/// 
+/// [map]:
   Future<void> modifiersMap(List<int> map) async {
+    print("ZwpInputMethodContextV1::modifiersMap  map: $map");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       7,
       [
         map,
@@ -183,12 +420,25 @@ class ZwpInputMethodContextV1 extends Proxy implements Dispatcher{
         WaylandType.array,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// keysym
+/// 
+/// Notify when a key event was sent. Key events should not be used for
+/// normal text input operations, which should be done with commit_string,
+/// delete_surrounding_text, etc. The key event follows the wl_keyboard key
+/// event convention. Sym is an XKB keysym, state is a wl_keyboard key_state.
+/// 
+/// [serial]: serial of the latest known text input state
+/// [time]:
+/// [sym]:
+/// [state]:
+/// [modifiers]:
   Future<void> keysym(int serial, int time, int sym, int state, int modifiers) async {
+    print("ZwpInputMethodContextV1::keysym  serial: $serial time: $time sym: $sym state: $state modifiers: $modifiers");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       8,
       [
         serial,
@@ -205,13 +455,22 @@ class ZwpInputMethodContextV1 extends Proxy implements Dispatcher{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> grabKeyboard() async {
-  var keyboard =  ZwpInputMethodContextV1(context);
+/// grab hardware keyboard
+/// 
+/// Allow an input method to receive hardware keyboard input and process
+/// key events to generate text events (with pre-edit) over the wire. This
+/// allows input methods which compose multiple key events for inputting
+/// text like it is done for CJK languages.
+/// 
+/// [keyboard]:
+  Future<Keyboard> grabKeyboard() async {
+  var keyboard =  Keyboard(context);
+    print("ZwpInputMethodContextV1::grabKeyboard  keyboard: $keyboard");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       9,
       [
         keyboard,
@@ -220,12 +479,27 @@ class ZwpInputMethodContextV1 extends Proxy implements Dispatcher{
         WaylandType.newId,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return keyboard;
   }
 
+/// forward key event
+/// 
+/// Forward a wl_keyboard::key event to the client that was not processed
+/// by the input method itself. Should be used when filtering key events
+/// with grab_keyboard.  The arguments should be the ones from the
+/// wl_keyboard::key event.
+/// 
+/// For generating custom key events use the keysym request instead.
+/// 
+/// [serial]: serial from wl_keyboard::key
+/// [time]: time from wl_keyboard::key
+/// [key]: key from wl_keyboard::key
+/// [state]: state from wl_keyboard::key
   Future<void> key(int serial, int time, int key, int state) async {
+    print("ZwpInputMethodContextV1::key  serial: $serial time: $time key: $key state: $state");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       10,
       [
         serial,
@@ -240,12 +514,25 @@ class ZwpInputMethodContextV1 extends Proxy implements Dispatcher{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// forward modifiers event
+/// 
+/// Forward a wl_keyboard::modifiers event to the client that was not
+/// processed by the input method itself.  Should be used when filtering
+/// key events with grab_keyboard. The arguments should be the ones
+/// from the wl_keyboard::modifiers event.
+/// 
+/// [serial]: serial from wl_keyboard::modifiers
+/// [mods_depressed]: mods_depressed from wl_keyboard::modifiers
+/// [mods_latched]: mods_latched from wl_keyboard::modifiers
+/// [mods_locked]: mods_locked from wl_keyboard::modifiers
+/// [group]: group from wl_keyboard::modifiers
   Future<void> modifiers(int serial, int modsDepressed, int modsLatched, int modsLocked, int group) async {
+    print("ZwpInputMethodContextV1::modifiers  serial: $serial modsDepressed: $modsDepressed modsLatched: $modsLatched modsLocked: $modsLocked group: $group");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       11,
       [
         serial,
@@ -262,12 +549,17 @@ class ZwpInputMethodContextV1 extends Proxy implements Dispatcher{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// 
+/// 
+/// [serial]: serial of the latest known text input state
+/// [language]:
   Future<void> language(int serial, String language) async {
+    print("ZwpInputMethodContextV1::language  serial: $serial language: $language");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       12,
       [
         serial,
@@ -278,12 +570,17 @@ class ZwpInputMethodContextV1 extends Proxy implements Dispatcher{
         WaylandType.string,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// 
+/// 
+/// [serial]: serial of the latest known text input state
+/// [direction]:
   Future<void> textDirection(int serial, int direction) async {
+    print("ZwpInputMethodContextV1::textDirection  serial: $serial direction: $direction");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       13,
       [
         serial,
@@ -294,10 +591,10 @@ class ZwpInputMethodContextV1 extends Proxy implements Dispatcher{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// surrounding text event
+/// surrounding text event
 /// 
 /// The plain surrounding text around the input position. Cursor is the
 /// position in bytes within the surrounding text relative to the beginning
@@ -305,103 +602,177 @@ class ZwpInputMethodContextV1 extends Proxy implements Dispatcher{
 /// within the surrounding text relative to the beginning of the text. If
 /// there is no selected text then anchor is the same as cursor.
 /// 
- void onsurroundingText(void Function(String text, int cursor, int anchor) handler) {
+/// Event handler for SurroundingText
+/// - [text]:
+/// - [cursor]:
+/// - [anchor]:
+ void onSurroundingText(ZwpInputMethodContextV1SurroundingTextEventHandler handler) {
    _surroundingTextHandler = handler;
  }
 
- void Function(String text, int cursor, int anchor)? _surroundingTextHandler;
+ ZwpInputMethodContextV1SurroundingTextEventHandler? _surroundingTextHandler;
 
- /// 
 /// 
- void onreset(void Function() handler) {
+/// 
+/// Event handler for Reset
+ void onReset(ZwpInputMethodContextV1ResetEventHandler handler) {
    _resetHandler = handler;
  }
 
- void Function()? _resetHandler;
+ ZwpInputMethodContextV1ResetEventHandler? _resetHandler;
 
- /// 
 /// 
- void oncontentType(void Function(int hint, int purpose) handler) {
+/// 
+/// Event handler for ContentType
+/// - [hint]:
+/// - [purpose]:
+ void onContentType(ZwpInputMethodContextV1ContentTypeEventHandler handler) {
    _contentTypeHandler = handler;
  }
 
- void Function(int hint, int purpose)? _contentTypeHandler;
+ ZwpInputMethodContextV1ContentTypeEventHandler? _contentTypeHandler;
 
- /// 
 /// 
- void oninvokeAction(void Function(int button, int index) handler) {
+/// 
+/// Event handler for InvokeAction
+/// - [button]:
+/// - [index]:
+ void onInvokeAction(ZwpInputMethodContextV1InvokeActionEventHandler handler) {
    _invokeActionHandler = handler;
  }
 
- void Function(int button, int index)? _invokeActionHandler;
+ ZwpInputMethodContextV1InvokeActionEventHandler? _invokeActionHandler;
 
- /// 
 /// 
- void oncommitState(void Function(int serial) handler) {
+/// 
+/// Event handler for CommitState
+/// - [serial]: serial of text input state
+ void onCommitState(ZwpInputMethodContextV1CommitStateEventHandler handler) {
    _commitStateHandler = handler;
  }
 
- void Function(int serial)? _commitStateHandler;
+ ZwpInputMethodContextV1CommitStateEventHandler? _commitStateHandler;
 
- /// 
 /// 
- void onpreferredLanguage(void Function(String language) handler) {
+/// 
+/// Event handler for PreferredLanguage
+/// - [language]:
+ void onPreferredLanguage(ZwpInputMethodContextV1PreferredLanguageEventHandler handler) {
    _preferredLanguageHandler = handler;
  }
 
- void Function(String language)? _preferredLanguageHandler;
+ ZwpInputMethodContextV1PreferredLanguageEventHandler? _preferredLanguageHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_surroundingTextHandler != null) {
-         _surroundingTextHandler!(
+var event = ZwpInputMethodContextV1SurroundingTextEvent(
            getString(data, 0),
-           ByteData.view(data.buffer).getInt32(4, Endian.host),
-           ByteData.view(data.buffer).getInt32(8, Endian.host),
-         );
+           ByteData.view(data.buffer).getUint32(4, Endian.little),
+           ByteData.view(data.buffer).getUint32(8, Endian.little),
+        );
+         _surroundingTextHandler!(event);
        }
        break;
      case 1:
        if (_resetHandler != null) {
-         _resetHandler!(
-         );
+var event = ZwpInputMethodContextV1ResetEvent(
+        );
+         _resetHandler!(event);
        }
        break;
      case 2:
        if (_contentTypeHandler != null) {
-         _contentTypeHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-           ByteData.view(data.buffer).getInt32(4, Endian.host),
-         );
+var event = ZwpInputMethodContextV1ContentTypeEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+           ByteData.view(data.buffer).getUint32(4, Endian.little),
+        );
+         _contentTypeHandler!(event);
        }
        break;
      case 3:
        if (_invokeActionHandler != null) {
-         _invokeActionHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-           ByteData.view(data.buffer).getInt32(4, Endian.host),
-         );
+var event = ZwpInputMethodContextV1InvokeActionEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+           ByteData.view(data.buffer).getUint32(4, Endian.little),
+        );
+         _invokeActionHandler!(event);
        }
        break;
      case 4:
        if (_commitStateHandler != null) {
-         _commitStateHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ZwpInputMethodContextV1CommitStateEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _commitStateHandler!(event);
        }
        break;
      case 5:
        if (_preferredLanguageHandler != null) {
-         _preferredLanguageHandler!(
+var event = ZwpInputMethodContextV1PreferredLanguageEvent(
            getString(data, 0),
-         );
+        );
+         _preferredLanguageHandler!(event);
        }
        break;
    }
  }
 }
+
+
+/// activate event
+/// 
+/// A text input was activated. Creates an input method context object
+/// which allows communication with the text input.
+/// 
+class ZwpInputMethodV1ActivateEvent {
+/// 
+  final int id;
+
+  ZwpInputMethodV1ActivateEvent(
+this.id,
+
+);
+
+@override
+String toString(){
+  return """ZwpInputMethodV1ActivateEvent: {
+    id: $id,
+  }""";
+}
+
+}
+
+typedef ZwpInputMethodV1ActivateEventHandler = void Function(ZwpInputMethodV1ActivateEvent);
+
+/// deactivate event
+/// 
+/// The text input corresponding to the context argument was deactivated.
+/// The input method context should be destroyed after deactivation is
+/// handled.
+/// 
+class ZwpInputMethodV1DeactivateEvent {
+/// 
+  final int context;
+
+  ZwpInputMethodV1DeactivateEvent(
+this.context,
+
+);
+
+@override
+String toString(){
+  return """ZwpInputMethodV1DeactivateEvent: {
+    context: $context,
+  }""";
+}
+
+}
+
+typedef ZwpInputMethodV1DeactivateEventHandler = void Function(ZwpInputMethodV1DeactivateEvent);
+
 
 /// input method
 /// 
@@ -413,51 +784,61 @@ class ZwpInputMethodContextV1 extends Proxy implements Dispatcher{
 class ZwpInputMethodV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  ZwpInputMethodV1(this.context) : super(context.allocateClientId());
+  ZwpInputMethodV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
- /// activate event
+/// activate event
 /// 
 /// A text input was activated. Creates an input method context object
 /// which allows communication with the text input.
 /// 
- void onactivate(void Function(int id) handler) {
+/// Event handler for Activate
+/// - [id]:
+ void onActivate(ZwpInputMethodV1ActivateEventHandler handler) {
    _activateHandler = handler;
  }
 
- void Function(int id)? _activateHandler;
+ ZwpInputMethodV1ActivateEventHandler? _activateHandler;
 
- /// deactivate event
+/// deactivate event
 /// 
 /// The text input corresponding to the context argument was deactivated.
 /// The input method context should be destroyed after deactivation is
 /// handled.
 /// 
- void ondeactivate(void Function(int context) handler) {
+/// Event handler for Deactivate
+/// - [context]:
+ void onDeactivate(ZwpInputMethodV1DeactivateEventHandler handler) {
    _deactivateHandler = handler;
  }
 
- void Function(int context)? _deactivateHandler;
+ ZwpInputMethodV1DeactivateEventHandler? _deactivateHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_activateHandler != null) {
-         _activateHandler!(
-           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.host)).id,
-         );
+var event = ZwpInputMethodV1ActivateEvent(
+           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.little)).objectId,
+        );
+         _activateHandler!(event);
        }
        break;
      case 1:
        if (_deactivateHandler != null) {
-         _deactivateHandler!(
-           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.host)).id,
-         );
+var event = ZwpInputMethodV1DeactivateEvent(
+           context.getProxy(ByteData.view(data.buffer).getUint32(0, Endian.little)).objectId,
+        );
+         _deactivateHandler!(event);
        }
        break;
    }
  }
 }
+
+
 
 /// interface for implementing keyboards
 /// 
@@ -466,12 +847,19 @@ class ZwpInputMethodV1 extends Proxy implements Dispatcher{
 class ZwpInputPanelV1 extends Proxy{
   final Context context;
 
-  ZwpInputPanelV1(this.context) : super(context.allocateClientId());
+  ZwpInputPanelV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
-  Future<void> getInputPanelSurface(Surface surface) async {
-  var id =  ZwpInputPanelV1(context);
+/// 
+/// 
+/// [id]:
+/// [surface]:
+  Future<ZwpInputPanelSurfaceV1> getInputPanelSurface(Surface surface) async {
+  var id =  ZwpInputPanelSurfaceV1(context);
+    print("ZwpInputPanelV1::getInputPanelSurface  id: $id surface: $surface");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
         id,
@@ -482,21 +870,35 @@ class ZwpInputPanelV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
+
+
 
 /// 
 /// 
 class ZwpInputPanelSurfaceV1 extends Proxy{
   final Context context;
 
-  ZwpInputPanelSurfaceV1(this.context) : super(context.allocateClientId());
+  ZwpInputPanelSurfaceV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// set the surface type as a keyboard
+/// 
+/// Set the input_panel_surface type to keyboard.
+/// 
+/// A keyboard surface is only shown when a text input is active.
+/// 
+/// [output]:
+/// [position]:
   Future<void> setToplevel(Output output, int position) async {
+    print("ZwpInputPanelSurfaceV1::setToplevel  output: $output position: $position");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
         output,
@@ -507,19 +909,27 @@ class ZwpInputPanelSurfaceV1 extends Proxy{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set the surface type as an overlay panel
+/// 
+/// Set the input_panel_surface to be an overlay panel.
+/// 
+/// This is shown near the input cursor above the application window when
+/// a text input is active.
+/// 
   Future<void> setOverlayPanel() async {
+    print("ZwpInputPanelSurfaceV1::setOverlayPanel ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }
@@ -528,7 +938,7 @@ class ZwpInputPanelSurfaceV1 extends Proxy{
 /// 
 
 enum ZwpInputPanelSurfaceV1position {
-  /// 
+/// 
   centerBottom,
 }
 

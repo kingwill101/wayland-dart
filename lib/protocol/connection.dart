@@ -1,35 +1,99 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:wayland/protocol/message.dart';
+typedef void MessageHandler(Uint8List data);
 
 class WaylandConnection {
   Socket? _socket;
+  final StreamController<List<int>> _outgoingMessages =
+      StreamController<List<int>>();
+  final List<List<int>> _bufferedMessages = [];
+  MessageHandler? _messageHandler;
 
-  WaylandConnection() {
-    connect();
-  }
-
-  Socket get socket {
-    if (_socket == null) {
-      throw Exception('Socket is not connected');
-    }
-    return _socket!;
-  }
-
-  Stream<Uint8List> listen() {
-    socket.listen((data){
-      print(data);
-    }, onDone: () {
-      _socket = null;
-    });
-    return Stream.empty();
+  set handler(MessageHandler? handler) {
+    _messageHandler = handler;
   }
 
   Future<void> connect() async {
     final socketPath = _getSocketPath();
-    _socket = await Socket.connect(
-        InternetAddress(socketPath, type: InternetAddressType.unix), 0);
+    print('Connecting to $socketPath');
+    try {
+      _socket = await Socket.connect(
+        InternetAddress(socketPath, type: InternetAddressType.unix),
+        0,
+      );
+
+      _socket?.listen((data) {
+        _handleIncomingMessage(data);
+      }, onError: (error) {
+        print('Socket error: $error');
+        _close();
+      }, onDone: () {
+        print('Socket closed');
+        _close();
+      });
+
+      // Send outgoing messages
+      _outgoingMessages.stream.listen((data) {
+        _sendMessage(data);
+      });
+
+      // Send buffered messages
+      _sendBufferedMessages();
+    } catch (e) {
+      print('Failed to connect: $e');
+      _close();
+    }
+  }
+
+  void _sendMessage(List<int> data) {
+    try {
+      _socket?.add(data);
+    } on SocketException catch (e) {
+      print('SocketException during add: $e');
+      _bufferMessage(data);
+      _close();
+    }
+  }
+
+  void _handleIncomingMessage(Uint8List data) {
+    print('Received');
+    print('\tdata: $data');
+    if (_messageHandler != null) {
+      _messageHandler!(data);
+    }
+  }
+
+  void _close() {
+    _socket?.close();
+    _socket = null;
+  }
+
+  void sendMessage(List<int> data) {
+    if (_socket == null) {
+      _bufferMessage(data);
+      connect();
+    } else {
+      _sendMessage(data);
+    }
+  }
+
+  void _bufferMessage(List<int> data) {
+    _bufferedMessages.add(data);
+  }
+
+  void _sendBufferedMessages() {
+    while (_bufferedMessages.isNotEmpty) {
+      final message = _bufferedMessages.removeAt(0);
+      sendMessage(message);
+    }
+  }
+
+  Future<void> reconnectAndResend(List<int> data) async {
+    await connect();
+    _sendBufferedMessages();
+    sendMessage(data);
   }
 
   String _getSocketPath() {
@@ -45,23 +109,7 @@ class WaylandConnection {
     }
 
     final display = Platform.environment['WAYLAND_DISPLAY'] ?? 'wayland-0';
-    return '$runtimeDir/$display';
-  }
-
-  void sendMessage(WaylandMessage message) {
-    final data = message.serialize();
-
-    if (_socket == null) {
-      throw Exception('Socket is not connected');
-    }
-    _socket?.add(data);
-
-    // If the message contains file descriptors, we need to send them separately
-    final fds = message.arguments.whereType<int>().toList();
-    if (fds.isNotEmpty) {
-      // This is a placeholder. In reality, you'd need to use platform-specific code
-      // to send the file descriptors over the Unix domain socket.
-      print('Sending file descriptors: $fds');
-    }
+    // return '$runtimeDir/$display';
+    return '$display';
   }
 }

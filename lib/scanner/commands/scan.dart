@@ -30,6 +30,8 @@ class ScanCommand extends Command {
       ..addOption('pkg', help: 'Dart package name', defaultsTo: 'wayland')
       ..addOption('prefix', help: 'Specify prefix to trim', defaultsTo: null)
       ..addOption('suffix', help: 'Specify suffix to trim', defaultsTo: null)
+      ..addOption('format',
+          help: 'format generated code using dart format', defaultsTo: null)
       ..addOption('clean',
           help: 'should first remove generated', defaultsTo: 'false')
       ..addOption('protocols',
@@ -47,6 +49,12 @@ class ScanCommand extends Command {
     prefix = argResults?['prefix'] as String? ?? '';
     suffix = argResults?['suffix'] as String? ?? '';
     var generationDir = argResults?['generation-dir'] as String;
+
+    bool format = false;
+
+    if (argResults?['format'] == 'true') {
+      format = true;
+    }
 
     if (argResults?['clean'] == 'true') {
       if (await Directory(generationDir).exists()) {
@@ -78,7 +86,6 @@ class ScanCommand extends Command {
           }
         }
 
-
         return Generator(
             packageName: packageName,
             prefix: prefix,
@@ -86,36 +93,13 @@ class ScanCommand extends Command {
             inputFile: protocolMap['input'],
             outputFile: importPath,
             imports: dependencies,
+            format: format,
             cacheDir: protocolCacheDir);
       }).toList();
 
       await Future.wait(generators.map((generator) {
         return generator.run();
       }));
-
-//       //generate generated.dart with all the imports exported
-//       final generatedFile = File("lib/generated/generated.dart");
-//       StringBuffer buffer = StringBuffer();
-//       final generatedContent = '''
-// // GENERATED CODE - DO NOT MODIFY BY HAND
-// // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides
-
-
-// ''';
-//       buffer.writeln(generatedContent);
-//       imports.forEach((import) {
-//         if (import.endsWith('wayland.dart')) {
-//           return;
-//         }
-//         buffer.writeln("export '$import';");
-//       });
-
-//       if (await generatedFile.exists()) {
-//         await generatedFile.delete();
-//       } else {
-//         await generatedFile.create(recursive: true);
-//       }
-//       await generatedFile.writeAsString(buffer.toString());
 
       return;
     }
@@ -126,6 +110,7 @@ class ScanCommand extends Command {
         packageName: packageName,
         prefix: prefix,
         suffix: suffix,
+        format: format,
         cacheDir: protocolCacheDir);
     generator.run();
   }

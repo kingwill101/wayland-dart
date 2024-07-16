@@ -30,7 +30,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// client security context manager
 /// 
 /// This interface allows a client to register a new Wayland connection to
@@ -55,24 +58,54 @@ import 'dart:typed_data';
 class WpSecurityContextManagerV1 extends Proxy{
   final Context context;
 
-  WpSecurityContextManagerV1(this.context) : super(context.allocateClientId());
+  WpSecurityContextManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the manager object
+/// 
+/// Destroy the manager. This doesn't destroy objects created with the
+/// manager.
+/// 
   Future<void> destroy() async {
+    print("WpSecurityContextManagerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> createListener(int listenFd, int closeFd) async {
-  var id =  WpSecurityContextManagerV1(context);
+/// create a new security context
+/// 
+/// Creates a new security context with a socket listening FD.
+/// 
+/// The compositor will accept new client connections on listen_fd.
+/// listen_fd must be ready to accept new connections when this request is
+/// sent by the client. In other words, the client must call bind(2) and
+/// listen(2) before sending the FD.
+/// 
+/// close_fd is a FD closed by the client when the compositor should stop
+/// accepting new connections on listen_fd.
+/// 
+/// The compositor must continue to accept connections on listen_fd when
+/// the Wayland client which created the security context disconnects.
+/// 
+/// After sending this request, closing listen_fd and close_fd remains the
+/// only valid operation on them.
+/// 
+/// [id]:
+/// [listen_fd]: listening socket FD
+/// [close_fd]: FD closed when done
+  Future<WpSecurityContextV1> createListener(int listenFd, int closeFd) async {
+  var id =  WpSecurityContextV1(context);
+    print("WpSecurityContextManagerV1::createListener  id: $id listenFd: $listenFd closeFd: $closeFd");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -85,7 +118,8 @@ class WpSecurityContextManagerV1 extends Proxy{
         WaylandType.fd,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
@@ -94,11 +128,13 @@ class WpSecurityContextManagerV1 extends Proxy{
 /// 
 
 enum WpSecurityContextManagerV1error {
-  /// listening socket FD is invalid
+/// listening socket FD is invalid
   invalidListenFd,
-  /// nested security contexts are forbidden
+/// nested security contexts are forbidden
   nested,
 }
+
+
 
 /// client security context
 /// 
@@ -116,23 +152,43 @@ enum WpSecurityContextManagerV1error {
 class WpSecurityContextV1 extends Proxy{
   final Context context;
 
-  WpSecurityContextV1(this.context) : super(context.allocateClientId());
+  WpSecurityContextV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the security context object
+/// 
+/// Destroy the security context object.
+/// 
   Future<void> destroy() async {
+    print("WpSecurityContextV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set the sandbox engine
+/// 
+/// Attach a unique sandbox engine name to the security context. The name
+/// should follow the reverse-DNS style (e.g. "org.flatpak").
+/// 
+/// A list of well-known engines is maintained at:
+/// https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/main/staging/security-context/engines.md
+/// 
+/// It is a protocol error to call this request twice. The already_set
+/// error is sent in this case.
+/// 
+/// [name]: the sandbox engine name
   Future<void> setSandboxEngine(String name) async {
+    print("WpSecurityContextV1::setSandboxEngine  name: $name");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         name,
@@ -141,12 +197,30 @@ class WpSecurityContextV1 extends Proxy{
         WaylandType.string,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set the application ID
+/// 
+/// Attach an application ID to the security context.
+/// 
+/// The application ID is an opaque, sandbox-specific identifier for an
+/// application. See the well-known engines document for more details:
+/// https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/main/staging/security-context/engines.md
+/// 
+/// The compositor may use the application ID to group clients belonging to
+/// the same security context application.
+/// 
+/// Whether this request is optional or not depends on the sandbox engine used.
+/// 
+/// It is a protocol error to call this request twice. The already_set
+/// error is sent in this case.
+/// 
+/// [app_id]: the application ID
   Future<void> setAppId(String appId) async {
+    print("WpSecurityContextV1::setAppId  appId: $appId");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
         appId,
@@ -155,12 +229,28 @@ class WpSecurityContextV1 extends Proxy{
         WaylandType.string,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set the instance ID
+/// 
+/// Attach an instance ID to the security context.
+/// 
+/// The instance ID is an opaque, sandbox-specific identifier for a running
+/// instance of an application. See the well-known engines document for
+/// more details:
+/// https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/main/staging/security-context/engines.md
+/// 
+/// Whether this request is optional or not depends on the sandbox engine used.
+/// 
+/// It is a protocol error to call this request twice. The already_set
+/// error is sent in this case.
+/// 
+/// [instance_id]: the instance ID
   Future<void> setInstanceId(String instanceId) async {
+    print("WpSecurityContextV1::setInstanceId  instanceId: $instanceId");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       3,
       [
         instanceId,
@@ -169,19 +259,33 @@ class WpSecurityContextV1 extends Proxy{
         WaylandType.string,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// register the security context
+/// 
+/// Atomically register the new client and attach the security context
+/// metadata.
+/// 
+/// If the provided metadata is inconsistent or does not match with out of
+/// band metadata (see
+/// https://gitlab.freedesktop.org/wayland/wayland-protocols/-/blob/main/staging/security-context/engines.md),
+/// the invalid_metadata error may be sent eventually.
+/// 
+/// It's a protocol error to send any request other than "destroy" after
+/// this request. In this case, the already_used error is sent.
+/// 
   Future<void> commit() async {
+    print("WpSecurityContextV1::commit ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       4,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }
@@ -190,11 +294,11 @@ class WpSecurityContextV1 extends Proxy{
 /// 
 
 enum WpSecurityContextV1error {
-  /// security context has already been committed
+/// security context has already been committed
   alreadyUsed,
-  /// metadata has already been set
+/// metadata has already been set
   alreadySet,
-  /// metadata is invalid
+/// metadata is invalid
   invalidMetadata,
 }
 

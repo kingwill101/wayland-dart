@@ -30,7 +30,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// context object for keyboard grab_manager
 /// 
 /// A global interface used for inhibiting the compositor keyboard shortcuts.
@@ -38,24 +41,43 @@ import 'dart:typed_data';
 class ZwpKeyboardShortcutsInhibitManagerV1 extends Proxy{
   final Context context;
 
-  ZwpKeyboardShortcutsInhibitManagerV1(this.context) : super(context.allocateClientId());
+  ZwpKeyboardShortcutsInhibitManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the keyboard shortcuts inhibitor object
+/// 
+/// Destroy the keyboard shortcuts inhibitor manager.
+/// 
   Future<void> destroy() async {
+    print("ZwpKeyboardShortcutsInhibitManagerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> inhibitShortcuts(Surface surface, Seat seat) async {
-  var id =  ZwpKeyboardShortcutsInhibitManagerV1(context);
+/// create a new keyboard shortcuts inhibitor object
+/// 
+/// Create a new keyboard shortcuts inhibitor object associated with
+/// the given surface for the given seat.
+/// 
+/// If shortcuts are already inhibited for the specified seat and surface,
+/// a protocol error "already_inhibited" is raised by the compositor.
+/// 
+/// [id]:
+/// [surface]: the surface that inhibits the keyboard shortcuts behavior
+/// [seat]: the wl_seat for which keyboard shortcuts should be disabled
+  Future<ZwpKeyboardShortcutsInhibitorV1> inhibitShortcuts(Surface surface, Seat seat) async {
+  var id =  ZwpKeyboardShortcutsInhibitorV1(context);
+    print("ZwpKeyboardShortcutsInhibitManagerV1::inhibitShortcuts  id: $id surface: $surface seat: $seat");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -68,7 +90,8 @@ class ZwpKeyboardShortcutsInhibitManagerV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
@@ -77,9 +100,58 @@ class ZwpKeyboardShortcutsInhibitManagerV1 extends Proxy{
 /// 
 
 enum ZwpKeyboardShortcutsInhibitManagerV1error {
-  /// the shortcuts are already inhibited for this surface
+/// the shortcuts are already inhibited for this surface
   alreadyInhibited,
 }
+
+
+/// shortcuts are inhibited
+/// 
+/// This event indicates that the shortcut inhibitor is active.
+/// 
+/// The compositor sends this event every time compositor shortcuts
+/// are inhibited on behalf of the surface. When active, the client
+/// may receive input events normally reserved by the compositor
+/// (see zwp_keyboard_shortcuts_inhibitor_v1).
+/// 
+/// This occurs typically when the initial request "inhibit_shortcuts"
+/// first becomes active or when the user instructs the compositor to
+/// re-enable and existing shortcuts inhibitor using any mechanism
+/// offered by the compositor.
+/// 
+class ZwpKeyboardShortcutsInhibitorV1ActiveEvent {
+  ZwpKeyboardShortcutsInhibitorV1ActiveEvent(
+);
+
+@override
+String toString(){
+  return """ZwpKeyboardShortcutsInhibitorV1ActiveEvent: {
+  }""";
+}
+
+}
+
+typedef ZwpKeyboardShortcutsInhibitorV1ActiveEventHandler = void Function(ZwpKeyboardShortcutsInhibitorV1ActiveEvent);
+
+/// shortcuts are restored
+/// 
+/// This event indicates that the shortcuts inhibitor is inactive,
+/// normal shortcuts processing is restored by the compositor.
+/// 
+class ZwpKeyboardShortcutsInhibitorV1InactiveEvent {
+  ZwpKeyboardShortcutsInhibitorV1InactiveEvent(
+);
+
+@override
+String toString(){
+  return """ZwpKeyboardShortcutsInhibitorV1InactiveEvent: {
+  }""";
+}
+
+}
+
+typedef ZwpKeyboardShortcutsInhibitorV1InactiveEventHandler = void Function(ZwpKeyboardShortcutsInhibitorV1InactiveEvent);
+
 
 /// context object for keyboard shortcuts inhibitor
 /// 
@@ -120,21 +192,28 @@ enum ZwpKeyboardShortcutsInhibitManagerV1error {
 class ZwpKeyboardShortcutsInhibitorV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  ZwpKeyboardShortcutsInhibitorV1(this.context) : super(context.allocateClientId());
+  ZwpKeyboardShortcutsInhibitorV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the keyboard shortcuts inhibitor object
+/// 
+/// Remove the keyboard shortcuts inhibitor from the associated wl_surface.
+/// 
   Future<void> destroy() async {
+    print("ZwpKeyboardShortcutsInhibitorV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// shortcuts are inhibited
+/// shortcuts are inhibited
 /// 
 /// This event indicates that the shortcut inhibitor is active.
 /// 
@@ -148,36 +227,40 @@ class ZwpKeyboardShortcutsInhibitorV1 extends Proxy implements Dispatcher{
 /// re-enable and existing shortcuts inhibitor using any mechanism
 /// offered by the compositor.
 /// 
- void onactive(void Function() handler) {
+/// Event handler for Active
+ void onActive(ZwpKeyboardShortcutsInhibitorV1ActiveEventHandler handler) {
    _activeHandler = handler;
  }
 
- void Function()? _activeHandler;
+ ZwpKeyboardShortcutsInhibitorV1ActiveEventHandler? _activeHandler;
 
- /// shortcuts are restored
+/// shortcuts are restored
 /// 
 /// This event indicates that the shortcuts inhibitor is inactive,
 /// normal shortcuts processing is restored by the compositor.
 /// 
- void oninactive(void Function() handler) {
+/// Event handler for Inactive
+ void onInactive(ZwpKeyboardShortcutsInhibitorV1InactiveEventHandler handler) {
    _inactiveHandler = handler;
  }
 
- void Function()? _inactiveHandler;
+ ZwpKeyboardShortcutsInhibitorV1InactiveEventHandler? _inactiveHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_activeHandler != null) {
-         _activeHandler!(
-         );
+var event = ZwpKeyboardShortcutsInhibitorV1ActiveEvent(
+        );
+         _activeHandler!(event);
        }
        break;
      case 1:
        if (_inactiveHandler != null) {
-         _inactiveHandler!(
-         );
+var event = ZwpKeyboardShortcutsInhibitorV1InactiveEvent(
+        );
+         _inactiveHandler!(event);
        }
        break;
    }

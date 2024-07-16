@@ -30,7 +30,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// fractional surface scale information
 /// 
 /// A global interface for requesting surfaces to use fractional scales.
@@ -38,24 +41,43 @@ import 'dart:typed_data';
 class WpFractionalScaleManagerV1 extends Proxy{
   final Context context;
 
-  WpFractionalScaleManagerV1(this.context) : super(context.allocateClientId());
+  WpFractionalScaleManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// unbind the fractional surface scale interface
+/// 
+/// Informs the server that the client will not be using this protocol
+/// object anymore. This does not affect any other objects,
+/// wp_fractional_scale_v1 objects included.
+/// 
   Future<void> destroy() async {
+    print("WpFractionalScaleManagerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getFractionalScale(Surface surface) async {
-  var id =  WpFractionalScaleManagerV1(context);
+/// extend surface interface for scale information
+/// 
+/// Create an add-on object for the the wl_surface to let the compositor
+/// request fractional scales. If the given wl_surface already has a
+/// wp_fractional_scale_v1 object associated, the fractional_scale_exists
+/// protocol error is raised.
+/// 
+/// [id]: the new surface scale info interface id
+/// [surface]: the surface
+  Future<WpFractionalScaleV1> getFractionalScale(Surface surface) async {
+  var id =  WpFractionalScaleV1(context);
+    print("WpFractionalScaleManagerV1::getFractionalScale  id: $id surface: $surface");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -66,7 +88,8 @@ class WpFractionalScaleManagerV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
@@ -75,9 +98,38 @@ class WpFractionalScaleManagerV1 extends Proxy{
 /// 
 
 enum WpFractionalScaleManagerV1error {
-  /// the surface already has a fractional_scale object associated
+/// the surface already has a fractional_scale object associated
   fractionalScaleExists,
 }
+
+
+/// notify of new preferred scale
+/// 
+/// Notification of a new preferred scale for this surface that the
+/// compositor suggests that the client should use.
+/// 
+/// The sent scale is the numerator of a fraction with a denominator of 120.
+/// 
+class WpFractionalScaleV1PreferredScaleEvent {
+/// the new preferred scale
+  final int scale;
+
+  WpFractionalScaleV1PreferredScaleEvent(
+this.scale,
+
+);
+
+@override
+String toString(){
+  return """WpFractionalScaleV1PreferredScaleEvent: {
+    scale: $scale,
+  }""";
+}
+
+}
+
+typedef WpFractionalScaleV1PreferredScaleEventHandler = void Function(WpFractionalScaleV1PreferredScaleEvent);
+
 
 /// fractional scale interface to a wl_surface
 /// 
@@ -87,41 +139,52 @@ enum WpFractionalScaleManagerV1error {
 class WpFractionalScaleV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  WpFractionalScaleV1(this.context) : super(context.allocateClientId());
+  WpFractionalScaleV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// remove surface scale information for surface
+/// 
+/// Destroy the fractional scale object. When this object is destroyed,
+/// preferred_scale events will no longer be sent.
+/// 
   Future<void> destroy() async {
+    print("WpFractionalScaleV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// notify of new preferred scale
+/// notify of new preferred scale
 /// 
 /// Notification of a new preferred scale for this surface that the
 /// compositor suggests that the client should use.
 /// 
 /// The sent scale is the numerator of a fraction with a denominator of 120.
 /// 
- void onpreferredScale(void Function(int scale) handler) {
+/// Event handler for PreferredScale
+/// - [scale]: the new preferred scale
+ void onPreferredScale(WpFractionalScaleV1PreferredScaleEventHandler handler) {
    _preferredScaleHandler = handler;
  }
 
- void Function(int scale)? _preferredScaleHandler;
+ WpFractionalScaleV1PreferredScaleEventHandler? _preferredScaleHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_preferredScaleHandler != null) {
-         _preferredScaleHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = WpFractionalScaleV1PreferredScaleEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _preferredScaleHandler!(event);
        }
        break;
    }

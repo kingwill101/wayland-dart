@@ -3,9 +3,15 @@ import 'dart:typed_data';
 import 'package:wayland/protocol/context.dart';
 
 class Proxy {
-  final int id;
+  int _id;
 
-  Proxy(this.id);
+  set id(int id) {
+    _id = id;
+  }
+
+  int get objectId => _id;
+
+  Proxy(this._id);
 }
 
 class UnknownProxy extends Proxy {

@@ -30,7 +30,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// context object for Xwayland shell
 /// 
 /// xwayland_shell_v1 is a singleton global object that
@@ -52,24 +55,48 @@ import 'dart:typed_data';
 class XwaylandShellV1 extends Proxy{
   final Context context;
 
-  XwaylandShellV1(this.context) : super(context.allocateClientId());
+  XwaylandShellV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the Xwayland shell object
+/// 
+/// Destroy the xwayland_shell_v1 object.
+/// 
+/// The child objects created via this interface are unaffected.
+/// 
   Future<void> destroy() async {
+    print("XwaylandShellV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> getXwaylandSurface(Surface surface) async {
-  var id =  XwaylandShellV1(context);
+/// assign the xwayland_surface surface role
+/// 
+/// Create an xwayland_surface_v1 interface for a given wl_surface
+/// object and gives it the xwayland_surface role.
+/// 
+/// It is illegal to create an xwayland_surface_v1 for a wl_surface
+/// which already has an assigned role and this will result in the
+/// `role` protocol error.
+/// 
+/// See the documentation of xwayland_surface_v1 for more details
+/// about what an xwayland_surface_v1 is and how it is used.
+/// 
+/// [id]:
+/// [surface]:
+  Future<XwaylandSurfaceV1> getXwaylandSurface(Surface surface) async {
+  var id =  XwaylandSurfaceV1(context);
+    print("XwaylandShellV1::getXwaylandSurface  id: $id surface: $surface");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -80,7 +107,8 @@ class XwaylandShellV1 extends Proxy{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
@@ -89,9 +117,11 @@ class XwaylandShellV1 extends Proxy{
 /// 
 
 enum XwaylandShellV1error {
-  /// given wl_surface has another role
+/// given wl_surface has another role
   role,
 }
+
+
 
 /// interface for associating Xwayland windows to wl_surfaces
 /// 
@@ -107,11 +137,40 @@ enum XwaylandShellV1error {
 class XwaylandSurfaceV1 extends Proxy{
   final Context context;
 
-  XwaylandSurfaceV1(this.context) : super(context.allocateClientId());
+  XwaylandSurfaceV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// associates a Xwayland window to a wl_surface
+/// 
+/// Associates an Xwayland window to a wl_surface.
+/// The association state is double-buffered, see wl_surface.commit.
+/// 
+/// The `serial_lo` and `serial_hi` parameters specify a non-zero
+/// monotonic serial number which is entirely unique and provided by the
+/// Xwayland server equal to the serial value provided by a client message
+/// with a message type of the `WL_SURFACE_SERIAL` atom on the X11 window
+/// for this surface to be associated to.
+/// 
+/// The serial value in the `WL_SURFACE_SERIAL` client message is specified
+/// as having the lo-bits specified in `l[0]` and the hi-bits specified
+/// in `l[1]`.
+/// 
+/// If the serial value provided by `serial_lo` and `serial_hi` is not
+/// valid, the `invalid_serial` protocol error will be raised.
+/// 
+/// An X11 window may be associated with multiple surfaces throughout its
+/// lifespan. (eg. unmapping and remapping a window).
+/// 
+/// For each wl_surface, this state must not be committed more than once,
+/// otherwise the `already_associated` protocol error will be raised.
+/// 
+/// [serial_lo]: The lower 32-bits of the serial number associated with the X11 window
+/// [serial_hi]: The upper 32-bits of the serial number associated with the X11 window
   Future<void> setSerial(int serialLo, int serialHi) async {
+    print("XwaylandSurfaceV1::setSerial  serialLo: $serialLo serialHi: $serialHi");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
         serialLo,
@@ -122,19 +181,26 @@ class XwaylandSurfaceV1 extends Proxy{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// destroy the Xwayland surface object
+/// 
+/// Destroy the xwayland_surface_v1 object.
+/// 
+/// Any already existing associations are unaffected by this action.
+/// 
   Future<void> destroy() async {
+    print("XwaylandSurfaceV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }
@@ -143,9 +209,9 @@ class XwaylandSurfaceV1 extends Proxy{
 /// 
 
 enum XwaylandSurfaceV1error {
-  /// given wl_surface is already associated with an X11 window
+/// given wl_surface is already associated with an X11 window
   alreadyAssociated,
-  /// serial was not valid
+/// serial was not valid
   invalidSerial,
 }
 

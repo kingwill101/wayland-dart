@@ -31,7 +31,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// constrain the movement of a pointer
 /// 
 /// The global interface exposing pointer constraining functionality. It
@@ -51,24 +54,75 @@ import 'dart:typed_data';
 class ZwpPointerConstraintsV1 extends Proxy{
   final Context context;
 
-  ZwpPointerConstraintsV1(this.context) : super(context.allocateClientId());
+  ZwpPointerConstraintsV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the pointer constraints manager object
+/// 
+/// Used by the client to notify the server that it will no longer use this
+/// pointer constraints object.
+/// 
   Future<void> destroy() async {
+    print("ZwpPointerConstraintsV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
-  Future<void> lockPointer(Surface surface, Pointer pointer, Region region, int lifetime) async {
-  var id =  ZwpPointerConstraintsV1(context);
+/// lock pointer to a position
+/// 
+/// The lock_pointer request lets the client request to disable movements of
+/// the virtual pointer (i.e. the cursor), effectively locking the pointer
+/// to a position. This request may not take effect immediately; in the
+/// future, when the compositor deems implementation-specific constraints
+/// are satisfied, the pointer lock will be activated and the compositor
+/// sends a locked event.
+/// 
+/// The protocol provides no guarantee that the constraints are ever
+/// satisfied, and does not require the compositor to send an error if the
+/// constraints cannot ever be satisfied. It is thus possible to request a
+/// lock that will never activate.
+/// 
+/// There may not be another pointer constraint of any kind requested or
+/// active on the surface for any of the wl_pointer objects of the seat of
+/// the passed pointer when requesting a lock. If there is, an error will be
+/// raised. See general pointer lock documentation for more details.
+/// 
+/// The intersection of the region passed with this request and the input
+/// region of the surface is used to determine where the pointer must be
+/// in order for the lock to activate. It is up to the compositor whether to
+/// warp the pointer or require some kind of user interaction for the lock
+/// to activate. If the region is null the surface input region is used.
+/// 
+/// A surface may receive pointer focus without the lock being activated.
+/// 
+/// The request creates a new object wp_locked_pointer which is used to
+/// interact with the lock as well as receive updates about its state. See
+/// the the description of wp_locked_pointer for further information.
+/// 
+/// Note that while a pointer is locked, the wl_pointer objects of the
+/// corresponding seat will not emit any wl_pointer.motion events, but
+/// relative motion events will still be emitted via wp_relative_pointer
+/// objects of the same seat. wl_pointer.axis and wl_pointer.button events
+/// are unaffected.
+/// 
+/// [id]:
+/// [surface]: surface to lock pointer to
+/// [pointer]: the pointer that should be locked
+/// [region]: region of surface
+/// [lifetime]: lock lifetime
+  Future<ZwpLockedPointerV1> lockPointer(Surface surface, Pointer pointer, Region region, int lifetime) async {
+  var id =  ZwpLockedPointerV1(context);
+    print("ZwpPointerConstraintsV1::lockPointer  id: $id surface: $surface pointer: $pointer region: $region lifetime: $lifetime");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         id,
@@ -85,13 +139,40 @@ class ZwpPointerConstraintsV1 extends Proxy{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
-  Future<void> confinePointer(Surface surface, Pointer pointer, Region region, int lifetime) async {
-  var id =  ZwpPointerConstraintsV1(context);
+/// confine pointer to a region
+/// 
+/// The confine_pointer request lets the client request to confine the
+/// pointer cursor to a given region. This request may not take effect
+/// immediately; in the future, when the compositor deems implementation-
+/// specific constraints are satisfied, the pointer confinement will be
+/// activated and the compositor sends a confined event.
+/// 
+/// The intersection of the region passed with this request and the input
+/// region of the surface is used to determine where the pointer must be
+/// in order for the confinement to activate. It is up to the compositor
+/// whether to warp the pointer or require some kind of user interaction for
+/// the confinement to activate. If the region is null the surface input
+/// region is used.
+/// 
+/// The request will create a new object wp_confined_pointer which is used
+/// to interact with the confinement as well as receive updates about its
+/// state. See the the description of wp_confined_pointer for further
+/// information.
+/// 
+/// [id]:
+/// [surface]: surface to lock pointer to
+/// [pointer]: the pointer that should be confined
+/// [region]: region of surface
+/// [lifetime]: confinement lifetime
+  Future<ZwpConfinedPointerV1> confinePointer(Surface surface, Pointer pointer, Region region, int lifetime) async {
+  var id =  ZwpConfinedPointerV1(context);
+    print("ZwpPointerConstraintsV1::confinePointer  id: $id surface: $surface pointer: $pointer region: $region lifetime: $lifetime");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
         id,
@@ -108,7 +189,8 @@ class ZwpPointerConstraintsV1 extends Proxy{
         WaylandType.uint,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return id;
   }
 
 }
@@ -120,7 +202,7 @@ class ZwpPointerConstraintsV1 extends Proxy{
 /// 
 
 enum ZwpPointerConstraintsV1error {
-  /// pointer constraint already requested on that surface
+/// pointer constraint already requested on that surface
   alreadyConstrained,
 }
 
@@ -132,11 +214,54 @@ enum ZwpPointerConstraintsV1error {
 /// 
 
 enum ZwpPointerConstraintsV1lifetime {
-  /// 
+/// 
   oneshot,
-  /// 
+/// 
   persistent,
 }
+
+
+/// lock activation event
+/// 
+/// Notification that the pointer lock of the seat's pointer is activated.
+/// 
+class ZwpLockedPointerV1LockedEvent {
+  ZwpLockedPointerV1LockedEvent(
+);
+
+@override
+String toString(){
+  return """ZwpLockedPointerV1LockedEvent: {
+  }""";
+}
+
+}
+
+typedef ZwpLockedPointerV1LockedEventHandler = void Function(ZwpLockedPointerV1LockedEvent);
+
+/// lock deactivation event
+/// 
+/// Notification that the pointer lock of the seat's pointer is no longer
+/// active. If this is a oneshot pointer lock (see
+/// wp_pointer_constraints.lifetime) this object is now defunct and should
+/// be destroyed. If this is a persistent pointer lock (see
+/// wp_pointer_constraints.lifetime) this pointer lock may again
+/// reactivate in the future.
+/// 
+class ZwpLockedPointerV1UnlockedEvent {
+  ZwpLockedPointerV1UnlockedEvent(
+);
+
+@override
+String toString(){
+  return """ZwpLockedPointerV1UnlockedEvent: {
+  }""";
+}
+
+}
+
+typedef ZwpLockedPointerV1UnlockedEventHandler = void Function(ZwpLockedPointerV1UnlockedEvent);
+
 
 /// receive relative pointer motion events
 /// 
@@ -167,23 +292,47 @@ enum ZwpPointerConstraintsV1lifetime {
 class ZwpLockedPointerV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  ZwpLockedPointerV1(this.context) : super(context.allocateClientId());
+  ZwpLockedPointerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the locked pointer object
+/// 
+/// Destroy the locked pointer object. If applicable, the compositor will
+/// unlock the pointer.
+/// 
   Future<void> destroy() async {
+    print("ZwpLockedPointerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set the pointer cursor position hint
+/// 
+/// Set the cursor position hint relative to the top left corner of the
+/// surface.
+/// 
+/// If the client is drawing its own cursor, it should update the position
+/// hint to the position of its own cursor. A compositor may use this
+/// information to warp the pointer upon unlock in order to avoid pointer
+/// jumps.
+/// 
+/// The cursor position hint is double-buffered state, see
+/// wl_surface.commit.
+/// 
+/// [surface_x]: surface-local x coordinate
+/// [surface_y]: surface-local y coordinate
   Future<void> setCursorPositionHint(double surfaceX, double surfaceY) async {
+    print("ZwpLockedPointerV1::setCursorPositionHint  surfaceX: $surfaceX surfaceY: $surfaceY");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         surfaceX,
@@ -194,12 +343,22 @@ class ZwpLockedPointerV1 extends Proxy implements Dispatcher{
         WaylandType.fixed,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set a new lock region
+/// 
+/// Set a new region used to lock the pointer.
+/// 
+/// The new lock region is double-buffered, see wl_surface.commit.
+/// 
+/// For details about the lock region, see wp_locked_pointer.
+/// 
+/// [region]: region of surface
   Future<void> setRegion(Region region) async {
+    print("ZwpLockedPointerV1::setRegion  region: $region");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       2,
       [
         region,
@@ -208,20 +367,21 @@ class ZwpLockedPointerV1 extends Proxy implements Dispatcher{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// lock activation event
+/// lock activation event
 /// 
 /// Notification that the pointer lock of the seat's pointer is activated.
 /// 
- void onlocked(void Function() handler) {
+/// Event handler for Locked
+ void onLocked(ZwpLockedPointerV1LockedEventHandler handler) {
    _lockedHandler = handler;
  }
 
- void Function()? _lockedHandler;
+ ZwpLockedPointerV1LockedEventHandler? _lockedHandler;
 
- /// lock deactivation event
+/// lock deactivation event
 /// 
 /// Notification that the pointer lock of the seat's pointer is no longer
 /// active. If this is a oneshot pointer lock (see
@@ -230,30 +390,77 @@ class ZwpLockedPointerV1 extends Proxy implements Dispatcher{
 /// wp_pointer_constraints.lifetime) this pointer lock may again
 /// reactivate in the future.
 /// 
- void onunlocked(void Function() handler) {
+/// Event handler for Unlocked
+ void onUnlocked(ZwpLockedPointerV1UnlockedEventHandler handler) {
    _unlockedHandler = handler;
  }
 
- void Function()? _unlockedHandler;
+ ZwpLockedPointerV1UnlockedEventHandler? _unlockedHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_lockedHandler != null) {
-         _lockedHandler!(
-         );
+var event = ZwpLockedPointerV1LockedEvent(
+        );
+         _lockedHandler!(event);
        }
        break;
      case 1:
        if (_unlockedHandler != null) {
-         _unlockedHandler!(
-         );
+var event = ZwpLockedPointerV1UnlockedEvent(
+        );
+         _unlockedHandler!(event);
        }
        break;
    }
  }
 }
+
+
+/// pointer confined
+/// 
+/// Notification that the pointer confinement of the seat's pointer is
+/// activated.
+/// 
+class ZwpConfinedPointerV1ConfinedEvent {
+  ZwpConfinedPointerV1ConfinedEvent(
+);
+
+@override
+String toString(){
+  return """ZwpConfinedPointerV1ConfinedEvent: {
+  }""";
+}
+
+}
+
+typedef ZwpConfinedPointerV1ConfinedEventHandler = void Function(ZwpConfinedPointerV1ConfinedEvent);
+
+/// pointer unconfined
+/// 
+/// Notification that the pointer confinement of the seat's pointer is no
+/// longer active. If this is a oneshot pointer confinement (see
+/// wp_pointer_constraints.lifetime) this object is now defunct and should
+/// be destroyed. If this is a persistent pointer confinement (see
+/// wp_pointer_constraints.lifetime) this pointer confinement may again
+/// reactivate in the future.
+/// 
+class ZwpConfinedPointerV1UnconfinedEvent {
+  ZwpConfinedPointerV1UnconfinedEvent(
+);
+
+@override
+String toString(){
+  return """ZwpConfinedPointerV1UnconfinedEvent: {
+  }""";
+}
+
+}
+
+typedef ZwpConfinedPointerV1UnconfinedEventHandler = void Function(ZwpConfinedPointerV1UnconfinedEvent);
+
 
 /// confined pointer object
 /// 
@@ -277,23 +484,50 @@ class ZwpLockedPointerV1 extends Proxy implements Dispatcher{
 class ZwpConfinedPointerV1 extends Proxy implements Dispatcher{
   final Context context;
 
-  ZwpConfinedPointerV1(this.context) : super(context.allocateClientId());
+  ZwpConfinedPointerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
+/// destroy the confined pointer object
+/// 
+/// Destroy the confined pointer object. If applicable, the compositor will
+/// unconfine the pointer.
+/// 
   Future<void> destroy() async {
+    print("ZwpConfinedPointerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
+/// set a new confine region
+/// 
+/// Set a new region used to confine the pointer.
+/// 
+/// The new confine region is double-buffered, see wl_surface.commit.
+/// 
+/// If the confinement is active when the new confinement region is applied
+/// and the pointer ends up outside of newly applied region, the pointer may
+/// warped to a position within the new confinement region. If warped, a
+/// wl_pointer.motion event will be emitted, but no
+/// wp_relative_pointer.relative_motion event.
+/// 
+/// The compositor may also, instead of using the new region, unconfine the
+/// pointer.
+/// 
+/// For details about the confine region, see wp_confined_pointer.
+/// 
+/// [region]: region of surface
   Future<void> setRegion(Region region) async {
+    print("ZwpConfinedPointerV1::setRegion  region: $region");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
         region,
@@ -302,21 +536,22 @@ class ZwpConfinedPointerV1 extends Proxy implements Dispatcher{
         WaylandType.object,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
- /// pointer confined
+/// pointer confined
 /// 
 /// Notification that the pointer confinement of the seat's pointer is
 /// activated.
 /// 
- void onconfined(void Function() handler) {
+/// Event handler for Confined
+ void onConfined(ZwpConfinedPointerV1ConfinedEventHandler handler) {
    _confinedHandler = handler;
  }
 
- void Function()? _confinedHandler;
+ ZwpConfinedPointerV1ConfinedEventHandler? _confinedHandler;
 
- /// pointer unconfined
+/// pointer unconfined
 /// 
 /// Notification that the pointer confinement of the seat's pointer is no
 /// longer active. If this is a oneshot pointer confinement (see
@@ -325,25 +560,28 @@ class ZwpConfinedPointerV1 extends Proxy implements Dispatcher{
 /// wp_pointer_constraints.lifetime) this pointer confinement may again
 /// reactivate in the future.
 /// 
- void onunconfined(void Function() handler) {
+/// Event handler for Unconfined
+ void onUnconfined(ZwpConfinedPointerV1UnconfinedEventHandler handler) {
    _unconfinedHandler = handler;
  }
 
- void Function()? _unconfinedHandler;
+ ZwpConfinedPointerV1UnconfinedEventHandler? _unconfinedHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_confinedHandler != null) {
-         _confinedHandler!(
-         );
+var event = ZwpConfinedPointerV1ConfinedEvent(
+        );
+         _confinedHandler!(event);
        }
        break;
      case 1:
        if (_unconfinedHandler != null) {
-         _unconfinedHandler!(
-         );
+var event = ZwpConfinedPointerV1UnconfinedEvent(
+        );
+         _unconfinedHandler!(event);
        }
        break;
    }

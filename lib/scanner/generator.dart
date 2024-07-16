@@ -1,10 +1,11 @@
 import 'dart:io';
 
+import 'package:http/http.dart' as http;
 import 'package:path/path.dart';
 import 'package:wayland/protocol/type.dart';
+import 'package:wayland/protocol/utils.dart';
 import 'package:wayland/scanner/types.dart';
 import 'package:xml/xml.dart';
-import 'package:http/http.dart' as http;
 
 class Generator {
   final String inputFile;
@@ -16,6 +17,8 @@ class Generator {
   final List<String> imports;
   late Protocol protocol;
 
+  final bool format;
+
   Generator(
       {this.inputFile = '',
       this.outputFile = '',
@@ -23,6 +26,7 @@ class Generator {
       this.prefix = '',
       this.suffix = '',
       this.imports = const [],
+      this.format = false,
       this.cacheDir = '.wayland-protocol-cache'});
 
   Directory getCacheDir() {
@@ -72,19 +76,14 @@ class Generator {
       output.writeln("import 'package:wayland/generated/$imp';");
     }
 
+    output.writeln("import 'dart:async';");
     output.writeln("import 'dart:typed_data';");
     // output.writeln("import 'package:wayland/src/wayland_client.dart';");
     // }
 
-    var interfaceCalled = [];
     // Interfaces
     for (final interface in protocol.interfaces) {
-      if (interfaceCalled.contains(interface.name)) {
-        print('trying to call ${interface.name} again');
-        continue;
-      }
       writeInterface(output, interface);
-      interfaceCalled.add(interface.name);
     }
 
     var outFile = File(outputFile);
@@ -93,8 +92,35 @@ class Generator {
       outFile.createSync(recursive: true);
     }
 
-    await File(outputFile).writeAsString(output.toString());
+    await outFile.writeAsString(output.toString());
+    if (format) await tryFmt(outFile.absolute.path);
     print('Generated Dart code written to $outputFile');
+  }
+
+  Future tryFmt(String path) async {
+    var dart = await findDartExecutable();
+
+    if (dart == null) {
+      print('Could not find dart executable');
+      return;
+    }
+    await Process.run(dart, ['format', path]);
+  }
+
+  Future<String?> findDartExecutable() async {
+    try {
+      var result = await Process.run('which', ['dart']);
+      if (result.exitCode == 0) {
+        return result.stdout.toString().trim();
+      } else {
+        print(
+            'Could not find dart executable: ${result.stderr.toString().trim()}');
+        return null;
+      }
+    } catch (e) {
+      print('Could not find dart executable');
+    }
+    return null;
   }
 
   Future<String> getInputFile(String file) async {
@@ -120,48 +146,6 @@ class Generator {
     }
   }
 
-  void writeRequest(
-      StringBuffer output, String ifaceName, int index, Request request) {
-    final requestName = toLowerCamel(request.name);
-
-    output.writeln(' /// ${request.description.summary}');
-    output.writeln(comment(request.description.text));
-
-    final params = <String>[];
-    for (final arg in request.args) {
-      final argName = toCamel(arg.name);
-      final argType = getDartType(arg.type, arg.interface);
-      params.add('$argType $argName');
-    }
-
-    // Generate the request method signature
-    output.writeln(' void $requestName(${params.join(', ')}) {');
-
-    // Generate the request message
-    output.writeln('   final message = WaylandMessage(');
-    output.writeln('     context.allocateClientId(),');
-    output.writeln('     $index,');
-    output.writeln('     [');
-    for (final arg in request.args) {
-      final argName = toLowerCamel(arg.name);
-      if (arg.type == 'object' || arg.type == 'new_id') {
-        output.writeln('       $argName,');
-      } else {
-        output.writeln('       $argName,');
-      }
-    }
-    output.writeln('     ],');
-    output.writeln('     [');
-    for (final arg in request.args) {
-      output.writeln('       ${waylandStringToType(arg.type).toString()}},');
-    }
-    output.writeln('     ],');
-    output.writeln('   );');
-    output.writeln('   context.sendMessage(message);');
-    output.writeln(' }');
-    output.writeln();
-  }
-
   String fixName(String name) {
     final illegalArgs = <String, String>{
       'class': 'clazz',
@@ -176,74 +160,27 @@ class Generator {
   }
 
   void writeEnum(StringBuffer output, String ifaceName, Enum enum_) {
-    final enumName = toLowerCamel(enum_.name);
+    final enumName = toLowerCamel(enum_.name, prefix: prefix, suffix: suffix);
 
-    output.writeln('/// ${enum_.description.summary}');
+    output.writeln(comment(' ${enum_.description.summary}'));
     output.writeln(comment(enum_.description.text));
     output.writeln();
     output.writeln('enum $ifaceName$enumName {');
 
     for (final entry in enum_.entries) {
-      var entryName = toLowerCamel(fixName(entry.name));
+      var entryName =
+          toLowerCamel(fixName(entry.name), prefix: prefix, suffix: suffix);
 
       // Check if the result is a number and prefix with 'W' if it is
       if (int.tryParse(entryName) != null) {
         entryName = 'w$entryName';
       }
-      final summary = entry.summary.replaceAll(RegExp(r'\n'), '');
-      output.writeln('  /// $summary');
+      output.writeln(comment('   ${entry.summary}'));
       output.writeln('  $entryName,');
     }
 
     output.writeln('}');
     output.writeln();
-  }
-
-  String toLowerCamel(String s) {
-    // Remove prefix and suffix if they exist
-    s = s.replaceFirst(RegExp('^$prefix'), '');
-    s = s.replaceFirst(RegExp('$suffix\$'), '');
-
-    // Split by underscores
-    List<String> parts = s.split('_').where((ss) => ss.isNotEmpty).toList();
-
-    // Handle the case where there are no underscores
-    if (parts.length == 1) {
-      s = parts.first;
-    } else {
-      if (parts.first.isEmpty) {
-        s = parts[1];
-      } else if (parts[1].isEmpty && parts[0].isNotEmpty) {
-        return parts[0];
-      } else {
-        // Capitalize each part except the first one
-        String firstPart = parts.first.toLowerCase();
-        List<String> capitalizedParts = parts
-            .skip(1)
-            .map((part) =>
-                part[0].toUpperCase() + part.substring(1).toLowerCase())
-            .toList();
-
-        // Combine the first part with the capitalized parts
-        s = firstPart + capitalizedParts.join('');
-      }
-    }
-
-    return s;
-  }
-
-  String toCamel(String s) {
-    final camel = toLowerCamel(s);
-    return camel[0].toLowerCase() + camel.substring(1);
-  }
-
-  String toUpper(String s) {
-    final camel = toLowerCamel(s);
-    return camel[0].toUpperCase() + camel.substring(1);
-  }
-
-  String comment(String s) {
-    return s.split('\n').map((line) => '/// ${line.trim()}').join('\n');
   }
 
   String getDartType(String type, String interface) {
@@ -267,10 +204,66 @@ class Generator {
     }
   }
 
-  void writeInterface(StringBuffer output, Interface interface) {
-    final ifaceName = toUpper(interface.name);
+  void writeEventClasses(StringBuffer output, Interface interface) {
+    final ifaceName = toUpper(
+      interface.name,
+      prefix: prefix,
+      suffix: suffix,
+    );
+    for (final event in interface.events) {
+      if (event.description.summary.isNotEmpty) {
+        output.writeln(comment(event.description.summary));
+      }
+      if (event.description.text.isNotEmpty) {
+        output.writeln(comment(event.description.text));
+      }
 
-    output.writeln('/// ${interface.description.summary}');
+      output.writeln('class $ifaceName${toUpper(event.name)}Event {');
+      for (final arg in event.args) {
+        output.writeln(comment(arg.summary));
+        output.writeln(
+            '  final ${getDartType(arg.type, ifaceName)} ${toLowerCamel(fixName(arg.name))};');
+        output.writeln();
+      }
+      output.writeln('  $ifaceName${toUpper(event.name)}Event(');
+      for (final arg in event.args) {
+        output.writeln('this.${toLowerCamel(fixName(arg.name))},');
+        output.writeln();
+      }
+      output.writeln(');');
+      output.writeln();
+      output.writeln('@override');
+      output.writeln('String toString(){');
+      output.writeln('  return """$ifaceName${toUpper(event.name)}Event: {');
+      for (final arg in event.args) {
+        output.writeln(
+            '    ${toLowerCamel(fixName(arg.name))}: \$${toLowerCamel(fixName(arg.name))},');
+      }
+      output.writeln('  }""";');
+      output.writeln('}');
+      output.writeln();
+      output.writeln('}');
+
+      output.writeln();
+
+      output.writeln(
+          'typedef $ifaceName${toUpper(event.name)}EventHandler = void Function($ifaceName${toUpper(event.name)}Event);');
+      output.writeln();
+    }
+  }
+
+  void writeInterface(StringBuffer output, Interface interface) {
+    final ifaceName = toUpper(
+      interface.name,
+      prefix: prefix,
+      suffix: suffix,
+    );
+    output.writeln();
+
+    writeEventClasses(output, interface);
+    output.writeln();
+
+    output.writeln(comment(interface.description.summary));
     output.writeln(comment(interface.description.text));
 
     output.write('class $ifaceName extends Proxy');
@@ -284,12 +277,15 @@ class Generator {
     // output.writeln('  final WaylandConnection _client;');
     output.writeln();
     output.writeln(
-        '  $ifaceName(this.context) : super(context.allocateClientId());');
+        '  $ifaceName(this.context) : super(context.allocateClientId()){');
+    output.writeln('    context.register(this);');
+    output.writeln('  }');
     output.writeln();
 
     // Implement requests
     for (var i = 0; i < interface.requests.length; i++) {
-      writeRequestImpl(output, ifaceName, i, interface.requests[i]);
+      final request = interface.requests[i];
+      writeRequestImpl(output, ifaceName, i, request);
     }
 
     // Events
@@ -310,80 +306,129 @@ class Generator {
 
   void writeRequestImpl(
       StringBuffer output, String ifaceName, int opcode, Request request) {
-    final requestName = toCamel(request.name);
+    final requestName = toCamel(request.name, prefix: prefix, suffix: suffix);
+
+    String returnType = 'void';
+    String returnVal = '';
 
     final params = <String>[];
     final args = <String>[];
     final argTypes = <String>[];
 
     for (final arg in request.args) {
-      final argName = fixName(toLowerCamel(arg.name));
+      final argName =
+          fixName(toLowerCamel(arg.name, prefix: prefix, suffix: suffix));
       var argType = getDartType(arg.type, arg.interface);
 
-      if (arg.type == 'new_id') {
+      if (arg.type == 'new_id' && arg.interface.isNotEmpty) {
+        returnType = toUpper(arg.interface, prefix: prefix, suffix: suffix);
+        returnVal = argName;
         continue;
       }
 
       if (arg.type == 'object') {
-        if (arg.name == "sibling") {
-          print("");
-        }
         if (arg.interface.isNotEmpty) {
-          argType = toUpper(arg.interface);
+          argType = toUpper(arg.interface, prefix: prefix, suffix: suffix);
         } else {
-          argType = toUpper(argName);
+          argType = toUpper(argName, prefix: prefix, suffix: suffix);
         }
       }
-      params.add('$argType $argName');
-      args.add(argName);
 
-      argTypes.add(waylandStringToType(arg.type).toString());
+      if (arg.type == 'new_id' && arg.interface.isEmpty) {
+        params.add('int version');
+        params.add('String interface');
+      }
+      params.add('$argType $argName');
+    }
+
+    output.writeln(comment('  ${request.description.summary}'));
+    output.writeln(comment(request.description.text));
+
+
+    for (final arg in request.args) {
+      output.writeln(comment('  [${arg.name}]: ${arg.summary}'));
     }
 
     // Generate the request method implementation
-    output.writeln('  Future<void> $requestName(${params.join(', ')}) async {');
+    output.write(
+        '  Future<$returnType> $requestName(${params.join(', ')}) async {');
+    output.writeln();
+
 
     for (final arg in request.args) {
-      final argName = fixName(toLowerCamel(arg.name));
+      final argName =
+          fixName(toLowerCamel(arg.name, prefix: prefix, suffix: suffix));
 
       if (arg.type == 'new_id' && arg.interface.isNotEmpty) {
-        output.writeln('  var ${argName} =  ${toUpper(ifaceName)}(context);');
+        output.writeln(
+            '  var $argName =  ${toUpper(arg.interface, prefix: prefix, suffix: suffix)}(context);');
+        args.add(argName);
+        argTypes.add(WaylandType.newId.toString());
+      } else if (arg.type == 'new_id' && arg.interface.isEmpty) {
+        // Handle the case where the interface name and version need to be specified
+        args.add('interface');
+        args.add('version');
+        args.add(argName);
+        argTypes.add(WaylandType.string.toString());
+        argTypes.add(WaylandType.uint.toString());
+        argTypes.add(WaylandType.newId.toString());
+      } else {
+        args.add(argName);
+        argTypes.add(waylandStringToType(arg.type).toString());
       }
     }
 
+    output.write('    print("$ifaceName::$requestName ');
+    for(final arg in args){
+      output.write(' $arg: \$$arg');
+    }
+    output.writeln('");');
+
     output.writeln('    final message = WaylandMessage(');
-    output.writeln('      context.allocateClientId(),');
+    output.writeln('      objectId,');
     output.writeln('      $opcode,');
     output.writeln('      [');
-    for (final arg in request.args) {
-      final argName = toLowerCamel(fixName(arg.name));
-      if (arg.type == 'object' || arg.type == 'new_id') {
-        output.writeln('        $argName,');
-      } else {
-        output.writeln('        $argName,');
-      }
+    for (final arg in args) {
+      final argName =
+          toLowerCamel(fixName(arg), prefix: prefix, suffix: suffix);
+      output.writeln('        $argName,');
     }
     output.writeln('      ],');
     output.writeln('      [');
     for (final arg in request.args) {
-      output.writeln('        ${waylandStringToType(arg.type).toString()},');
+      if (arg.type == 'new_id' && arg.interface.isEmpty) {
+        output.writeln('        WaylandType.string,');
+        output.writeln('        WaylandType.uint,');
+        output.writeln('        WaylandType.newId,');
+      } else {
+        output.writeln('        ${waylandStringToType(arg.type).toString()},');
+      }
     }
     output.writeln('      ],');
     output.writeln('    );');
-    output.writeln('    context.sendMessage(message);');
+    output.writeln('    await context.sendMessage(message);');
+    if (returnVal.isNotEmpty) {
+      output.writeln('    return $returnVal;');
+    }
     output.writeln('  }');
     output.writeln();
   }
 
   void writeEvent(StringBuffer output, String ifaceName, Event event) {
-    final eventName = toCamel(event.name);
+    var eventName = toUpper(event.name, prefix: prefix, suffix: suffix);
 
-    output.writeln(' /// ${event.description.summary}');
+    output.writeln(comment(' ${event.description.summary}'));
     output.writeln(comment(event.description.text));
+
+    output.writeln(comment('  Event handler for $eventName'));
+
+    for (final arg in event.args) {
+      output.writeln(comment(' - [${arg.name}]: ${arg.summary}'));
+    }
 
     final params = <String>[];
     for (final arg in event.args) {
-      final argName = toLowerCamel(arg.name);
+      final argName = toLowerCamel(arg.name, prefix: prefix, suffix: suffix);
       final argType = getDartType(arg.type, arg.interface);
       params.add('$argType $argName');
     }
@@ -392,17 +437,21 @@ class Generator {
     // output.writeln(
     //     ' void on$eventName(void Function(${params.join(', ')}) handler);');
     // output.writeln();
-
     // Generate the stub implementation
     output.writeln(
-        ' void on$eventName(void Function(${params.join(', ')}) handler) {');
-    output.writeln('   _${toLowerCamel(eventName)}Handler = handler;');
+        ' void on$eventName($ifaceName${toUpper(event.name)}EventHandler handler) {');
+
+    // output.writeln(
+    //     ' void on$eventName(void Function(${params.join(', ')}) handler) {');
+    output.writeln(
+      '   _${toCamel(eventName, prefix: prefix, suffix: suffix)}Handler = handler;',
+    );
     output.writeln(' }');
     output.writeln();
 
     // Generate the private handler field
     output.writeln(
-        ' void Function(${params.join(', ')})? _${toLowerCamel(eventName)}Handler;');
+        ' $ifaceName${toUpper(event.name)}EventHandler? _${toCamel(eventName)}Handler;');
     output.writeln();
   }
 
@@ -416,40 +465,45 @@ class Generator {
 
     for (var i = 0; i < iface.events.length; i++) {
       final event = iface.events[i];
-      final eventName = toCamel(event.name);
+      final eventName = toCamel(event.name, prefix: prefix, suffix: suffix);
 
       output.writeln('     case $i:');
-      output
-          .writeln('       if (_${toLowerCamel(eventName)}Handler != null) {');
-      output.writeln('         _${toLowerCamel(eventName)}Handler!(');
+      output.writeln(
+          '       if (_${toLowerCamel(eventName, prefix: prefix, suffix: suffix)}Handler != null) {');
 
-      var offset = 0;
+      output.writeln('var event = $ifaceName${toUpper(event.name)}Event(');
+
+      var offsetz = 0;
       for (final arg in event.args) {
         switch (arg.type) {
           case 'int':
+            output.writeln(
+                '           ByteData.view(data.buffer).getInt32($offsetz, Endian.little),');
+            offsetz += 4;
+            break;
           case 'uint':
             output.writeln(
-                '           ByteData.view(data.buffer).getInt32($offset, Endian.host),');
-            offset += 4;
+                '           ByteData.view(data.buffer).getUint32($offsetz, Endian.little),');
+            offsetz += 4;
             break;
           case 'fixed':
             output.writeln(
-                '           fixedToDouble(ByteData.view(data.buffer).getInt32($offset, Endian.host)),');
-            offset += 4;
+                '           fixedToDouble(ByteData.view(data.buffer).getInt32($offsetz, Endian.little)),');
+            offsetz += 4;
             break;
           case 'string':
-            output.writeln('           getString(data, $offset),');
-            offset += 4;
+            output.writeln('           getString(data, $offsetz),');
+            offsetz += 4;
             break;
           case 'object':
           case 'new_id':
             output.writeln(
-                '           context.getProxy(ByteData.view(data.buffer).getUint32($offset, Endian.host)).id,');
-            offset += 4;
+                '           context.getProxy(ByteData.view(data.buffer).getUint32($offsetz, Endian.little)).objectId,');
+            offsetz += 4;
             break;
           case 'array':
-            output.writeln('           getArray(data, $offset),');
-            offset += 4;
+            output.writeln('           getArray(data, $offsetz),');
+            offsetz += 4;
             break;
           case 'fd':
             output.writeln('           fd,');
@@ -458,7 +512,11 @@ class Generator {
             output.writeln('           // Unhandled type: ${arg.type}');
         }
       }
-      output.writeln('         );');
+
+      output.writeln('        );');
+
+      output.writeln(
+          '         _${toLowerCamel(eventName, prefix: prefix, suffix: suffix)}Handler!(event);');
       output.writeln('       }');
       output.writeln('       break;');
     }

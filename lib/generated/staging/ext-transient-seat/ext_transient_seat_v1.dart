@@ -30,7 +30,10 @@ library client;
 
 import 'package:wayland/wayland.dart';
 import 'package:wayland/generated/wayland.dart';
+import 'dart:async';
 import 'dart:typed_data';
+
+
 /// transient seat manager
 /// 
 /// The transient seat manager creates short-lived seats.
@@ -38,12 +41,24 @@ import 'dart:typed_data';
 class ExtTransientSeatManagerV1 extends Proxy{
   final Context context;
 
-  ExtTransientSeatManagerV1(this.context) : super(context.allocateClientId());
+  ExtTransientSeatManagerV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
 
-  Future<void> create() async {
-  var seat =  ExtTransientSeatManagerV1(context);
+/// create a transient seat
+/// 
+/// Create a new seat that is removed when the client side transient seat
+/// object is destroyed.
+/// 
+/// The actual seat may be removed sooner, in which case the transient seat
+/// object shall become inert.
+/// 
+/// [seat]:
+  Future<ExtTransientSeatV1> create() async {
+  var seat =  ExtTransientSeatV1(context);
+    print("ExtTransientSeatManagerV1::create  seat: $seat");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       0,
       [
         seat,
@@ -52,46 +67,34 @@ class ExtTransientSeatManagerV1 extends Proxy{
         WaylandType.newId,
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
+    return seat;
   }
 
+/// destroy the manager
+/// 
+/// Destroy the manager.
+/// 
+/// All objects created by the manager will remain valid until they are
+/// destroyed themselves.
+/// 
   Future<void> destroy() async {
+    print("ExtTransientSeatManagerV1::destroy ");
     final message = WaylandMessage(
-      context.allocateClientId(),
+      objectId,
       1,
       [
       ],
       [
       ],
     );
-    context.sendMessage(message);
+    await context.sendMessage(message);
   }
 
 }
 
-/// transient seat handle
-/// 
-/// When the transient seat handle is destroyed, the seat itself will also be
-/// destroyed.
-/// 
-class ExtTransientSeatV1 extends Proxy implements Dispatcher{
-  final Context context;
 
-  ExtTransientSeatV1(this.context) : super(context.allocateClientId());
-
-  Future<void> destroy() async {
-    final message = WaylandMessage(
-      context.allocateClientId(),
-      0,
-      [
-      ],
-      [
-      ],
-    );
-    context.sendMessage(message);
-  }
-
- /// transient seat is ready
+/// transient seat is ready
 /// 
 /// This event advertises the global name for the wl_seat to be used with
 /// wl_registry_bind.
@@ -100,13 +103,27 @@ class ExtTransientSeatV1 extends Proxy implements Dispatcher{
 /// and the new "wl_seat" global is advertised, if and only if the creation
 /// of the transient seat was allowed.
 /// 
- void onready(void Function(int globalName) handler) {
-   _readyHandler = handler;
- }
+class ExtTransientSeatV1ReadyEvent {
+/// 
+  final int globalName;
 
- void Function(int globalName)? _readyHandler;
+  ExtTransientSeatV1ReadyEvent(
+this.globalName,
 
- /// transient seat creation denied
+);
+
+@override
+String toString(){
+  return """ExtTransientSeatV1ReadyEvent: {
+    globalName: $globalName,
+  }""";
+}
+
+}
+
+typedef ExtTransientSeatV1ReadyEventHandler = void Function(ExtTransientSeatV1ReadyEvent);
+
+/// transient seat creation denied
 /// 
 /// The event informs the client that the compositor denied its request to
 /// create a transient seat.
@@ -116,26 +133,101 @@ class ExtTransientSeatV1 extends Proxy implements Dispatcher{
 /// 
 /// After receiving this event, the client should destroy the object.
 /// 
- void ondenied(void Function() handler) {
+class ExtTransientSeatV1DeniedEvent {
+  ExtTransientSeatV1DeniedEvent(
+);
+
+@override
+String toString(){
+  return """ExtTransientSeatV1DeniedEvent: {
+  }""";
+}
+
+}
+
+typedef ExtTransientSeatV1DeniedEventHandler = void Function(ExtTransientSeatV1DeniedEvent);
+
+
+/// transient seat handle
+/// 
+/// When the transient seat handle is destroyed, the seat itself will also be
+/// destroyed.
+/// 
+class ExtTransientSeatV1 extends Proxy implements Dispatcher{
+  final Context context;
+
+  ExtTransientSeatV1(this.context) : super(context.allocateClientId()){
+    context.register(this);
+  }
+
+/// destroy transient seat
+/// 
+/// When the transient seat object is destroyed by the client, the
+/// associated seat created by the compositor is also destroyed.
+/// 
+  Future<void> destroy() async {
+    print("ExtTransientSeatV1::destroy ");
+    final message = WaylandMessage(
+      objectId,
+      0,
+      [
+      ],
+      [
+      ],
+    );
+    await context.sendMessage(message);
+  }
+
+/// transient seat is ready
+/// 
+/// This event advertises the global name for the wl_seat to be used with
+/// wl_registry_bind.
+/// 
+/// It is sent exactly once, immediately after the transient seat is created
+/// and the new "wl_seat" global is advertised, if and only if the creation
+/// of the transient seat was allowed.
+/// 
+/// Event handler for Ready
+/// - [global_name]:
+ void onReady(ExtTransientSeatV1ReadyEventHandler handler) {
+   _readyHandler = handler;
+ }
+
+ ExtTransientSeatV1ReadyEventHandler? _readyHandler;
+
+/// transient seat creation denied
+/// 
+/// The event informs the client that the compositor denied its request to
+/// create a transient seat.
+/// 
+/// It is sent exactly once, immediately after the transient seat object is
+/// created, if and only if the creation of the transient seat was denied.
+/// 
+/// After receiving this event, the client should destroy the object.
+/// 
+/// Event handler for Denied
+ void onDenied(ExtTransientSeatV1DeniedEventHandler handler) {
    _deniedHandler = handler;
  }
 
- void Function()? _deniedHandler;
+ ExtTransientSeatV1DeniedEventHandler? _deniedHandler;
 
  @override
  void dispatch(int opcode, int fd, Uint8List data) {
    switch (opcode) {
      case 0:
        if (_readyHandler != null) {
-         _readyHandler!(
-           ByteData.view(data.buffer).getInt32(0, Endian.host),
-         );
+var event = ExtTransientSeatV1ReadyEvent(
+           ByteData.view(data.buffer).getUint32(0, Endian.little),
+        );
+         _readyHandler!(event);
        }
        break;
      case 1:
        if (_deniedHandler != null) {
-         _deniedHandler!(
-         );
+var event = ExtTransientSeatV1DeniedEvent(
+        );
+         _deniedHandler!(event);
        }
        break;
    }
