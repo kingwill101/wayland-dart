@@ -2,8 +2,9 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart';
+import 'package:wayland/protocol/log.dart';
+import 'package:wayland/protocol/strings.dart';
 import 'package:wayland/protocol/type.dart';
-import 'package:wayland/protocol/utils.dart';
 import 'package:wayland/scanner/types.dart';
 import 'package:xml/xml.dart';
 
@@ -58,7 +59,7 @@ class Generator {
     output.writeln('// XML file : $inputFile');
     output.writeln('//');
     output.writeln('// ${protocol.name} Protocol Copyright: ');
-    output.writeln(comment(protocol.copyright));
+    output.writeln(protocol.copyright.comments());
     output.writeln();
 
     output.writeln('library $packageName;');
@@ -77,6 +78,7 @@ class Generator {
     }
 
     output.writeln("import 'dart:async';");
+    output.writeln("import 'dart:convert';");
     output.writeln("import 'dart:typed_data';");
     // output.writeln("import 'package:wayland/src/wayland_client.dart';");
     // }
@@ -94,17 +96,17 @@ class Generator {
 
     await outFile.writeAsString(output.toString());
     if (format) await tryFmt(outFile.absolute.path);
-    print('Generated Dart code written to $outputFile');
+    logLn('Generated Dart code written to $outputFile');
   }
 
   Future tryFmt(String path) async {
     var dart = await findDartExecutable();
 
     if (dart == null) {
-      print('Could not find dart executable');
+      logLn('Could not find dart executable');
       return;
     }
-    await Process.run(dart, ['format', path]);
+    await Process.run(dart, ['format',"--fix", path]);
   }
 
   Future<String?> findDartExecutable() async {
@@ -113,12 +115,12 @@ class Generator {
       if (result.exitCode == 0) {
         return result.stdout.toString().trim();
       } else {
-        print(
+        logLn(
             'Could not find dart executable: ${result.stderr.toString().trim()}');
         return null;
       }
     } catch (e) {
-      print('Could not find dart executable');
+      logLn('Could not find dart executable');
     }
     return null;
   }
@@ -273,13 +275,26 @@ class Generator {
     }
     output.write('{');
     output.writeln('');
-    output.writeln('  final Context context;');
-    // output.writeln('  final WaylandConnection _client;');
+    output.writeln('  final Context innerContext;');
+    output.writeln('  final version = ${interface.version};');
     output.writeln();
     output.writeln(
-        '  $ifaceName(this.context) : super(context.allocateClientId()){');
-    output.writeln('    context.register(this);');
+        '  $ifaceName(this.innerContext) : super(innerContext.allocateClientId()){');
+    output.writeln('    innerContext.register(this);');
     output.writeln('  }');
+    output.writeln();
+
+    output.writeln();
+    output.writeln('@override');
+    output.writeln('String toString(){');
+    output.write('  return """$ifaceName: [');
+    output.write(' name: "${interface.name}",');
+    output.write(' id: "\$objectId",');
+    output.write(
+        ' version: ${toLowerCamel(fixName(interface.version.toString()))},');
+    output.writeln(' ]""";');
+
+    output.writeln('}');
     output.writeln();
 
     // Implement requests
@@ -344,7 +359,6 @@ class Generator {
     output.writeln(comment('  ${request.description.summary}'));
     output.writeln(comment(request.description.text));
 
-
     for (final arg in request.args) {
       output.writeln(comment('  [${arg.name}]: ${arg.summary}'));
     }
@@ -354,14 +368,13 @@ class Generator {
         '  Future<$returnType> $requestName(${params.join(', ')}) async {');
     output.writeln();
 
-
     for (final arg in request.args) {
       final argName =
           fixName(toLowerCamel(arg.name, prefix: prefix, suffix: suffix));
 
       if (arg.type == 'new_id' && arg.interface.isNotEmpty) {
         output.writeln(
-            '  var $argName =  ${toUpper(arg.interface, prefix: prefix, suffix: suffix)}(context);');
+            '  var $argName =  ${toUpper(arg.interface, prefix: prefix, suffix: suffix)}(innerContext);');
         args.add(argName);
         argTypes.add(WaylandType.newId.toString());
       } else if (arg.type == 'new_id' && arg.interface.isEmpty) {
@@ -378,8 +391,8 @@ class Generator {
       }
     }
 
-    output.write('    print("$ifaceName::$requestName ');
-    for(final arg in args){
+    output.write('    logLn("$ifaceName::$requestName start');
+    for (final arg in args) {
       output.write(' $arg: \$$arg');
     }
     output.writeln('");');
@@ -406,7 +419,9 @@ class Generator {
     }
     output.writeln('      ],');
     output.writeln('    );');
-    output.writeln('    await context.sendMessage(message);');
+    output.writeln('    await innerContext.sendMessage(message);');
+    // output.write('    logLn("$ifaceName::$requestName end");');
+
     if (returnVal.isNotEmpty) {
       output.writeln('    return $returnVal;');
     }
@@ -434,15 +449,9 @@ class Generator {
     }
 
     // // Generate the event handler method signature
-    // output.writeln(
-    //     ' void on$eventName(void Function(${params.join(', ')}) handler);');
-    // output.writeln();
-    // Generate the stub implementation
     output.writeln(
         ' void on$eventName($ifaceName${toUpper(event.name)}EventHandler handler) {');
 
-    // output.writeln(
-    //     ' void on$eventName(void Function(${params.join(', ')}) handler) {');
     output.writeln(
       '   _${toCamel(eventName, prefix: prefix, suffix: suffix)}Handler = handler;',
     );
@@ -461,6 +470,7 @@ class Generator {
 
     output.writeln(' @override');
     output.writeln(' void dispatch(int opcode, int fd, Uint8List data) {');
+    output.writeln('logLn("$ifaceName.dispatch(opcode, fd, data)");');
     output.writeln('   switch (opcode) {');
 
     for (var i = 0; i < iface.events.length; i++) {
@@ -471,52 +481,89 @@ class Generator {
       output.writeln(
           '       if (_${toLowerCamel(eventName, prefix: prefix, suffix: suffix)}Handler != null) {');
 
-      output.writeln('var event = $ifaceName${toUpper(event.name)}Event(');
+      if (event.args.isNotEmpty) {
+        output.writeln('var offset = 0;');
+        for (final arg in event.args) {
+          var argName = toLowerCamel(arg.name, prefix: prefix, suffix: suffix);
+          var lengthVarName = '${argName}Length';
 
-      var offsetz = 0;
-      for (final arg in event.args) {
-        switch (arg.type) {
-          case 'int':
-            output.writeln(
-                '           ByteData.view(data.buffer).getInt32($offsetz, Endian.little),');
-            offsetz += 4;
-            break;
-          case 'uint':
-            output.writeln(
-                '           ByteData.view(data.buffer).getUint32($offsetz, Endian.little),');
-            offsetz += 4;
-            break;
-          case 'fixed':
-            output.writeln(
-                '           fixedToDouble(ByteData.view(data.buffer).getInt32($offsetz, Endian.little)),');
-            offsetz += 4;
-            break;
-          case 'string':
-            output.writeln('           getString(data, $offsetz),');
-            offsetz += 4;
-            break;
-          case 'object':
-          case 'new_id':
-            output.writeln(
-                '           context.getProxy(ByteData.view(data.buffer).getUint32($offsetz, Endian.little)).objectId,');
-            offsetz += 4;
-            break;
-          case 'array':
-            output.writeln('           getArray(data, $offsetz),');
-            offsetz += 4;
-            break;
-          case 'fd':
-            output.writeln('           fd,');
-            break;
-          default:
-            output.writeln('           // Unhandled type: ${arg.type}');
+          // Ensure the variable name does not conflict with the dispatch parameters
+          if (argName == 'opcode' || argName == 'fd' || argName == 'data') {
+            argName = '${argName}2';
+          }
+
+          // Ensure the length variable name does not conflict with the argument name
+          if (argName == lengthVarName) {
+            lengthVarName = '${argName}Len';
+          }
+
+          switch (arg.type) {
+            case 'int':
+              output.writeln(
+                  '           final $argName = ByteData.view(data.buffer).getInt32(offset, Endian.little);');
+              output.writeln('           offset += 4;');
+              break;
+            case 'uint':
+              output.writeln(
+                  '           final $argName = ByteData.view(data.buffer).getUint32(offset, Endian.little);');
+              output.writeln('           offset += 4;');
+              break;
+            case 'fixed':
+              output.writeln(
+                  '           final $argName = fixedToDouble(ByteData.view(data.buffer).getInt32(offset, Endian.little));');
+              output.writeln('           offset += 4;');
+              break;
+            case 'string':
+              output.writeln(
+                  '           final ${argName}Length = ByteData.view(data.buffer).getUint32(offset, Endian.little);');
+              output.writeln('           offset += 4;');
+              output.writeln(
+                  '           final $argName = utf8.decode(data.sublist(offset, offset + ${argName}Length - 1));');
+              output.writeln(
+                  '           offset += ${argName}Length; // Skip the string bytes and null terminator');
+              output.writeln(
+                  '           while (offset % 4 != 0) { offset++; } // Padding');
+              break;
+            case 'object':
+            case 'new_id':
+              output.writeln(
+                  '           final $argName = innerContext.getProxy(ByteData.view(data.buffer).getUint32(offset, Endian.little)).objectId;');
+              output.writeln('           offset += 4;');
+              break;
+            case 'array':
+              output.writeln(
+                  '           final $argName = getArray(data, offset);');
+              output.writeln(
+                  '           var arrayLength = ByteData.view(data.buffer).getUint32(offset, Endian.little);');
+              output.writeln('           offset += 4 + arrayLength;');
+              output.writeln(
+                  '           while (offset % 4 != 0) { offset++; } // Padding');
+              break;
+            case 'fd':
+              output.writeln('           final $argName = fd;');
+              break;
+            default:
+              output.writeln('           // Unhandled type: ${arg.type}');
+          }
         }
+
+        output.writeln('var event = $ifaceName${toUpper(event.name)}Event(');
+        for (final arg in event.args) {
+          var argName = toLowerCamel(arg.name, prefix: prefix, suffix: suffix);
+          if (argName == 'opcode' || argName == 'fd' || argName == 'data') {
+            argName = '${argName}2';
+          }
+          output.writeln('           $argName,');
+        }
+        output.writeln('        );');
+
+        output.writeln(
+            '         _${toLowerCamel(eventName, prefix: prefix, suffix: suffix)}Handler!(event);');
+      } else {
+        output.writeln(
+            '         _${toLowerCamel(eventName, prefix: prefix, suffix: suffix)}Handler!(${ifaceName}${toUpper(event.name)}Event());');
       }
 
-      output.writeln('        );');
-
-      output.writeln(
-          '         _${toLowerCamel(eventName, prefix: prefix, suffix: suffix)}Handler!(event);');
       output.writeln('       }');
       output.writeln('       break;');
     }
