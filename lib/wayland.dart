@@ -1,2 +1,3 @@
-export 'protocol/protocol.dart';
-export 'protocol/log.dart';
+library wayland;
+
+export 'src/protocol/protocol.dart';

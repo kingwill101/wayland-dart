@@ -1,8 +1,7 @@
 import 'dart:io';
-import 'package:wayland/scanner/commands/scan.dart';
+
 import 'package:args/command_runner.dart';
-
-
+import 'package:wayland/src/scanner/commands/scan.dart';
 
 void main(List<String> arguments) async {
   final runner =
@@ -16,4 +15,6 @@ void main(List<String> arguments) async {
     exit(64);
   }
 }
+
+
 
