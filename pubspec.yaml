@@ -2,7 +2,7 @@ name: wayland
 description: A sample command-line application.
 version: 1.0.0
 # repository: https://github.com/my_org/my_repo
-
+publish_to: none
 environment:
   sdk: ^3.4.3
 
@@ -11,11 +11,17 @@ dependencies:
   # path: ^1.8.0
   xml: ^6.5.0
   args: ^2.5.0
-  http: ^1.2.1
+  http: 
   path: ^1.9.0
   yaml: ^3.1.2
-
+  result_dart: ^1.1.1
+  native_socket:
+    git:
+      url: https://github.com/kingwill101/dart_native_socket
+  logging: ^1.2.0
+  pcanvas: ^1.1.0
 dev_dependencies:
+  ffigen: ^13.0.0
   lints: ^4.0.0
   test: ^1.25.8
 

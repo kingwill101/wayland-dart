@@ -19,9 +19,6 @@ import 'package:wayland/wayland.dart';
   final msgSize = size - 8;
   final arguments = data.sublist(8, 8 + msgSize);
 
-  // logLn(
-  //     'Parsed message: objectId: $objectId, opcode: $opcode, arguments: $arguments');
-
   return (objectId, opcode, arguments);
 }
 
