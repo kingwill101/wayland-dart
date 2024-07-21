@@ -1,0 +1,3 @@
+mixin Runner {
+  void dispatch() {}
+}

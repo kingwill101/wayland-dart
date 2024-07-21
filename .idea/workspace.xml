@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="7fbbd816-7c1e-481e-9ba6-a2b8bf30a7dd" name="Changes" comment="switch to using native_socket">
+      <change afterPath="$PROJECT_DIR$/.idea/cody_history.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/Dart_Packages.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/libraries/Dart_SDK.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/wayland.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.vscode/settings.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/.vscode/launch.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/bin/wayland2.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/image.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/lib/app.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/lib/drawing/canvas.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/lib/drawing/color.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/lib/drawing/drawing.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/lib/drawing/shape.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/lib/event_loop.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/lib/keyboard.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/lib/mixins/dispatcher.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/lib/mixins/event.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/lib/mixins/painter.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/lib/mixins/size.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/lib/mixins/window.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/lib/widget.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/lib/window.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/lib/window/base.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/lib/window/wayland.dart" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/example/thumbnail.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/bin/wayland.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/bin/wayland.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/pubspec.lock" beforeDir="false" afterPath="$PROJECT_DIR$/example/pubspec.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/example/pubspec.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/justfile" beforeDir="false" afterPath="$PROJECT_DIR$/justfile" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ChangesViewManager">
+    <option name="groupingKeys">
+      <option value="directory" />
+    </option>
+  </component>
+  <component name="CodyActiveAccount">
+    <option name="activeAccountId" value="VXNlcjo0MzYwOQ==" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Dart File" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 5
+}</component>
+  <component name="ProjectId" id="2jEYdqmTO13aEAgAOP2tbG3rTEW" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+    <option name="showVisibilityIcons" value="true" />
+    <option name="sortByType" value="true" />
+    <option name="sortKey" value="BY_TYPE" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Dart Command Line App.build.dart.executor": "Debug",
+    "Dart Command Line App.sadf.dart.executor": "Debug",
+    "Dart Command Line App.scanner.executor": "Run",
+    "Dart Command Line App.t.dart.executor": "Run",
+    "Dart Command Line App.wayland.dart.executor": "Run",
+    "Dart Command Line App.wayland2.dart.executor": "Run",
+    "NIXITCH_NIXPKGS_CONFIG": "",
+    "NIXITCH_NIX_CONF_DIR": "",
+    "NIXITCH_NIX_OTHER_STORES": "",
+    "NIXITCH_NIX_PATH": "",
+    "NIXITCH_NIX_PROFILES": "/nix/var/nix/profiles/default /home/kingwill101/.nix-profile",
+    "NIXITCH_NIX_REMOTE": "",
+    "NIXITCH_NIX_USER_PROFILE_DIR": "",
+    "RunOnceActivity.CodyAccountHistoryMigration": "true",
+    "RunOnceActivity.CodyConvertUrlToCodebaseName": "true",
+    "RunOnceActivity.CodyHistoryLlmMigration": "true",
+    "RunOnceActivity.CodyProjectSettingsMigration": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
+    "dart.analysis.tool.window.visible": "false",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/home/kingwill101/code/dart_packages/wayland/example/lib",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "flutter.settings",
+    "show.migrate.to.gradle.popup": "false"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/example/lib" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/example/lib" />
+      <recent name="$PROJECT_DIR$/example/lib/window" />
+      <recent name="$PROJECT_DIR$/example/bin" />
+      <recent name="$PROJECT_DIR$/lib/src" />
+      <recent name="$PROJECT_DIR$/lib" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Dart Command Line App.wayland2.dart">
+    <configuration name="sadf.dart" type="DartCommandLineRunConfigurationType" factoryName="Dart Command Line Application" temporary="true" nameIsGenerated="true">
+      <option name="VMOptions" value="--enable-experiment=native-assets" />
+      <option name="filePath" value="$PROJECT_DIR$/example/bin/sadf.dart" />
+      <option name="workingDirectory" value="$PROJECT_DIR$/example" />
+      <method v="2" />
+    </configuration>
+    <configuration name="scanner" type="DartCommandLineRunConfigurationType" factoryName="Dart Command Line Application" temporary="true">
+      <option name="VMOptions" value="--enable-experiment=native-assets" />
+      <option name="arguments" value=" scan --prefix=wl --pkg=client --protocols=protocols.yaml --clean=true" />
+      <option name="filePath" value="$PROJECT_DIR$/bin/scanner.dart" />
+      <option name="workingDirectory" value="$PROJECT_DIR$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="wayland2.dart" type="DartCommandLineRunConfigurationType" factoryName="Dart Command Line Application" temporary="true" nameIsGenerated="true">
+      <option name="filePath" value="$PROJECT_DIR$/example/bin/wayland2.dart" />
+      <option name="workingDirectory" value="$PROJECT_DIR$/example" />
+      <method v="2" />
+    </configuration>
+    <configuration name="wayland.dart" type="DartCommandLineRunConfigurationType" factoryName="Dart Command Line Application" nameIsGenerated="true">
+      <option name="VMOptions" value="--enable-experiment=native-assets" />
+      <option name="filePath" value="$PROJECT_DIR$/example/bin/wayland.dart" />
+      <option name="workingDirectory" value="$PROJECT_DIR$/example" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Dart Command Line App.wayland.dart" />
+      <item itemvalue="Dart Command Line App.wayland2.dart" />
+      <item itemvalue="Dart Command Line App.sadf.dart" />
+      <item itemvalue="Dart Command Line App.scanner" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Dart Command Line App.wayland2.dart" />
+        <item itemvalue="Dart Command Line App.sadf.dart" />
+        <item itemvalue="Dart Command Line App.scanner" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9f38398b9061-39b83d9b5494-intellij.indexing.shared.core-IU-241.18034.62" />
+        <option value="bundled-js-predefined-1d06a55b98c1-0b3e54e931b4-JavaScript-IU-241.18034.62" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="7fbbd816-7c1e-481e-9ba6-a2b8bf30a7dd" name="Changes" comment="" />
+      <created>1698014411991</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1698014411991</updated>
+    </task>
+    <task id="LOCAL-00001" summary="big refactor">
+      <option name="closed" value="true" />
+      <created>1721303024933</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1721303024933</updated>
+    </task>
+    <task id="LOCAL-00002" summary="big refactor">
+      <option name="closed" value="true" />
+      <created>1721303867419</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1721303867419</updated>
+    </task>
+    <task id="LOCAL-00003" summary="switch to native_socket">
+      <option name="closed" value="true" />
+      <created>1721580551917</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1721580551917</updated>
+    </task>
+    <task id="LOCAL-00004" summary="generator tweaks:&#10;support destructors&#10;use Result&lt;type, error&gt; for return types&#10;file descriptor checks">
+      <option name="closed" value="true" />
+      <created>1721580708062</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1721580708062</updated>
+    </task>
+    <task id="LOCAL-00005" summary="regenerate protocols">
+      <option name="closed" value="true" />
+      <created>1721580721168</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1721580721168</updated>
+    </task>
+    <task id="LOCAL-00006" summary="switch to using native_socket">
+      <option name="closed" value="true" />
+      <created>1721580757271</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1721580757271</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="big refactor" />
+    <MESSAGE value="switch to native_socket" />
+    <MESSAGE value="generator tweaks:&#10;support destructors&#10;use Result&lt;type, error&gt; for return types&#10;file descriptor checks" />
+    <MESSAGE value="regenerate protocols" />
+    <MESSAGE value="switch to using native_socket" />
+    <option name="LAST_COMMIT_MESSAGE" value="switch to using native_socket" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="Dart">
+          <url>file://$PROJECT_DIR$/example/lib/window.dart</url>
+          <line>6</line>
+          <option name="timeStamp" value="187" />
+        </line-breakpoint>
+      </breakpoints>
+      <default-breakpoints>
+        <breakpoint enabled="true" log-message="true" log-stack="true" type="dart-exception">
+          <properties>
+            <option name="breakOnAllExceptions" value="true" />
+          </properties>
+        </breakpoint>
+      </default-breakpoints>
+    </breakpoint-manager>
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>

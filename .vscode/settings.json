@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.embeddedhtml": "html",
+        "socket.h": "c",
+        "unistd.h": "c"
+    }
+}
