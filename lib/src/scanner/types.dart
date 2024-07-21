@@ -83,6 +83,8 @@ class Request {
       since: int.parse(element.getAttribute('since') ?? '0'),
     );
   }
+
+  bool get isDestructor => type == "destructor";
 }
 
 class Event {

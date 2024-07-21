@@ -83,6 +83,7 @@ class Generator {
     output.writeln("import 'dart:async';");
     output.writeln("import 'dart:convert';");
     output.writeln("import 'dart:typed_data';");
+    output.writeln("import 'package:result_dart/result_dart.dart';");
 
     // Interfaces
     for (final interface in protocol.interfaces) {
@@ -308,7 +309,6 @@ class Generator {
     ], newLine);
     output.writeln();
 
-
     output.writeln();
 
     // Implement requests
@@ -409,8 +409,13 @@ class Generator {
     }
 
     // Generate the request method implementation
-    output.write('  $returnType $requestName(${params.join(', ')}) {');
+    output.write(
+        '  Result<$returnType,Object> $requestName(${params.join(', ')}) {');
     output.writeln();
+
+    if (request.isDestructor) {
+      output.writeln('innerContext.unRegister(this);');
+    }
 
     for (final arg in args2) {
       final argName =
@@ -431,11 +436,12 @@ class Generator {
     }
     output.writeln('");');
 
+    var argNoFd = args2.where((a) => a.type != "fd");
     output.write(
-        'var arguments = [${args2.map((a) => fixName(a.name.lowerCamel())).join(', ')}];');
+        'var arguments = [${argNoFd.map((a) => fixName(a.name.lowerCamel())).join(', ')}];');
 
     output.writeln(
-        'var argTypes = <WaylandType>[${args2.map((a) => waylandStringToType(a.type).toString()).join(', ')}];');
+        'var argTypes = <WaylandType>[${argNoFd.map((a) => waylandStringToType(a.type).toString()).join(', ')}];');
 
     output
         .writeln('var calclulatedSize  = calculateSize(argTypes, arguments);');
@@ -449,6 +455,7 @@ class Generator {
     for (final arg in args2) {
       argTypes.add(waylandStringToType(arg.type).toString());
     }
+    String fd = '';
 
     for (final arg in args2) {
       final argName =
@@ -494,17 +501,27 @@ class Generator {
               '    while (bytesBuilder.length % 4 != 0) { bytesBuilder.add([0]); } // Padding');
           break;
         case 'fd':
-          output.writeln('    // Handle file descriptor separately');
+          fd = argName;
           break;
         default:
           output.writeln('    // Unhandled type: ${arg.type}');
       }
     }
 
-    output.writeln('    innerContext.sendMessage(bytesBuilder.toBytes());');
+    output.writeln('    try{');
+    output
+        .writeln('    innerContext.sendMessage(bytesBuilder.toBytes(), $fd);');
+    output.writeln('    }catch (e) {');
+    output
+        .writeln('      logLn("Exception in $ifaceName::$requestName: \$e");');
+
+    output.writeln('   return Failure(e);');
+    output.writeln('    }');
 
     if (returnVal.isNotEmpty) {
-      output.writeln('    return $returnVal;');
+      output.writeln('    return Success($returnVal);');
+    } else {
+      output.writeln('    return Success(Object());');
     }
     output.writeln('  }');
     output.writeln();
@@ -557,11 +574,22 @@ class Generator {
     for (var i = 0; i < iface.events.length; i++) {
       final event = iface.events[i];
       final eventName = toCamel(event.name, prefix: prefix, suffix: suffix);
+      bool hasFd = false;
+
+      for (final arg in event.args) {
+        if (arg.type == 'fd') {
+          hasFd = true;
+          break;
+        }
+      }
 
       output.writeln('     case $i:');
+      if (hasFd) {
+        output.writeAll(["if(fd != -1){", "}"], newLine);
+      }
+      output.writeln();
       output.writeln(
           '       if (_${toLowerCamel(eventName, prefix: prefix, suffix: suffix)}Handler != null) {');
-
       if (event.args.isNotEmpty) {
         output.writeln('var offset = 0;');
         for (final arg in event.args) {
