@@ -36,6 +36,7 @@ import 'package:wayland/wayland.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:result_dart/result_dart.dart';
 
 /// fatal error event
 ///
@@ -128,7 +129,7 @@ class Display extends Proxy implements Dispatcher {
   /// The callback_data passed in the callback is undefined and should be ignored.
   ///
   /// [callback]: callback object for the sync request
-  Callback sync() {
+  Result<Callback, Object> sync() {
     var callback = Callback(innerContext);
     logLn("Display::sync  callback: $callback");
     var arguments = [callback];
@@ -141,8 +142,15 @@ class Display extends Proxy implements Dispatcher {
             .asUint8List());
     bytesBuilder
         .add(Uint32List.fromList([callback.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
-    return callback;
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Display::sync: $e");
+      return Failure(e);
+    }
+    return Success(callback);
   }
 
   /// get global registry object
@@ -158,7 +166,7 @@ class Display extends Proxy implements Dispatcher {
   /// possible to avoid wasting memory.
   ///
   /// [registry]: global registry object
-  Registry getRegistry() {
+  Result<Registry, Object> getRegistry() {
     var registry = Registry(innerContext);
     logLn("Display::getRegistry  registry: $registry");
     var arguments = [registry];
@@ -171,8 +179,15 @@ class Display extends Proxy implements Dispatcher {
             .asUint8List());
     bytesBuilder
         .add(Uint32List.fromList([registry.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
-    return registry;
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Display::getRegistry: $e");
+      return Failure(e);
+    }
+    return Success(registry);
   }
 
   /// fatal error event
@@ -392,7 +407,7 @@ class Registry extends Proxy implements Dispatcher {
   ///
   /// [name]: unique numeric name of the object
   /// [id]: bounded object
-  void bind(int name, String interface, int version, int id) {
+  Result<void, Object> bind(int name, String interface, int version, int id) {
     logLn(
         "Registry::bind  name: $name interface: $interface version: $version id: $id");
     var arguments = [name, interface, version, id];
@@ -419,7 +434,15 @@ class Registry extends Proxy implements Dispatcher {
     } // Padding
     bytesBuilder.add(Int32List.fromList([version]).buffer.asUint8List());
     bytesBuilder.add(Uint32List.fromList([id]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Registry::bind: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// announce global object
@@ -605,7 +628,7 @@ class Compositor extends Proxy {
   /// Ask the compositor to create a new surface.
   ///
   /// [id]: the new surface
-  Surface createSurface() {
+  Result<Surface, Object> createSurface() {
     var id = Surface(innerContext);
     logLn("Compositor::createSurface  id: $id");
     var arguments = [id];
@@ -617,8 +640,15 @@ class Compositor extends Proxy {
             .buffer
             .asUint8List());
     bytesBuilder.add(Uint32List.fromList([id.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
-    return id;
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Compositor::createSurface: $e");
+      return Failure(e);
+    }
+    return Success(id);
   }
 
   /// create new region
@@ -626,7 +656,7 @@ class Compositor extends Proxy {
   /// Ask the compositor to create a new region.
   ///
   /// [id]: the new region
-  Region createRegion() {
+  Result<Region, Object> createRegion() {
     var id = Region(innerContext);
     logLn("Compositor::createRegion  id: $id");
     var arguments = [id];
@@ -638,8 +668,15 @@ class Compositor extends Proxy {
             .buffer
             .asUint8List());
     bytesBuilder.add(Uint32List.fromList([id.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
-    return id;
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Compositor::createRegion: $e");
+      return Failure(e);
+    }
+    return Success(id);
   }
 }
 
@@ -686,7 +723,7 @@ class ShmPool extends Proxy {
   /// [height]: buffer height, in pixels
   /// [stride]: number of bytes from the beginning of one row to the beginning of the next row
   /// [format]: buffer pixel format
-  Buffer createBuffer(
+  Result<Buffer, Object> createBuffer(
       int offset, int width, int height, int stride, int format) {
     var id = Buffer(innerContext);
     logLn(
@@ -712,8 +749,15 @@ class ShmPool extends Proxy {
     bytesBuilder.add(Int32List.fromList([height]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([stride]).buffer.asUint8List());
     bytesBuilder.add(Uint32List.fromList([format]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
-    return id;
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in ShmPool::createBuffer: $e");
+      return Failure(e);
+    }
+    return Success(id);
   }
 
   /// destroy the pool
@@ -724,7 +768,8 @@ class ShmPool extends Proxy {
   /// buffers that have been created from this pool
   /// are gone.
   ///
-  void destroy() {
+  Result<void, Object> destroy() {
+    innerContext.unRegister(this);
     logLn("ShmPool::destroy ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -734,7 +779,15 @@ class ShmPool extends Proxy {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 1])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in ShmPool::destroy: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// change the size of the pool mapping
@@ -751,7 +804,7 @@ class ShmPool extends Proxy {
   /// the new pool size.
   ///
   /// [size]: new size of the pool, in bytes
-  void resize(int size) {
+  Result<void, Object> resize(int size) {
     logLn("ShmPool::resize  size: $size");
     var arguments = [size];
     var argTypes = <WaylandType>[WaylandType.int];
@@ -762,7 +815,15 @@ class ShmPool extends Proxy {
             .buffer
             .asUint8List());
     bytesBuilder.add(Int32List.fromList([size]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in ShmPool::resize: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 }
 
@@ -824,15 +885,11 @@ class Shm extends Proxy implements Dispatcher {
   /// [id]: pool to create
   /// [fd]: file descriptor for the pool
   /// [size]: pool size, in bytes
-  ShmPool createPool(int fd, int size) {
+  Result<ShmPool, Object> createPool(int fd, int size) {
     var id = ShmPool(innerContext);
     logLn("Shm::createPool  id: $id fd: $fd size: $size");
-    var arguments = [id, fd, size];
-    var argTypes = <WaylandType>[
-      WaylandType.newId,
-      WaylandType.fd,
-      WaylandType.int
-    ];
+    var arguments = [id, size];
+    var argTypes = <WaylandType>[WaylandType.newId, WaylandType.int];
     var calclulatedSize = calculateSize(argTypes, arguments);
     final bytesBuilder = BytesBuilder();
     bytesBuilder.add(
@@ -840,10 +897,14 @@ class Shm extends Proxy implements Dispatcher {
             .buffer
             .asUint8List());
     bytesBuilder.add(Uint32List.fromList([id.objectId]).buffer.asUint8List());
-    // Handle file descriptor separately
     bytesBuilder.add(Int32List.fromList([size]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
-    return id;
+    try {
+      innerContext.sendMessage(bytesBuilder.toBytes(), fd);
+    } catch (e) {
+      logLn("Exception in Shm::createPool: $e");
+      return Failure(e);
+    }
+    return Success(id);
   }
 
   /// release the shm object
@@ -853,7 +914,8 @@ class Shm extends Proxy implements Dispatcher {
   ///
   /// Objects created via this interface remain unaffected.
   ///
-  void release() {
+  Result<void, Object> release() {
+    innerContext.unRegister(this);
     logLn("Shm::release ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -863,7 +925,15 @@ class Shm extends Proxy implements Dispatcher {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 1])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Shm::release: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// pixel format description
@@ -1383,7 +1453,8 @@ class Buffer extends Proxy implements Dispatcher {
   ///
   /// For possible side-effects to a surface, see wl_surface.attach.
   ///
-  void destroy() {
+  Result<void, Object> destroy() {
+    innerContext.unRegister(this);
     logLn("Buffer::destroy ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -1393,7 +1464,15 @@ class Buffer extends Proxy implements Dispatcher {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 0])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Buffer::destroy: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// compositor releases buffer
@@ -1571,7 +1650,7 @@ class DataOffer extends Proxy implements Dispatcher {
   ///
   /// [serial]: serial number of the accept request
   /// [mime_type]: mime type accepted by the client
-  void accept(int serial, String mimeType) {
+  Result<void, Object> accept(int serial, String mimeType) {
     logLn("DataOffer::accept  serial: $serial mimeType: $mimeType");
     var arguments = [serial, mimeType];
     var argTypes = <WaylandType>[WaylandType.uint, WaylandType.string];
@@ -1590,7 +1669,15 @@ class DataOffer extends Proxy implements Dispatcher {
     while (bytesBuilder.length % 4 != 0) {
       bytesBuilder.add([0]);
     } // Padding
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in DataOffer::accept: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// request that the data is transferred
@@ -1613,10 +1700,10 @@ class DataOffer extends Proxy implements Dispatcher {
   ///
   /// [mime_type]: mime type desired by receiver
   /// [fd]: file descriptor for data transfer
-  void receive(String mimeType, int fd) {
+  Result<void, Object> receive(String mimeType, int fd) {
     logLn("DataOffer::receive  mimeType: $mimeType fd: $fd");
-    var arguments = [mimeType, fd];
-    var argTypes = <WaylandType>[WaylandType.string, WaylandType.fd];
+    var arguments = [mimeType];
+    var argTypes = <WaylandType>[WaylandType.string];
     var calclulatedSize = calculateSize(argTypes, arguments);
     final bytesBuilder = BytesBuilder();
     bytesBuilder.add(
@@ -1631,15 +1718,21 @@ class DataOffer extends Proxy implements Dispatcher {
     while (bytesBuilder.length % 4 != 0) {
       bytesBuilder.add([0]);
     } // Padding
-    // Handle file descriptor separately
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(bytesBuilder.toBytes(), fd);
+    } catch (e) {
+      logLn("Exception in DataOffer::receive: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// destroy data offer
   ///
   /// Destroy the data offer.
   ///
-  void destroy() {
+  Result<void, Object> destroy() {
+    innerContext.unRegister(this);
     logLn("DataOffer::destroy ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -1649,7 +1742,15 @@ class DataOffer extends Proxy implements Dispatcher {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 2])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in DataOffer::destroy: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// the offer will no longer be used
@@ -1669,7 +1770,7 @@ class DataOffer extends Proxy implements Dispatcher {
   /// If wl_data_offer.finish request is received for a non drag and drop
   /// operation, the invalid_finish protocol error is raised.
   ///
-  void finish() {
+  Result<void, Object> finish() {
     logLn("DataOffer::finish ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -1679,7 +1780,15 @@ class DataOffer extends Proxy implements Dispatcher {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 3])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in DataOffer::finish: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// set the available/preferred drag-and-drop actions
@@ -1718,7 +1827,7 @@ class DataOffer extends Proxy implements Dispatcher {
   ///
   /// [dnd_actions]: actions supported by the destination client
   /// [preferred_action]: action preferred by the destination client
-  void setActions(int dndActions, int preferredAction) {
+  Result<void, Object> setActions(int dndActions, int preferredAction) {
     logLn(
         "DataOffer::setActions  dndActions: $dndActions preferredAction: $preferredAction");
     var arguments = [dndActions, preferredAction];
@@ -1732,7 +1841,15 @@ class DataOffer extends Proxy implements Dispatcher {
     bytesBuilder.add(Uint32List.fromList([dndActions]).buffer.asUint8List());
     bytesBuilder
         .add(Uint32List.fromList([preferredAction]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in DataOffer::setActions: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// advertise offered mime type
@@ -2084,7 +2201,7 @@ class DataSource extends Proxy implements Dispatcher {
   /// multiple types.
   ///
   /// [mime_type]: mime type offered by the data source
-  void offer(String mimeType) {
+  Result<void, Object> offer(String mimeType) {
     logLn("DataSource::offer  mimeType: $mimeType");
     var arguments = [mimeType];
     var argTypes = <WaylandType>[WaylandType.string];
@@ -2102,14 +2219,23 @@ class DataSource extends Proxy implements Dispatcher {
     while (bytesBuilder.length % 4 != 0) {
       bytesBuilder.add([0]);
     } // Padding
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in DataSource::offer: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// destroy the data source
   ///
   /// Destroy the data source.
   ///
-  void destroy() {
+  Result<void, Object> destroy() {
+    innerContext.unRegister(this);
     logLn("DataSource::destroy ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -2119,7 +2245,15 @@ class DataSource extends Proxy implements Dispatcher {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 1])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in DataSource::destroy: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// set the available drag-and-drop actions
@@ -2139,7 +2273,7 @@ class DataSource extends Proxy implements Dispatcher {
   /// for drag-and-drop will raise a protocol error.
   ///
   /// [dnd_actions]: actions supported by the data source
-  void setActions(int dndActions) {
+  Result<void, Object> setActions(int dndActions) {
     logLn("DataSource::setActions  dndActions: $dndActions");
     var arguments = [dndActions];
     var argTypes = <WaylandType>[WaylandType.uint];
@@ -2150,7 +2284,15 @@ class DataSource extends Proxy implements Dispatcher {
             .buffer
             .asUint8List());
     bytesBuilder.add(Uint32List.fromList([dndActions]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in DataSource::setActions: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// a target accepts an offered mime type
@@ -2307,6 +2449,7 @@ class DataSource extends Proxy implements Dispatcher {
         }
         break;
       case 1:
+        if (fd != -1) {}
         if (_sendHandler != null) {
           var offset = 0;
           final mimeTypeLength =
@@ -2606,7 +2749,8 @@ class DataDevice extends Proxy implements Dispatcher {
   /// [origin]: surface where the drag originates
   /// [icon]: drag-and-drop icon surface
   /// [serial]: serial number of the implicit grab on the origin
-  void startDrag(DataSource source, Surface origin, Surface icon, int serial) {
+  Result<void, Object> startDrag(
+      DataSource source, Surface origin, Surface icon, int serial) {
     logLn(
         "DataDevice::startDrag  source: $source origin: $origin icon: $icon serial: $serial");
     var arguments = [source, origin, icon, serial];
@@ -2628,7 +2772,15 @@ class DataDevice extends Proxy implements Dispatcher {
         .add(Uint32List.fromList([origin.objectId]).buffer.asUint8List());
     bytesBuilder.add(Uint32List.fromList([icon.objectId]).buffer.asUint8List());
     bytesBuilder.add(Uint32List.fromList([serial]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in DataDevice::startDrag: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// copy data to the selection
@@ -2644,7 +2796,7 @@ class DataDevice extends Proxy implements Dispatcher {
   ///
   /// [source]: data source for the selection
   /// [serial]: serial number of the event that triggered this request
-  void setSelection(DataSource source, int serial) {
+  Result<void, Object> setSelection(DataSource source, int serial) {
     logLn("DataDevice::setSelection  source: $source serial: $serial");
     var arguments = [source, serial];
     var argTypes = <WaylandType>[WaylandType.object, WaylandType.uint];
@@ -2657,14 +2809,23 @@ class DataDevice extends Proxy implements Dispatcher {
     bytesBuilder
         .add(Uint32List.fromList([source.objectId]).buffer.asUint8List());
     bytesBuilder.add(Uint32List.fromList([serial]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in DataDevice::setSelection: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// destroy data device
   ///
   /// This request destroys the data device.
   ///
-  void release() {
+  Result<void, Object> release() {
+    innerContext.unRegister(this);
     logLn("DataDevice::release ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -2674,7 +2835,15 @@ class DataDevice extends Proxy implements Dispatcher {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 2])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in DataDevice::release: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// introduce a new wl_data_offer
@@ -2939,7 +3108,7 @@ class DataDeviceManager extends Proxy {
   /// Create a new data source.
   ///
   /// [id]: data source to create
-  DataSource createDataSource() {
+  Result<DataSource, Object> createDataSource() {
     var id = DataSource(innerContext);
     logLn("DataDeviceManager::createDataSource  id: $id");
     var arguments = [id];
@@ -2951,8 +3120,15 @@ class DataDeviceManager extends Proxy {
             .buffer
             .asUint8List());
     bytesBuilder.add(Uint32List.fromList([id.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
-    return id;
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in DataDeviceManager::createDataSource: $e");
+      return Failure(e);
+    }
+    return Success(id);
   }
 
   /// create a new data device
@@ -2961,7 +3137,7 @@ class DataDeviceManager extends Proxy {
   ///
   /// [id]: data device to create
   /// [seat]: seat associated with the data device
-  DataDevice getDataDevice(Seat seat) {
+  Result<DataDevice, Object> getDataDevice(Seat seat) {
     var id = DataDevice(innerContext);
     logLn("DataDeviceManager::getDataDevice  id: $id seat: $seat");
     var arguments = [id, seat];
@@ -2974,8 +3150,15 @@ class DataDeviceManager extends Proxy {
             .asUint8List());
     bytesBuilder.add(Uint32List.fromList([id.objectId]).buffer.asUint8List());
     bytesBuilder.add(Uint32List.fromList([seat.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
-    return id;
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in DataDeviceManager::getDataDevice: $e");
+      return Failure(e);
+    }
+    return Success(id);
   }
 }
 
@@ -3063,7 +3246,7 @@ class Shell extends Proxy {
   ///
   /// [id]: shell surface to create
   /// [surface]: surface to be given the shell surface role
-  ShellSurface getShellSurface(Surface surface) {
+  Result<ShellSurface, Object> getShellSurface(Surface surface) {
     var id = ShellSurface(innerContext);
     logLn("Shell::getShellSurface  id: $id surface: $surface");
     var arguments = [id, surface];
@@ -3077,8 +3260,15 @@ class Shell extends Proxy {
     bytesBuilder.add(Uint32List.fromList([id.objectId]).buffer.asUint8List());
     bytesBuilder
         .add(Uint32List.fromList([surface.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
-    return id;
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Shell::getShellSurface: $e");
+      return Failure(e);
+    }
+    return Success(id);
   }
 }
 
@@ -3215,7 +3405,7 @@ class ShellSurface extends Proxy implements Dispatcher {
   /// the client may be deemed unresponsive.
   ///
   /// [serial]: serial number of the ping event
-  void pong(int serial) {
+  Result<void, Object> pong(int serial) {
     logLn("ShellSurface::pong  serial: $serial");
     var arguments = [serial];
     var argTypes = <WaylandType>[WaylandType.uint];
@@ -3226,7 +3416,15 @@ class ShellSurface extends Proxy implements Dispatcher {
             .buffer
             .asUint8List());
     bytesBuilder.add(Uint32List.fromList([serial]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in ShellSurface::pong: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// start an interactive move
@@ -3239,7 +3437,7 @@ class ShellSurface extends Proxy implements Dispatcher {
   ///
   /// [seat]: seat whose pointer is used
   /// [serial]: serial number of the implicit grab on the pointer
-  void move(Seat seat, int serial) {
+  Result<void, Object> move(Seat seat, int serial) {
     logLn("ShellSurface::move  seat: $seat serial: $serial");
     var arguments = [seat, serial];
     var argTypes = <WaylandType>[WaylandType.object, WaylandType.uint];
@@ -3251,7 +3449,15 @@ class ShellSurface extends Proxy implements Dispatcher {
             .asUint8List());
     bytesBuilder.add(Uint32List.fromList([seat.objectId]).buffer.asUint8List());
     bytesBuilder.add(Uint32List.fromList([serial]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in ShellSurface::move: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// start an interactive resize
@@ -3265,7 +3471,7 @@ class ShellSurface extends Proxy implements Dispatcher {
   /// [seat]: seat whose pointer is used
   /// [serial]: serial number of the implicit grab on the pointer
   /// [edges]: which edge or corner is being dragged
-  void resize(Seat seat, int serial, int edges) {
+  Result<void, Object> resize(Seat seat, int serial, int edges) {
     logLn("ShellSurface::resize  seat: $seat serial: $serial edges: $edges");
     var arguments = [seat, serial, edges];
     var argTypes = <WaylandType>[
@@ -3282,7 +3488,15 @@ class ShellSurface extends Proxy implements Dispatcher {
     bytesBuilder.add(Uint32List.fromList([seat.objectId]).buffer.asUint8List());
     bytesBuilder.add(Uint32List.fromList([serial]).buffer.asUint8List());
     bytesBuilder.add(Uint32List.fromList([edges]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in ShellSurface::resize: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// make the surface a toplevel surface
@@ -3291,7 +3505,7 @@ class ShellSurface extends Proxy implements Dispatcher {
   ///
   /// A toplevel surface is not fullscreen, maximized or transient.
   ///
-  void setToplevel() {
+  Result<void, Object> setToplevel() {
     logLn("ShellSurface::setToplevel ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -3301,7 +3515,15 @@ class ShellSurface extends Proxy implements Dispatcher {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 3])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in ShellSurface::setToplevel: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// make the surface a transient surface
@@ -3318,7 +3540,7 @@ class ShellSurface extends Proxy implements Dispatcher {
   /// [x]: surface-local x coordinate
   /// [y]: surface-local y coordinate
   /// [flags]: transient surface behavior
-  void setTransient(Surface parent, int x, int y, int flags) {
+  Result<void, Object> setTransient(Surface parent, int x, int y, int flags) {
     logLn(
         "ShellSurface::setTransient  parent: $parent x: $x y: $y flags: $flags");
     var arguments = [parent, x, y, flags];
@@ -3339,7 +3561,15 @@ class ShellSurface extends Proxy implements Dispatcher {
     bytesBuilder.add(Int32List.fromList([x]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([y]).buffer.asUint8List());
     bytesBuilder.add(Uint32List.fromList([flags]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in ShellSurface::setTransient: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// make the surface a fullscreen surface
@@ -3381,7 +3611,7 @@ class ShellSurface extends Proxy implements Dispatcher {
   /// [method]: method for resolving size conflict
   /// [framerate]: framerate in mHz
   /// [output]: output on which the surface is to be fullscreen
-  void setFullscreen(int method, int framerate, Output output) {
+  Result<void, Object> setFullscreen(int method, int framerate, Output output) {
     logLn(
         "ShellSurface::setFullscreen  method: $method framerate: $framerate output: $output");
     var arguments = [method, framerate, output];
@@ -3400,7 +3630,15 @@ class ShellSurface extends Proxy implements Dispatcher {
     bytesBuilder.add(Uint32List.fromList([framerate]).buffer.asUint8List());
     bytesBuilder
         .add(Uint32List.fromList([output.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in ShellSurface::setFullscreen: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// make the surface a popup surface
@@ -3431,7 +3669,7 @@ class ShellSurface extends Proxy implements Dispatcher {
   /// [x]: surface-local x coordinate
   /// [y]: surface-local y coordinate
   /// [flags]: transient surface behavior
-  void setPopup(
+  Result<void, Object> setPopup(
       Seat seat, int serial, Surface parent, int x, int y, int flags) {
     logLn(
         "ShellSurface::setPopup  seat: $seat serial: $serial parent: $parent x: $x y: $y flags: $flags");
@@ -3457,7 +3695,15 @@ class ShellSurface extends Proxy implements Dispatcher {
     bytesBuilder.add(Int32List.fromList([x]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([y]).buffer.asUint8List());
     bytesBuilder.add(Uint32List.fromList([flags]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in ShellSurface::setPopup: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// make the surface a maximized surface
@@ -3482,7 +3728,7 @@ class ShellSurface extends Proxy implements Dispatcher {
   /// The details depend on the compositor implementation.
   ///
   /// [output]: output on which the surface is to be maximized
-  void setMaximized(Output output) {
+  Result<void, Object> setMaximized(Output output) {
     logLn("ShellSurface::setMaximized  output: $output");
     var arguments = [output];
     var argTypes = <WaylandType>[WaylandType.object];
@@ -3494,7 +3740,15 @@ class ShellSurface extends Proxy implements Dispatcher {
             .asUint8List());
     bytesBuilder
         .add(Uint32List.fromList([output.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in ShellSurface::setMaximized: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// set surface title
@@ -3508,7 +3762,7 @@ class ShellSurface extends Proxy implements Dispatcher {
   /// The string must be encoded in UTF-8.
   ///
   /// [title]: surface title
-  void setTitle(String title) {
+  Result<void, Object> setTitle(String title) {
     logLn("ShellSurface::setTitle  title: $title");
     var arguments = [title];
     var argTypes = <WaylandType>[WaylandType.string];
@@ -3526,7 +3780,15 @@ class ShellSurface extends Proxy implements Dispatcher {
     while (bytesBuilder.length % 4 != 0) {
       bytesBuilder.add([0]);
     } // Padding
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in ShellSurface::setTitle: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// set surface class
@@ -3539,7 +3801,7 @@ class ShellSurface extends Proxy implements Dispatcher {
   /// the application's .desktop file as the class.
   ///
   /// [class_]: surface class
-  void setClass(String clazz) {
+  Result<void, Object> setClass(String clazz) {
     logLn("ShellSurface::setClass  clazz: $clazz");
     var arguments = [clazz];
     var argTypes = <WaylandType>[WaylandType.string];
@@ -3557,7 +3819,15 @@ class ShellSurface extends Proxy implements Dispatcher {
     while (bytesBuilder.length % 4 != 0) {
       bytesBuilder.add([0]);
     } // Padding
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in ShellSurface::setClass: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// ping client
@@ -3929,7 +4199,8 @@ class Surface extends Proxy implements Dispatcher {
   ///
   /// Deletes the surface and invalidates its object ID.
   ///
-  void destroy() {
+  Result<void, Object> destroy() {
+    innerContext.unRegister(this);
     logLn("Surface::destroy ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -3939,7 +4210,15 @@ class Surface extends Proxy implements Dispatcher {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 0])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Surface::destroy: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// set the surface contents
@@ -4012,7 +4291,7 @@ class Surface extends Proxy implements Dispatcher {
   /// [buffer]: buffer of surface contents
   /// [x]: surface-local x coordinate
   /// [y]: surface-local y coordinate
-  void attach(Buffer buffer, int x, int y) {
+  Result<void, Object> attach(Buffer buffer, int x, int y) {
     logLn("Surface::attach  buffer: $buffer x: $x y: $y");
     var arguments = [buffer, x, y];
     var argTypes = <WaylandType>[
@@ -4030,7 +4309,15 @@ class Surface extends Proxy implements Dispatcher {
         .add(Uint32List.fromList([buffer.objectId]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([x]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([y]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Surface::attach: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// mark part of the surface damaged
@@ -4061,7 +4348,7 @@ class Surface extends Proxy implements Dispatcher {
   /// [y]: surface-local y coordinate
   /// [width]: width of damage rectangle
   /// [height]: height of damage rectangle
-  void damage(int x, int y, int width, int height) {
+  Result<void, Object> damage(int x, int y, int width, int height) {
     logLn("Surface::damage  x: $x y: $y width: $width height: $height");
     var arguments = [x, y, width, height];
     var argTypes = <WaylandType>[
@@ -4080,7 +4367,15 @@ class Surface extends Proxy implements Dispatcher {
     bytesBuilder.add(Int32List.fromList([y]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([width]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([height]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Surface::damage: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// request a frame throttling hint
@@ -4119,7 +4414,7 @@ class Surface extends Proxy implements Dispatcher {
   /// milliseconds, with an undefined base.
   ///
   /// [callback]: callback object for the frame request
-  Callback frame() {
+  Result<Callback, Object> frame() {
     var callback = Callback(innerContext);
     logLn("Surface::frame  callback: $callback");
     var arguments = [callback];
@@ -4132,8 +4427,15 @@ class Surface extends Proxy implements Dispatcher {
             .asUint8List());
     bytesBuilder
         .add(Uint32List.fromList([callback.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
-    return callback;
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Surface::frame: $e");
+      return Failure(e);
+    }
+    return Success(callback);
   }
 
   /// set opaque region
@@ -4164,7 +4466,7 @@ class Surface extends Proxy implements Dispatcher {
   /// region to be set to empty.
   ///
   /// [region]: opaque region of the surface
-  void setOpaqueRegion(Region region) {
+  Result<void, Object> setOpaqueRegion(Region region) {
     logLn("Surface::setOpaqueRegion  region: $region");
     var arguments = [region];
     var argTypes = <WaylandType>[WaylandType.object];
@@ -4176,7 +4478,15 @@ class Surface extends Proxy implements Dispatcher {
             .asUint8List());
     bytesBuilder
         .add(Uint32List.fromList([region.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Surface::setOpaqueRegion: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// set input region
@@ -4205,7 +4515,7 @@ class Surface extends Proxy implements Dispatcher {
   /// to infinite.
   ///
   /// [region]: input region of the surface
-  void setInputRegion(Region region) {
+  Result<void, Object> setInputRegion(Region region) {
     logLn("Surface::setInputRegion  region: $region");
     var arguments = [region];
     var argTypes = <WaylandType>[WaylandType.object];
@@ -4217,7 +4527,15 @@ class Surface extends Proxy implements Dispatcher {
             .asUint8List());
     bytesBuilder
         .add(Uint32List.fromList([region.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Surface::setInputRegion: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// commit pending surface state
@@ -4242,7 +4560,7 @@ class Surface extends Proxy implements Dispatcher {
   ///
   /// Other interfaces may add further double-buffered surface state.
   ///
-  void commit() {
+  Result<void, Object> commit() {
     logLn("Surface::commit ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -4252,7 +4570,15 @@ class Surface extends Proxy implements Dispatcher {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 6])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Surface::commit: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// sets the buffer transformation
@@ -4290,7 +4616,7 @@ class Surface extends Proxy implements Dispatcher {
   /// is raised.
   ///
   /// [transform]: transform for interpreting buffer contents
-  void setBufferTransform(int transform) {
+  Result<void, Object> setBufferTransform(int transform) {
     logLn("Surface::setBufferTransform  transform: $transform");
     var arguments = [transform];
     var argTypes = <WaylandType>[WaylandType.int];
@@ -4301,7 +4627,15 @@ class Surface extends Proxy implements Dispatcher {
             .buffer
             .asUint8List());
     bytesBuilder.add(Int32List.fromList([transform]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Surface::setBufferTransform: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// sets the buffer scaling factor
@@ -4331,7 +4665,7 @@ class Surface extends Proxy implements Dispatcher {
   /// raised.
   ///
   /// [scale]: scale for interpreting buffer contents
-  void setBufferScale(int scale) {
+  Result<void, Object> setBufferScale(int scale) {
     logLn("Surface::setBufferScale  scale: $scale");
     var arguments = [scale];
     var argTypes = <WaylandType>[WaylandType.int];
@@ -4342,7 +4676,15 @@ class Surface extends Proxy implements Dispatcher {
             .buffer
             .asUint8List());
     bytesBuilder.add(Int32List.fromList([scale]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Surface::setBufferScale: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// mark part of the surface damaged using buffer coordinates
@@ -4384,7 +4726,7 @@ class Surface extends Proxy implements Dispatcher {
   /// [y]: buffer-local y coordinate
   /// [width]: width of damage rectangle
   /// [height]: height of damage rectangle
-  void damageBuffer(int x, int y, int width, int height) {
+  Result<void, Object> damageBuffer(int x, int y, int width, int height) {
     logLn("Surface::damageBuffer  x: $x y: $y width: $width height: $height");
     var arguments = [x, y, width, height];
     var argTypes = <WaylandType>[
@@ -4403,7 +4745,15 @@ class Surface extends Proxy implements Dispatcher {
     bytesBuilder.add(Int32List.fromList([y]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([width]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([height]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Surface::damageBuffer: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// set the surface contents offset
@@ -4423,7 +4773,7 @@ class Surface extends Proxy implements Dispatcher {
   ///
   /// [x]: surface-local x coordinate
   /// [y]: surface-local y coordinate
-  void offset(int x, int y) {
+  Result<void, Object> offset(int x, int y) {
     logLn("Surface::offset  x: $x y: $y");
     var arguments = [x, y];
     var argTypes = <WaylandType>[WaylandType.int, WaylandType.int];
@@ -4435,7 +4785,15 @@ class Surface extends Proxy implements Dispatcher {
             .asUint8List());
     bytesBuilder.add(Int32List.fromList([x]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([y]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Surface::offset: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// surface enters an output
@@ -4718,7 +5076,7 @@ class Seat extends Proxy implements Dispatcher {
   /// be sent in this case.
   ///
   /// [id]: seat pointer
-  Pointer getPointer() {
+  Result<Pointer, Object> getPointer() {
     var id = Pointer(innerContext);
     logLn("Seat::getPointer  id: $id");
     var arguments = [id];
@@ -4730,8 +5088,15 @@ class Seat extends Proxy implements Dispatcher {
             .buffer
             .asUint8List());
     bytesBuilder.add(Uint32List.fromList([id.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
-    return id;
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Seat::getPointer: $e");
+      return Failure(e);
+    }
+    return Success(id);
   }
 
   /// return keyboard object
@@ -4746,7 +5111,7 @@ class Seat extends Proxy implements Dispatcher {
   /// be sent in this case.
   ///
   /// [id]: seat keyboard
-  Keyboard getKeyboard() {
+  Result<Keyboard, Object> getKeyboard() {
     var id = Keyboard(innerContext);
     logLn("Seat::getKeyboard  id: $id");
     var arguments = [id];
@@ -4758,8 +5123,15 @@ class Seat extends Proxy implements Dispatcher {
             .buffer
             .asUint8List());
     bytesBuilder.add(Uint32List.fromList([id.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
-    return id;
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Seat::getKeyboard: $e");
+      return Failure(e);
+    }
+    return Success(id);
   }
 
   /// return touch object
@@ -4774,7 +5146,7 @@ class Seat extends Proxy implements Dispatcher {
   /// be sent in this case.
   ///
   /// [id]: seat touch interface
-  Touch getTouch() {
+  Result<Touch, Object> getTouch() {
     var id = Touch(innerContext);
     logLn("Seat::getTouch  id: $id");
     var arguments = [id];
@@ -4786,8 +5158,15 @@ class Seat extends Proxy implements Dispatcher {
             .buffer
             .asUint8List());
     bytesBuilder.add(Uint32List.fromList([id.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
-    return id;
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Seat::getTouch: $e");
+      return Failure(e);
+    }
+    return Success(id);
   }
 
   /// release the seat object
@@ -4795,7 +5174,8 @@ class Seat extends Proxy implements Dispatcher {
   /// Using this request a client can tell the server that it is not going to
   /// use the seat object anymore.
   ///
-  void release() {
+  Result<void, Object> release() {
+    innerContext.unRegister(this);
     logLn("Seat::release ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -4805,7 +5185,15 @@ class Seat extends Proxy implements Dispatcher {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 3])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Seat::release: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// seat capabilities changed
@@ -5485,7 +5873,8 @@ class Pointer extends Proxy implements Dispatcher {
   /// [surface]: pointer surface
   /// [hotspot_x]: surface-local x coordinate
   /// [hotspot_y]: surface-local y coordinate
-  void setCursor(int serial, Surface surface, int hotspotX, int hotspotY) {
+  Result<void, Object> setCursor(
+      int serial, Surface surface, int hotspotX, int hotspotY) {
     logLn(
         "Pointer::setCursor  serial: $serial surface: $surface hotspotX: $hotspotX hotspotY: $hotspotY");
     var arguments = [serial, surface, hotspotX, hotspotY];
@@ -5506,7 +5895,15 @@ class Pointer extends Proxy implements Dispatcher {
         .add(Uint32List.fromList([surface.objectId]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([hotspotX]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([hotspotY]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Pointer::setCursor: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// release the pointer object
@@ -5517,7 +5914,8 @@ class Pointer extends Proxy implements Dispatcher {
   /// This request destroys the pointer proxy object, so clients must not call
   /// wl_pointer_destroy() after using this request.
   ///
-  void release() {
+  Result<void, Object> release() {
+    innerContext.unRegister(this);
     logLn("Pointer::release ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -5527,7 +5925,15 @@ class Pointer extends Proxy implements Dispatcher {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 1])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Pointer::release: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// enter event
@@ -6454,7 +6860,8 @@ class Keyboard extends Proxy implements Dispatcher {
 
   /// release the keyboard object
   ///
-  void release() {
+  Result<void, Object> release() {
+    innerContext.unRegister(this);
     logLn("Keyboard::release ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -6464,7 +6871,15 @@ class Keyboard extends Proxy implements Dispatcher {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 0])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Keyboard::release: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// keyboard mapping
@@ -6620,6 +7035,7 @@ class Keyboard extends Proxy implements Dispatcher {
     logLn("Keyboard.dispatch($opcode, $fd, $data)");
     switch (opcode) {
       case 0:
+        if (fd != -1) {}
         if (_keymapHandler != null) {
           var offset = 0;
           final format =
@@ -7069,7 +7485,8 @@ class Touch extends Proxy implements Dispatcher {
 
   /// release the touch object
   ///
-  void release() {
+  Result<void, Object> release() {
+    innerContext.unRegister(this);
     logLn("Touch::release ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -7079,7 +7496,15 @@ class Touch extends Proxy implements Dispatcher {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 0])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Touch::release: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// touch down event and beginning of a touch sequence
@@ -7663,7 +8088,8 @@ class Output extends Proxy implements Dispatcher {
   /// Using this request a client can tell the server that it is not going to
   /// use the output object anymore.
   ///
-  void release() {
+  Result<void, Object> release() {
+    innerContext.unRegister(this);
     logLn("Output::release ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -7673,7 +8099,15 @@ class Output extends Proxy implements Dispatcher {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 0])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Output::release: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// properties of the output
@@ -8133,7 +8567,8 @@ class Region extends Proxy {
   ///
   /// Destroy the region.  This will invalidate the object ID.
   ///
-  void destroy() {
+  Result<void, Object> destroy() {
+    innerContext.unRegister(this);
     logLn("Region::destroy ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -8143,7 +8578,15 @@ class Region extends Proxy {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 0])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Region::destroy: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// add rectangle to region
@@ -8154,7 +8597,7 @@ class Region extends Proxy {
   /// [y]: region-local y coordinate
   /// [width]: rectangle width
   /// [height]: rectangle height
-  void add(int x, int y, int width, int height) {
+  Result<void, Object> add(int x, int y, int width, int height) {
     logLn("Region::add  x: $x y: $y width: $width height: $height");
     var arguments = [x, y, width, height];
     var argTypes = <WaylandType>[
@@ -8173,7 +8616,15 @@ class Region extends Proxy {
     bytesBuilder.add(Int32List.fromList([y]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([width]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([height]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Region::add: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// subtract rectangle from region
@@ -8184,7 +8635,7 @@ class Region extends Proxy {
   /// [y]: region-local y coordinate
   /// [width]: rectangle width
   /// [height]: rectangle height
-  void subtract(int x, int y, int width, int height) {
+  Result<void, Object> subtract(int x, int y, int width, int height) {
     logLn("Region::subtract  x: $x y: $y width: $width height: $height");
     var arguments = [x, y, width, height];
     var argTypes = <WaylandType>[
@@ -8203,7 +8654,15 @@ class Region extends Proxy {
     bytesBuilder.add(Int32List.fromList([y]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([width]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([height]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Region::subtract: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 }
 
@@ -8248,7 +8707,8 @@ class Subcompositor extends Proxy {
   /// protocol object anymore. This does not affect any other
   /// objects, wl_subsurface objects included.
   ///
-  void destroy() {
+  Result<void, Object> destroy() {
+    innerContext.unRegister(this);
     logLn("Subcompositor::destroy ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -8258,7 +8718,15 @@ class Subcompositor extends Proxy {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 0])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Subcompositor::destroy: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// give a surface the role sub-surface
@@ -8286,7 +8754,7 @@ class Subcompositor extends Proxy {
   /// [id]: the new sub-surface object ID
   /// [surface]: the surface to be turned into a sub-surface
   /// [parent]: the parent surface
-  Subsurface getSubsurface(Surface surface, Surface parent) {
+  Result<Subsurface, Object> getSubsurface(Surface surface, Surface parent) {
     var id = Subsurface(innerContext);
     logLn(
         "Subcompositor::getSubsurface  id: $id surface: $surface parent: $parent");
@@ -8307,8 +8775,15 @@ class Subcompositor extends Proxy {
         .add(Uint32List.fromList([surface.objectId]).buffer.asUint8List());
     bytesBuilder
         .add(Uint32List.fromList([parent.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
-    return id;
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Subcompositor::getSubsurface: $e");
+      return Failure(e);
+    }
+    return Success(id);
   }
 }
 
@@ -8406,7 +8881,8 @@ class Subsurface extends Proxy {
   /// wl_subcompositor.get_subsurface request. The wl_surface's association
   /// to the parent is deleted. The wl_surface is unmapped immediately.
   ///
-  void destroy() {
+  Result<void, Object> destroy() {
+    innerContext.unRegister(this);
     logLn("Subsurface::destroy ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -8416,7 +8892,15 @@ class Subsurface extends Proxy {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 0])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Subsurface::destroy: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// reposition the sub-surface
@@ -8438,7 +8922,7 @@ class Subsurface extends Proxy {
   ///
   /// [x]: x coordinate in the parent surface
   /// [y]: y coordinate in the parent surface
-  void setPosition(int x, int y) {
+  Result<void, Object> setPosition(int x, int y) {
     logLn("Subsurface::setPosition  x: $x y: $y");
     var arguments = [x, y];
     var argTypes = <WaylandType>[WaylandType.int, WaylandType.int];
@@ -8450,7 +8934,15 @@ class Subsurface extends Proxy {
             .asUint8List());
     bytesBuilder.add(Int32List.fromList([x]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([y]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Subsurface::setPosition: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// restack the sub-surface
@@ -8470,7 +8962,7 @@ class Subsurface extends Proxy {
   /// of its siblings and parent.
   ///
   /// [sibling]: the reference surface
-  void placeAbove(Surface sibling) {
+  Result<void, Object> placeAbove(Surface sibling) {
     logLn("Subsurface::placeAbove  sibling: $sibling");
     var arguments = [sibling];
     var argTypes = <WaylandType>[WaylandType.object];
@@ -8482,7 +8974,15 @@ class Subsurface extends Proxy {
             .asUint8List());
     bytesBuilder
         .add(Uint32List.fromList([sibling.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Subsurface::placeAbove: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// restack the sub-surface
@@ -8491,7 +8991,7 @@ class Subsurface extends Proxy {
   /// See wl_subsurface.place_above.
   ///
   /// [sibling]: the reference surface
-  void placeBelow(Surface sibling) {
+  Result<void, Object> placeBelow(Surface sibling) {
     logLn("Subsurface::placeBelow  sibling: $sibling");
     var arguments = [sibling];
     var argTypes = <WaylandType>[WaylandType.object];
@@ -8503,7 +9003,15 @@ class Subsurface extends Proxy {
             .asUint8List());
     bytesBuilder
         .add(Uint32List.fromList([sibling.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Subsurface::placeBelow: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// set sub-surface to synchronized mode
@@ -8522,7 +9030,7 @@ class Subsurface extends Proxy {
   ///
   /// See wl_subsurface for the recursive effect of this mode.
   ///
-  void setSync() {
+  Result<void, Object> setSync() {
     logLn("Subsurface::setSync ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -8532,7 +9040,15 @@ class Subsurface extends Proxy {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 4])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Subsurface::setSync: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 
   /// set sub-surface to desynchronized mode
@@ -8557,7 +9073,7 @@ class Subsurface extends Proxy {
   /// If a surface's parent surface behaves as desynchronized, then
   /// the cached state is applied on set_desync.
   ///
-  void setDesync() {
+  Result<void, Object> setDesync() {
     logLn("Subsurface::setDesync ");
     var arguments = [];
     var argTypes = <WaylandType>[];
@@ -8567,7 +9083,15 @@ class Subsurface extends Proxy {
         Uint32List.fromList([objectId, (calclulatedSize << 16) | 5])
             .buffer
             .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try {
+      innerContext.sendMessage(
+        bytesBuilder.toBytes(),
+      );
+    } catch (e) {
+      logLn("Exception in Subsurface::setDesync: $e");
+      return Failure(e);
+    }
+    return Success(Object());
   }
 }
 

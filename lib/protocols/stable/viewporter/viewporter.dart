@@ -2,21 +2,21 @@
 // https://github.com/your-repo/dart-wayland-scanner
 // XML file : https://gitlab.freedesktop.org/wayland/wayland-protocols/-/raw/main/stable/viewporter/viewporter.xml
 //
-// viewporter Protocol Copyright:
-///
+// viewporter Protocol Copyright: 
+/// 
 /// Copyright © 2013-2016 Collabora, Ltd.
-///
+/// 
 /// Permission is hereby granted, free of charge, to any person obtaining a
 /// copy of this software and associated documentation files (the "Software"),
 /// to deal in the Software without restriction, including without limitation
 /// the rights to use, copy, modify, merge, publish, distribute, sublicense,
 /// and/or sell copies of the Software, and to permit persons to whom the
 /// Software is furnished to do so, subject to the following conditions:
-///
+/// 
 /// The above copyright notice and this permission notice (including the next
 /// paragraph) shall be included in all copies or substantial portions of the
 /// Software.
-///
+/// 
 /// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 /// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 /// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
@@ -24,7 +24,7 @@
 /// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 /// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 /// DEALINGS IN THE SOFTWARE.
-///
+/// 
 
 library client;
 
@@ -33,117 +33,125 @@ import 'package:wayland/protocols/wayland.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:result_dart/result_dart.dart';
+
 
 /// surface cropping and scaling
-///
+/// 
 /// The global interface exposing surface cropping and scaling
 /// capabilities is used to instantiate an interface extension for a
 /// wl_surface object. This extended interface will then allow
 /// cropping and scaling the surface contents, effectively
 /// disconnecting the direct relationship between the buffer and the
 /// surface size.
-///
-class WpViewporter extends Proxy {
+/// 
+class WpViewporter extends Proxy{
   final Context innerContext;
   final version = 1;
 
-  WpViewporter(this.innerContext) : super(innerContext.allocateClientId()) {
+  WpViewporter(this.innerContext) : super(innerContext.allocateClientId()){
     innerContext.register(this);
   }
 
-  @override
-  toString() {
-    return "WpViewporter {name: 'wp_viewporter', id: '$objectId', version: '1',}";
-  }
 
-  /// unbind from the cropping and scaling interface
-  ///
-  /// Informs the server that the client will not be using this
-  /// protocol object anymore. This does not affect any other objects,
-  /// wp_viewport objects included.
-  ///
-  void destroy() {
-    logLn("WpViewporter::destroy ");
-    var arguments = [];
-    var argTypes = <WaylandType>[];
-    var calclulatedSize = calculateSize(argTypes, arguments);
-    final bytesBuilder = BytesBuilder();
-    bytesBuilder.add(
-        Uint32List.fromList([objectId, (calclulatedSize << 16) | 0])
-            .buffer
-            .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
-  }
-
-  /// extend surface interface for crop and scale
-  ///
-  /// Instantiate an interface extension for the given wl_surface to
-  /// crop and scale its content. If the given wl_surface already has
-  /// a wp_viewport object associated, the viewport_exists
-  /// protocol error is raised.
-  ///
-  /// [id]: the new viewport interface id
-  /// [surface]: the surface
-  WpViewport getViewport(Surface surface) {
-    var id = WpViewport(innerContext);
-    logLn("WpViewporter::getViewport  id: $id surface: $surface");
-    var arguments = [id, surface];
-    var argTypes = <WaylandType>[WaylandType.newId, WaylandType.object];
-    var calclulatedSize = calculateSize(argTypes, arguments);
-    final bytesBuilder = BytesBuilder();
-    bytesBuilder.add(
-        Uint32List.fromList([objectId, (calclulatedSize << 16) | 1])
-            .buffer
-            .asUint8List());
-    bytesBuilder.add(Uint32List.fromList([id.objectId]).buffer.asUint8List());
-    bytesBuilder
-        .add(Uint32List.fromList([surface.objectId]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
-    return id;
-  }
+@override
+toString(){
+return "WpViewporter {name: 'wp_viewporter', id: '$objectId', version: '1',}";
 }
 
-///
-///
+/// unbind from the cropping and scaling interface
+/// 
+/// Informs the server that the client will not be using this
+/// protocol object anymore. This does not affect any other objects,
+/// wp_viewport objects included.
+/// 
+  Result<void,Object> destroy() {
+innerContext.unRegister(this);
+    logLn("WpViewporter::destroy ");
+var arguments = [];var argTypes = <WaylandType>[];
+var calclulatedSize  = calculateSize(argTypes, arguments);
+final bytesBuilder = BytesBuilder();
+bytesBuilder.add(Uint32List.fromList([objectId, (calclulatedSize << 16) | 0]).buffer.asUint8List());
+    try{
+    innerContext.sendMessage(bytesBuilder.toBytes(), );
+    }catch (e) {
+      logLn("Exception in WpViewporter::destroy: $e");
+   return Failure(e);
+    }
+    return Success(Object());
+  }
+
+/// extend surface interface for crop and scale
+/// 
+/// Instantiate an interface extension for the given wl_surface to
+/// crop and scale its content. If the given wl_surface already has
+/// a wp_viewport object associated, the viewport_exists
+/// protocol error is raised.
+/// 
+/// [id]: the new viewport interface id
+/// [surface]: the surface
+  Result<WpViewport,Object> getViewport(Surface surface) {
+  var id =  WpViewport(innerContext);
+    logLn("WpViewporter::getViewport  id: $id surface: $surface");
+var arguments = [id, surface];var argTypes = <WaylandType>[WaylandType.newId, WaylandType.object];
+var calclulatedSize  = calculateSize(argTypes, arguments);
+final bytesBuilder = BytesBuilder();
+bytesBuilder.add(Uint32List.fromList([objectId, (calclulatedSize << 16) | 1]).buffer.asUint8List());
+    bytesBuilder.add(Uint32List.fromList([id.objectId]).buffer.asUint8List());
+    bytesBuilder.add(Uint32List.fromList([surface.objectId]).buffer.asUint8List());
+    try{
+    innerContext.sendMessage(bytesBuilder.toBytes(), );
+    }catch (e) {
+      logLn("Exception in WpViewporter::getViewport: $e");
+   return Failure(e);
+    }
+    return Success(id);
+  }
+
+}
+
+/// 
+/// 
 
 enum WpViewporterError {
-  /// the surface already has a viewport object associated
+/// the surface already has a viewport object associated
   viewportExists("viewport_exists", 0);
-
-  const WpViewporterError(this.enumName, this.enumValue);
-  final int enumValue;
-  final String enumName;
-  @override
-  toString() {
-    return "WpViewporterError {name: $enumName, value: $enumValue}";
-  }
+const WpViewporterError(this.enumName, this.enumValue);
+final int enumValue;
+final String enumName;
+@override
+toString(){
+return "WpViewporterError {name: $enumName, value: $enumValue}";
+}
 }
 
+
+
 /// crop and scale interface to a wl_surface
-///
+/// 
 /// An additional interface to a wl_surface object, which allows the
 /// client to specify the cropping and scaling of the surface
 /// contents.
-///
+/// 
 /// This interface works with two concepts: the source rectangle (src_x,
 /// src_y, src_width, src_height), and the destination size (dst_width,
 /// dst_height). The contents of the source rectangle are scaled to the
 /// destination size, and content outside the source rectangle is ignored.
 /// This state is double-buffered, see wl_surface.commit.
-///
+/// 
 /// The two parts of crop and scale state are independent: the source
 /// rectangle, and the destination size. Initially both are unset, that
 /// is, no scaling is applied. The whole of the current wl_buffer is
 /// used as the source, and the surface size is as defined in
 /// wl_surface.attach.
-///
+/// 
 /// If the destination size is set, it causes the surface size to become
 /// dst_width, dst_height. The source (rectangle) is scaled to exactly
 /// this size. This overrides whatever the attached wl_buffer size is,
 /// unless the wl_buffer is NULL. If the wl_buffer is NULL, the surface
 /// has no content and therefore no size. Otherwise, the size is always
 /// at least 1x1 in surface local coordinates.
-///
+/// 
 /// If the source rectangle is set, it defines what area of the wl_buffer is
 /// taken as the source. If the source rectangle is set and the destination
 /// size is not set, then src_width and src_height must be integers, and the
@@ -151,7 +159,7 @@ enum WpViewporterError {
 /// without scaling. If src_width or src_height are not integers and
 /// destination size is not set, the bad_size protocol error is raised when
 /// the surface state is applied.
-///
+/// 
 /// The coordinate transformations from buffer pixel coordinates up to
 /// the surface-local coordinates happen in the following order:
 /// 1. buffer_transform (wl_surface.set_buffer_transform)
@@ -161,147 +169,141 @@ enum WpViewporterError {
 /// are given in the coordinates after the buffer transform and scale,
 /// i.e. in the coordinates that would be the surface-local coordinates
 /// if the crop and scale was not applied.
-///
+/// 
 /// If src_x or src_y are negative, the bad_value protocol error is raised.
 /// Otherwise, if the source rectangle is partially or completely outside of
 /// the non-NULL wl_buffer, then the out_of_buffer protocol error is raised
 /// when the surface state is applied. A NULL wl_buffer does not raise the
 /// out_of_buffer error.
-///
+/// 
 /// If the wl_surface associated with the wp_viewport is destroyed,
 /// all wp_viewport requests except 'destroy' raise the protocol error
 /// no_surface.
-///
+/// 
 /// If the wp_viewport object is destroyed, the crop and scale
 /// state is removed from the wl_surface. The change will be applied
 /// on the next wl_surface.commit.
-///
-class WpViewport extends Proxy {
+/// 
+class WpViewport extends Proxy{
   final Context innerContext;
   final version = 1;
 
-  WpViewport(this.innerContext) : super(innerContext.allocateClientId()) {
+  WpViewport(this.innerContext) : super(innerContext.allocateClientId()){
     innerContext.register(this);
   }
 
-  @override
-  toString() {
-    return "WpViewport {name: 'wp_viewport', id: '$objectId', version: '1',}";
-  }
 
-  /// remove scaling and cropping from the surface
-  ///
-  /// The associated wl_surface's crop and scale state is removed.
-  /// The change is applied on the next wl_surface.commit.
-  ///
-  void destroy() {
+@override
+toString(){
+return "WpViewport {name: 'wp_viewport', id: '$objectId', version: '1',}";
+}
+
+/// remove scaling and cropping from the surface
+/// 
+/// The associated wl_surface's crop and scale state is removed.
+/// The change is applied on the next wl_surface.commit.
+/// 
+  Result<void,Object> destroy() {
+innerContext.unRegister(this);
     logLn("WpViewport::destroy ");
-    var arguments = [];
-    var argTypes = <WaylandType>[];
-    var calclulatedSize = calculateSize(argTypes, arguments);
-    final bytesBuilder = BytesBuilder();
-    bytesBuilder.add(
-        Uint32List.fromList([objectId, (calclulatedSize << 16) | 0])
-            .buffer
-            .asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+var arguments = [];var argTypes = <WaylandType>[];
+var calclulatedSize  = calculateSize(argTypes, arguments);
+final bytesBuilder = BytesBuilder();
+bytesBuilder.add(Uint32List.fromList([objectId, (calclulatedSize << 16) | 0]).buffer.asUint8List());
+    try{
+    innerContext.sendMessage(bytesBuilder.toBytes(), );
+    }catch (e) {
+      logLn("Exception in WpViewport::destroy: $e");
+   return Failure(e);
+    }
+    return Success(Object());
   }
 
-  /// set the source rectangle for cropping
-  ///
-  /// Set the source rectangle of the associated wl_surface. See
-  /// wp_viewport for the description, and relation to the wl_buffer
-  /// size.
-  ///
-  /// If all of x, y, width and height are -1.0, the source rectangle is
-  /// unset instead. Any other set of values where width or height are zero
-  /// or negative, or x or y are negative, raise the bad_value protocol
-  /// error.
-  ///
-  /// The crop and scale state is double-buffered, see wl_surface.commit.
-  ///
-  /// [x]: source rectangle x
-  /// [y]: source rectangle y
-  /// [width]: source rectangle width
-  /// [height]: source rectangle height
-  void setSource(double x, double y, double width, double height) {
+/// set the source rectangle for cropping
+/// 
+/// Set the source rectangle of the associated wl_surface. See
+/// wp_viewport for the description, and relation to the wl_buffer
+/// size.
+/// 
+/// If all of x, y, width and height are -1.0, the source rectangle is
+/// unset instead. Any other set of values where width or height are zero
+/// or negative, or x or y are negative, raise the bad_value protocol
+/// error.
+/// 
+/// The crop and scale state is double-buffered, see wl_surface.commit.
+/// 
+/// [x]: source rectangle x
+/// [y]: source rectangle y
+/// [width]: source rectangle width
+/// [height]: source rectangle height
+  Result<void,Object> setSource(double x, double y, double width, double height) {
     logLn("WpViewport::setSource  x: $x y: $y width: $width height: $height");
-    var arguments = [x, y, width, height];
-    var argTypes = <WaylandType>[
-      WaylandType.fixed,
-      WaylandType.fixed,
-      WaylandType.fixed,
-      WaylandType.fixed
-    ];
-    var calclulatedSize = calculateSize(argTypes, arguments);
-    final bytesBuilder = BytesBuilder();
-    bytesBuilder.add(
-        Uint32List.fromList([objectId, (calclulatedSize << 16) | 1])
-            .buffer
-            .asUint8List());
-    bytesBuilder
-        .add(Int32List.fromList([doubleToFixed(x)]).buffer.asUint8List());
-    bytesBuilder
-        .add(Int32List.fromList([doubleToFixed(y)]).buffer.asUint8List());
-    bytesBuilder
-        .add(Int32List.fromList([doubleToFixed(width)]).buffer.asUint8List());
-    bytesBuilder
-        .add(Int32List.fromList([doubleToFixed(height)]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+var arguments = [x, y, width, height];var argTypes = <WaylandType>[WaylandType.fixed, WaylandType.fixed, WaylandType.fixed, WaylandType.fixed];
+var calclulatedSize  = calculateSize(argTypes, arguments);
+final bytesBuilder = BytesBuilder();
+bytesBuilder.add(Uint32List.fromList([objectId, (calclulatedSize << 16) | 1]).buffer.asUint8List());
+    bytesBuilder.add(Int32List.fromList([doubleToFixed(x)]).buffer.asUint8List());
+    bytesBuilder.add(Int32List.fromList([doubleToFixed(y)]).buffer.asUint8List());
+    bytesBuilder.add(Int32List.fromList([doubleToFixed(width)]).buffer.asUint8List());
+    bytesBuilder.add(Int32List.fromList([doubleToFixed(height)]).buffer.asUint8List());
+    try{
+    innerContext.sendMessage(bytesBuilder.toBytes(), );
+    }catch (e) {
+      logLn("Exception in WpViewport::setSource: $e");
+   return Failure(e);
+    }
+    return Success(Object());
   }
 
-  /// set the surface size for scaling
-  ///
-  /// Set the destination size of the associated wl_surface. See
-  /// wp_viewport for the description, and relation to the wl_buffer
-  /// size.
-  ///
-  /// If width is -1 and height is -1, the destination size is unset
-  /// instead. Any other pair of values for width and height that
-  /// contains zero or negative values raises the bad_value protocol
-  /// error.
-  ///
-  /// The crop and scale state is double-buffered, see wl_surface.commit.
-  ///
-  /// [width]: surface width
-  /// [height]: surface height
-  void setDestination(int width, int height) {
+/// set the surface size for scaling
+/// 
+/// Set the destination size of the associated wl_surface. See
+/// wp_viewport for the description, and relation to the wl_buffer
+/// size.
+/// 
+/// If width is -1 and height is -1, the destination size is unset
+/// instead. Any other pair of values for width and height that
+/// contains zero or negative values raises the bad_value protocol
+/// error.
+/// 
+/// The crop and scale state is double-buffered, see wl_surface.commit.
+/// 
+/// [width]: surface width
+/// [height]: surface height
+  Result<void,Object> setDestination(int width, int height) {
     logLn("WpViewport::setDestination  width: $width height: $height");
-    var arguments = [width, height];
-    var argTypes = <WaylandType>[WaylandType.int, WaylandType.int];
-    var calclulatedSize = calculateSize(argTypes, arguments);
-    final bytesBuilder = BytesBuilder();
-    bytesBuilder.add(
-        Uint32List.fromList([objectId, (calclulatedSize << 16) | 2])
-            .buffer
-            .asUint8List());
+var arguments = [width, height];var argTypes = <WaylandType>[WaylandType.int, WaylandType.int];
+var calclulatedSize  = calculateSize(argTypes, arguments);
+final bytesBuilder = BytesBuilder();
+bytesBuilder.add(Uint32List.fromList([objectId, (calclulatedSize << 16) | 2]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([width]).buffer.asUint8List());
     bytesBuilder.add(Int32List.fromList([height]).buffer.asUint8List());
-    innerContext.sendMessage(bytesBuilder.toBytes());
+    try{
+    innerContext.sendMessage(bytesBuilder.toBytes(), );
+    }catch (e) {
+      logLn("Exception in WpViewport::setDestination: $e");
+   return Failure(e);
+    }
+    return Success(Object());
   }
+
 }
 
-///
-///
+/// 
+/// 
 
 enum WpViewportError {
-  /// negative or zero values in width or height
-  badValue("bad_value", 0),
-
-  /// destination size is not integer
-  badSize("bad_size", 1),
-
-  /// source rectangle extends outside of the content area
-  outOfBuffer("out_of_buffer", 2),
-
-  /// the wl_surface was destroyed
+/// negative or zero values in width or height
+  badValue("bad_value", 0),/// destination size is not integer
+  badSize("bad_size", 1),/// source rectangle extends outside of the content area
+  outOfBuffer("out_of_buffer", 2),/// the wl_surface was destroyed
   noSurface("no_surface", 3);
-
-  const WpViewportError(this.enumName, this.enumValue);
-  final int enumValue;
-  final String enumName;
-  @override
-  toString() {
-    return "WpViewportError {name: $enumName, value: $enumValue}";
-  }
+const WpViewportError(this.enumName, this.enumValue);
+final int enumValue;
+final String enumName;
+@override
+toString(){
+return "WpViewportError {name: $enumName, value: $enumValue}";
 }
+}
+
