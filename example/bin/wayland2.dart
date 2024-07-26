@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:example/drawing/drawing.dart';
 import 'package:wayland/protocols/stable/xdg-shell/xdg_shell.dart';
 import 'package:wayland/protocols/wayland.dart';
 import 'package:wayland/wayland.dart';
@@ -82,7 +81,7 @@ class App {
     });
 
     xdgTopLevel?.onConfigure((a) {
-      print("xdgTopLevel onConfigure $xdgTopLevel");
+      logLn("xdgTopLevel onConfigure $xdgTopLevel");
       if (a.width != 0 && a.height != 0) {
         width = a.width;
         height = a.height;

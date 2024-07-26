@@ -1,15 +1,16 @@
 import 'dart:io';
+import 'dart:isolate';
 
-import 'package:example/drawing/canvas.dart';
+import 'package:example/backend/backend.dart';
 import 'package:example/mixins/event.dart';
-import 'package:example/window/base.dart';
+import 'package:example/modifier_keys.dart';
 import 'package:wayland/protocols/stable/xdg-shell/xdg_shell.dart';
 import 'package:wayland/protocols/wayland.dart';
 import 'package:wayland/wayland.dart';
 
 import '../drawing/drawing.dart';
 
-abstract class Wayland extends BaseWindow {
+class WaylandBackend extends Backend {
   Compositor? compositor;
   Registry? registry;
   Subcompositor? subCompositor;
@@ -25,18 +26,41 @@ abstract class Wayland extends BaseWindow {
   Display? display;
   Pointer? pointer;
   Keyboard? keyboard;
+  ModifierState _modifierState = ModifierState(
+    modsDepressed: 0,
+    modsLatched: 0,
+    modsLocked: 0,
+    group: 0,
+  );
+
+  double mouseX = 0;
+  double mouseY = 0;
 
   Buffer? buffer;
 
-  Wayland([int width = 100, int height = 100]) {
+  WaylandBackend([int width = 800, int height = 600]) {
     setDimensions(width, height);
     _init();
   }
+  void _createDispatchIsolate() {
+    ReceivePort receivePort = ReceivePort();
+    receivePort.listen((v) {});
+    Isolate.spawn(_dispatchLoop, receivePort.sendPort);
+  }
+
+  void _dispatchLoop(SendPort sendPort) {
+    final receivePort = ReceivePort();
+    sendPort.send(receivePort.sendPort);
+
+    while (true) {
+      dispatch();
+    }
+  }
 
   @override
-  set title(String title) {
-    super.title = title;
-    xdgTopLevel?.setTitle(title);
+  setTitle(String title) {
+    super.setTitle(title);
+    xdgTopLevel?.setTitle(this.title);
     surface?.commit();
   }
 
@@ -46,10 +70,7 @@ abstract class Wayland extends BaseWindow {
 
     display?.onDeleteId(onDisplayDeleteId);
 
-    registry =
-        display?.getRegistry().fold((onSuccess) => onSuccess, (onFailure) {
-      shouldExit = true;
-    });
+    registry = display?.getRegistry().getOrNull();
 
     registry?.onGlobal(registryGlobalHandler);
     registry?.onGlobalRemove(onGlobalRemove);
@@ -57,22 +78,12 @@ abstract class Wayland extends BaseWindow {
     roundTrip();
     roundTrip();
 
-    surface =
-        compositor?.createSurface().fold((onSuccess) => onSuccess, (onFailure) {
-      shouldExit = true;
-    });
+    surface = compositor?.createSurface().getOrNull();
 
-    xdgSurface = xdgWmBase
-        ?.getXdgSurface(surface!)
-        .fold((onSuccess) => onSuccess, (onFailure) {
-      shouldExit = true;
-    });
+    xdgSurface = xdgWmBase?.getXdgSurface(surface!).getOrNull();
     xdgSurface?.onConfigure(onXdgSurfaceConfigure);
 
-    xdgTopLevel =
-        xdgSurface?.getToplevel().fold((onSuccess) => onSuccess, (onFailure) {
-      shouldExit = true;
-    });
+    xdgTopLevel = xdgSurface?.getToplevel().getOrNull();
 
     xdgTopLevel?.onConfigure(onXdgTopLevelConfigure);
 
@@ -81,6 +92,8 @@ abstract class Wayland extends BaseWindow {
     xdgTopLevel?.setTitle("Dart wayland");
     xdgTopLevel?.setAppId("dart-wayland");
     surface?.commit();
+
+    _createDispatchIsolate();
   }
 
   roundTrip() {
@@ -99,7 +112,6 @@ abstract class Wayland extends BaseWindow {
     }
   }
 
-  @override
   dispatch() {
     context.dispatch();
   }
@@ -127,23 +139,17 @@ abstract class Wayland extends BaseWindow {
 
     _bufferFd = createAnonymousFile(_bufferSize);
 
-    ShmPool? pool = shm!
-        .createPool(_bufferFd, _bufferSize)
-        .fold((onSuccess) => onSuccess, (onFailure) {
-      shouldExit = true;
-    });
+    ShmPool? pool = shm!.createPool(_bufferFd, _bufferSize).getOrNull();
 
     buffer = pool
         ?.createBuffer(
-      0,
-      width,
-      height,
-      stride,
-      ShmFormat.argb8888.enumValue,
-    )
-        .fold((onSuccess) => onSuccess, (onFailure) {
-      shouldExit = true;
-    });
+          0,
+          width,
+          height,
+          stride,
+          ShmFormat.argb8888.enumValue,
+        )
+        .getOrNull();
 
     buffer?.onRelease(onBufferRelease);
 
@@ -152,24 +158,20 @@ abstract class Wayland extends BaseWindow {
     paint(canvas);
     writeToFd(_bufferFd, canvas.pixels);
 
-    surface?.attach(buffer!, 0, 0).onFailure((a) {
-      logLn("surface.attach failed: $a");
-      shouldExit = true;
-    });
+    surface?.attach(buffer!, 0, 0).getOrNull();
 
-    surface?.commit().onFailure((a) {
-      logLn("surface.commit failed: $a");
-      shouldExit = true;
-    });
+    surface?.commit().getOrThrow();
   }
 
+  paint(Canvas canvas) {}
+
   onBufferRelease(BufferReleaseEvent releaseEvent) {
-    print("buffer onRelease: $releaseEvent");
+    logLn("buffer onRelease: $releaseEvent");
     buffer?.destroy();
   }
 
   onXdgTopLevelConfigure(XdgToplevelConfigureEvent a) {
-    print("xdgTopLevel onConfigure $a");
+    logLn("xdgTopLevel onConfigure $a");
     if (a.width != 0 && a.height != 0) {
       setDimensions(a.width, a.height);
     } else {
@@ -178,13 +180,12 @@ abstract class Wayland extends BaseWindow {
   }
 
   onXdgTopLevelClose(XdgToplevelCloseEvent a) {
-    print("xdgTopLevel onClose $xdgTopLevel");
+    logLn("xdgTopLevel onClose $xdgTopLevel");
   }
 
   onSeatCapabilities(SeatCapabilitiesEvent capa) {
     logLn("seat capabilities: $capa");
 
-    // Assuming SeatCapabilityPointer and SeatCapabilityKeyboard are defined somewhere
     bool havePointer =
         (capa.capabilities & SeatCapability.pointer.enumValue) != 0;
     bool haveKeyboard =
@@ -204,35 +205,54 @@ abstract class Wayland extends BaseWindow {
   }
 
   attachKeyboard() {
-    keyboard = seat?.getKeyboard().fold((onSuccess) => onSuccess, (onFailure) {
-      shouldExit = true;
-    });
+    keyboard = seat?.getKeyboard().getOrNull();
 
     keyboard?.onKey((KeyboardKeyEvent a) {
       logLn("keyboard onKey: $a");
 
-      final keyEvent =
-          KeyEvent(a.key, a.state == KeyboardKeyState.pressed.enumValue);
+      final keyEvent = KeyEvent(
+        a.key,
+        a.state == KeyboardKeyState.pressed.enumValue,
+        _modifierState,
+      );
       if (a.state == KeyboardKeyState.pressed.enumValue) {
-        dispatchEvent(kKeyPressed, keyEvent);
+        pushEvent(keyEvent);
       } else if (a.state == KeyboardKeyState.released.enumValue) {
-        dispatchEvent(kKeyReleased, keyEvent);
+        pushEvent(keyEvent);
       }
     });
+
     keyboard?.onModifiers((KeyboardModifiersEvent a) {
       logLn("keyboard onModifiers: $a");
+
+      _modifierState = ModifierState(
+        modsDepressed: a.modsDepressed,
+        modsLatched: a.modsLatched,
+        modsLocked: a.modsLatched,
+        group: a.group,
+      );
+      print(ModifierState(
+        modsDepressed: a.modsDepressed,
+        modsLatched: a.modsLatched,
+        modsLocked: a.modsLatched,
+        group: a.group,
+      ));
     });
+
     keyboard?.onEnter((KeyboardEnterEvent a) {
       logLn("keyboard onEnter: $a");
     });
+
     keyboard?.onLeave((KeyboardLeaveEvent a) {
       logLn("keyboard onLeave: $a");
     });
+
     keyboard?.onKeymap((KeyboardKeymapEvent a) {
       logLn("keyboard onKeymap: $a");
     });
+
     keyboard?.onRepeatInfo((KeyboardRepeatInfoEvent a) {
-      logLn("keyboard onRepeatInfo: $a");
+      print("keyboard onRepeatInfo: $a");
     });
   }
 
@@ -297,30 +317,47 @@ abstract class Wayland extends BaseWindow {
   }
 
   void attachPointer() {
-    pointer = seat?.getPointer().fold((onSuccess) => onSuccess, (onFailure) {
-      shouldExit = true;
-    });
+    pointer = seat?.getPointer().getOrNull();
     pointer?.onEnter((PointerEnterEvent a) {
       logLn("pointer onEnter: $a");
     });
+
     pointer?.onLeave((PointerLeaveEvent a) {
       logLn("pointer onLeave: $a");
     });
+
     pointer?.onMotion((PointerMotionEvent a) {
       logLn("pointer onMotion: $a");
+      final event = MouseMotionEvent(a.surfaceX, a.surfaceY);
+      mouseX = a.surfaceX;
+      mouseY = a.surfaceY;
+      pushEvent(event);
     });
+
     pointer?.onButton((PointerButtonEvent a) {
       logLn("pointer onButton: $a");
+      final buttonEvent = MouseButtonEvent(mouseX, mouseY, a.button,
+          a.state == PointerButtonState.pressed.enumValue);
+
+      if (a.state == PointerButtonState.pressed.enumValue) {
+        pushEvent(buttonEvent);
+      } else if (a.state == PointerButtonState.released.enumValue) {
+        pushEvent(buttonEvent);
+      }
     });
+
     pointer?.onAxis((PointerAxisEvent a) {
       logLn("pointer onAxis: $a");
     });
+
     pointer?.onFrame((PointerFrameEvent a) {
       logLn("pointer onFrame: $a");
     });
+
     pointer?.onAxisSource((PointerAxisSourceEvent a) {
       logLn("pointer onAxisSource: $a");
     });
+
     pointer?.onAxisStop((PointerAxisStopEvent a) {
       logLn("pointer onAxisStop: $a");
     });
@@ -332,9 +369,6 @@ abstract class Wayland extends BaseWindow {
   void releasePointer() {
     pointer?.release().fold((success) {
       pointer = null;
-    }, (fail) {
-      logLn("pointer release failed: $fail");
-      // shouldExit = true;
-    });
+    }, (fail) {});
   }
 }

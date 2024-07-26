@@ -7,7 +7,8 @@
         {
             "name": "wayland",
             "request": "launch",
-            "type": "dart"
+            "type": "dart",
+            "program": "${workspaceFolder}/example/bin/wayland.dart",
         },
         {
             "name": "scanner",

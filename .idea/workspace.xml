@@ -4,41 +4,23 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7fbbd816-7c1e-481e-9ba6-a2b8bf30a7dd" name="Changes" comment="switch to using native_socket">
-      <change afterPath="$PROJECT_DIR$/.idea/cody_history.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/libraries/Dart_Packages.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/libraries/Dart_SDK.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/wayland.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.vscode/settings.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/.vscode/launch.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/bin/wayland2.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/image.webp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/lib/app.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/lib/drawing/canvas.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/lib/drawing/color.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/lib/drawing/drawing.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/lib/drawing/shape.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/lib/event_loop.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/lib/keyboard.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/lib/mixins/dispatcher.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/lib/mixins/event.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/lib/mixins/painter.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/lib/mixins/size.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/lib/mixins/window.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/lib/widget.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/lib/window.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/lib/window/base.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/lib/window/wayland.dart" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/example/thumbnail.png" afterDir="false" />
+    <list default="true" id="7fbbd816-7c1e-481e-9ba6-a2b8bf30a7dd" name="Changes" comment="write a basic application framework using wayland client bindings">
+      <change beforePath="$PROJECT_DIR$/.idea/cody_history.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/cody_history.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.vscode/launch.json" beforeDir="false" afterPath="$PROJECT_DIR$/.vscode/launch.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/example/bin/wayland.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/bin/wayland.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/example/pubspec.lock" beforeDir="false" afterPath="$PROJECT_DIR$/example/pubspec.lock" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/example/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/example/pubspec.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/justfile" beforeDir="false" afterPath="$PROJECT_DIR$/justfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/bin/wayland2.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/bin/wayland2.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/app.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/lib/app.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/event_loop.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/lib/event_loop.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/keyboard.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/mixins/event.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/lib/mixins/event.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/widget.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/lib/widget.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/window.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/lib/window.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/window/wayland.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/lib/backend/wayland.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/protocol/connection.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/protocol/connection.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/protocol/context.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/protocol/context.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/protocol/log.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/protocol/log.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pubspec.yaml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -80,6 +62,7 @@
     "Dart Command Line App.sadf.dart.executor": "Debug",
     "Dart Command Line App.scanner.executor": "Run",
     "Dart Command Line App.t.dart.executor": "Run",
+    "Dart Command Line App.test.dart.executor": "Run",
     "Dart Command Line App.wayland.dart.executor": "Run",
     "Dart Command Line App.wayland2.dart.executor": "Run",
     "NIXITCH_NIXPKGS_CONFIG": "",
@@ -101,7 +84,7 @@
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "flutter.settings",
+    "settings.editor.selected.configurable": "com.sourcegraph.cody.config.ui.CodeSearchConfigurable",
     "show.migrate.to.gradle.popup": "false"
   }
 }]]></component>
@@ -110,14 +93,14 @@
       <recent name="$PROJECT_DIR$/example/lib" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/example/lib/backend" />
       <recent name="$PROJECT_DIR$/example/lib" />
       <recent name="$PROJECT_DIR$/example/lib/window" />
       <recent name="$PROJECT_DIR$/example/bin" />
       <recent name="$PROJECT_DIR$/lib/src" />
-      <recent name="$PROJECT_DIR$/lib" />
     </key>
   </component>
-  <component name="RunManager" selected="Dart Command Line App.wayland2.dart">
+  <component name="RunManager" selected="Dart Command Line App.wayland.dart">
     <configuration name="sadf.dart" type="DartCommandLineRunConfigurationType" factoryName="Dart Command Line Application" temporary="true" nameIsGenerated="true">
       <option name="VMOptions" value="--enable-experiment=native-assets" />
       <option name="filePath" value="$PROJECT_DIR$/example/bin/sadf.dart" />
@@ -129,6 +112,11 @@
       <option name="arguments" value=" scan --prefix=wl --pkg=client --protocols=protocols.yaml --clean=true" />
       <option name="filePath" value="$PROJECT_DIR$/bin/scanner.dart" />
       <option name="workingDirectory" value="$PROJECT_DIR$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="test.dart" type="DartCommandLineRunConfigurationType" factoryName="Dart Command Line Application" temporary="true" nameIsGenerated="true">
+      <option name="filePath" value="$PROJECT_DIR$/example/bin/test.dart" />
+      <option name="workingDirectory" value="$PROJECT_DIR$/example" />
       <method v="2" />
     </configuration>
     <configuration name="wayland2.dart" type="DartCommandLineRunConfigurationType" factoryName="Dart Command Line Application" temporary="true" nameIsGenerated="true">
@@ -144,12 +132,14 @@
     </configuration>
     <list>
       <item itemvalue="Dart Command Line App.wayland.dart" />
+      <item itemvalue="Dart Command Line App.test.dart" />
       <item itemvalue="Dart Command Line App.wayland2.dart" />
       <item itemvalue="Dart Command Line App.sadf.dart" />
       <item itemvalue="Dart Command Line App.scanner" />
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Dart Command Line App.test.dart" />
         <item itemvalue="Dart Command Line App.wayland2.dart" />
         <item itemvalue="Dart Command Line App.sadf.dart" />
         <item itemvalue="Dart Command Line App.scanner" />
@@ -221,7 +211,15 @@
       <option name="project" value="LOCAL" />
       <updated>1721580757271</updated>
     </task>
-    <option name="localTasksCounter" value="7" />
+    <task id="LOCAL-00007" summary="write a basic application framework using wayland client bindings">
+      <option name="closed" value="true" />
+      <created>1721580878262</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1721580878262</updated>
+    </task>
+    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -244,15 +242,16 @@
     <MESSAGE value="generator tweaks:&#10;support destructors&#10;use Result&lt;type, error&gt; for return types&#10;file descriptor checks" />
     <MESSAGE value="regenerate protocols" />
     <MESSAGE value="switch to using native_socket" />
-    <option name="LAST_COMMIT_MESSAGE" value="switch to using native_socket" />
+    <MESSAGE value="write a basic application framework using wayland client bindings" />
+    <option name="LAST_COMMIT_MESSAGE" value="write a basic application framework using wayland client bindings" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="Dart">
-          <url>file://$PROJECT_DIR$/example/lib/window.dart</url>
-          <line>6</line>
-          <option name="timeStamp" value="187" />
+          <url>file://$PROJECT_DIR$/example/lib/event_loop.dart</url>
+          <line>33</line>
+          <option name="timeStamp" value="260" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
@@ -263,6 +262,12 @@
         </breakpoint>
       </default-breakpoints>
     </breakpoint-manager>
+    <watches-manager>
+      <configuration name="DartCommandLineRunConfigurationType">
+        <watch expression="Application.instance" />
+        <watch expression="EventLoop.instance" />
+      </configuration>
+    </watches-manager>
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />
