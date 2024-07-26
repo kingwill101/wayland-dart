@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:wayland/src/protocol/log.dart';
+
 
 class WaylandConnection {
   RawSocket? _socket;
@@ -14,7 +16,7 @@ class WaylandConnection {
 
   Future<void> connect() async {
     final socketPath = waylandSocketPath();
-    print('Connecting to $socketPath');
+    logLn('Connecting to $socketPath');
     try {
       _socket = await RawSocket.connect(
         InternetAddress(socketPath, type: InternetAddressType.unix),
@@ -25,7 +27,7 @@ class WaylandConnection {
       _socket?.readEventsEnabled = true;
       _socket?.writeEventsEnabled = true;
     } catch (e) {
-      print('Failed to connect: $e');
+      logLn('Failed to connect: $e');
       _close();
     }
   }
@@ -39,14 +41,14 @@ class WaylandConnection {
 
   Future<void> sendMessage(Uint8List message) async {
     if (_socket != null) {
-      print("socket writing: $message");
+      logLn("socket writing: $message");
       int sent = _socket!.write(message);
 
       if (sent < message.length) {
-        print('Warning: Only partial data was sent');
+        logLn('Warning: Only partial data was sent');
       }
     } else {
-      print('Warning: Socket is not connected, unable to send message');
+      logLn('Warning: Socket is not connected, unable to send message');
     }
   }
 }

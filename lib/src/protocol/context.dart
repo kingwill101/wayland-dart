@@ -28,7 +28,7 @@ class Context {
   }
 
   void _parseMessage(Uint8List data) {
-    print('message size: ${data.buffer.lengthInBytes}');
+    logLn('message size: ${data.buffer.lengthInBytes}');
     final ByteData byteData = ByteData.sublistView(data);
 
     int offset = 0;
