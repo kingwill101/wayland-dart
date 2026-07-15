@@ -66,6 +66,7 @@ export 'src/widgets/menu.dart';
 export 'src/widgets/progress_bar.dart';
 export 'src/widgets/radio_button.dart';
 export 'src/widgets/scroll_area.dart';
+export 'src/widgets/scrollbar_widget.dart';
 export 'src/widgets/separator.dart';
 export 'src/widgets/sized_box.dart';
 export 'src/widgets/slider.dart';
