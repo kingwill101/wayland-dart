@@ -1,51 +1,64 @@
+import 'package:layout_engine/layout_engine.dart' as le;
+
 import '../painter/painter.dart';
 import '../widget.dart';
+import '../font/font_database.dart';
+import '../font/font.dart';
 
-/// Vertical stack of children (counterpart to [HBox]).
+/// Vertical stack of children, backed by [le.RenderColumn] for layout.
 class VBox extends Widget {
   @override
 
   final List<Widget> children;
   int spacing;
+  final le.RenderColumn _renderColumn = le.RenderColumn();
+  final List<_RenderWidgetBox> _renderChildren = [];
 
   VBox({this.spacing = 0, List<Widget>? children})
       : assert(spacing >= 0, 'VBox spacing must be >= 0'),
         children = children ?? [];
 
+  void _ensureRenderTree() {
+    _renderColumn.children.clear();
+    _renderChildren.clear();
+    for (final child in children) {
+      final r = _RenderWidgetBox(child);
+      _renderChildren.add(r);
+      _renderColumn.attach(r);
+    }
+  }
+
   @override
   void performLayout(int containerWidth) {
     assert(containerWidth >= 0, 'VBox.performLayout: containerWidth=$containerWidth must be >= 0');
-    width = containerWidth;
-    var totalH = 0;
-    var maxW = 0;
-    for (var i = 0; i < children.length; i++) {
-      children[i].performLayout(containerWidth);
-      totalH += children[i].height;
-      if (children[i].width > maxW) maxW = children[i].width;
-      if (i > 0) totalH += spacing;
+    _ensureRenderTree();
+    _renderColumn.gap = spacing.toDouble();
+
+    // Measure children and set their sizes.
+    for (final r in _renderChildren) {
+      r.widget.performLayout(containerWidth);
     }
-    height = totalH;
-    if (maxW > 0) width = maxW.clamp(0, containerWidth);
-    // Set child positions so hit-test works without a prior draw.
-    var cy = y;
-    for (final child in children) {
-      child.x = x;
-      child.y = cy;
-      cy += child.height + spacing;
+
+    _renderColumn.layout(le.BoxConstraints(
+      maxWidth: containerWidth.toDouble(),
+      maxHeight: double.infinity,
+    ));
+
+    width = _renderColumn.size.width.round();
+    height = _renderColumn.size.height.round();
+
+    // Apply computed offsets to children.
+    for (var i = 0; i < _renderChildren.length; i++) {
+      final r = _renderChildren[i];
+      r.widget.x = x + r.offset.dx.round();
+      r.widget.y = y + r.offset.dy.round();
+      r.widget.width = r.size.width.round();
     }
   }
 
   void layout(int containerWidth, int containerHeight) {
-    width = containerWidth;
+    performLayout(containerWidth);
     if (containerHeight > 0) height = containerHeight;
-
-    var cy = y;
-    for (final child in children) {
-      child.x = x;
-      child.y = cy;
-      child.width = width;
-      cy += child.height + spacing;
-    }
   }
 
   @override
@@ -64,7 +77,6 @@ class VBox extends Widget {
 
   @override
   void draw(Painter canvas) {
-    layout(width, height);
     for (final child in children) {
       child.draw(canvas);
     }
@@ -72,11 +84,22 @@ class VBox extends Widget {
 
   @override
   bool hitTest(int px, int py) {
-    layout(width, height);
     if (!super.hitTest(px, py)) return false;
     for (final child in children.reversed) {
       if (child.hitTest(px, py)) return true;
     }
     return false;
+  }
+}
+
+/// Adapter: wraps a [Widget] as a [le.RenderBox] for layout.
+class _RenderWidgetBox extends le.RenderBox {
+  final Widget widget;
+  _RenderWidgetBox(this.widget);
+
+  @override
+  void layout(le.BoxConstraints constraints) {
+    widget.performLayout(constraints.maxWidth.round());
+    size = le.Size(widget.width.toDouble(), widget.height.toDouble());
   }
 }
