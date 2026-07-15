@@ -1,0 +1,25 @@
+name: GL
+description: |
+
+  Regenerate bindings with `dart run ffigen`.
+output: "../lib/src/bindings/gl_binding.dart"
+headers:
+  entry-points:
+    - /usr/include/GL/gl.h
+  include-directives:
+    - /usr/include/GL/gl.h
+
+comments:
+  style: any
+  length: full
+
+use-supported-typedefs: true
+
+llvm-path:
+  - "/usr/lib/llvm"
+  - "/usr/lib64/libclang.so"
+
+compiler-opts:
+  - "-I/usr/lib/clang/18/include"
+  - "-I/usr/local/include"
+  - "-I/usr/include"

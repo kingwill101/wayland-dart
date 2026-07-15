@@ -1,0 +1,35 @@
+name: Glut
+description: |
+
+  Regenerate bindings with `dart run ffigen`.
+output: "../lib/src/bindings/glut_binding.dart"
+headers:
+  entry-points:
+    - /usr/include/GL/freeglut_std.h
+
+  include-directives:
+    - /usr/include/GL/freeglut_std.h
+
+comments:
+  style: any
+  length: full
+
+functions:
+  include:
+    - "glutInit"
+  exclude:
+    - ".*"
+  rename:
+    "glut(.*)": "$1"
+use-supported-typedefs: true
+include-unused-typedefs: true
+ignore-source-errors: true
+llvm-path:
+  - "/usr/lib/llvm"
+  - "/usr/lib64/libclang.so"
+
+compiler-opts:
+  - "-I/usr/lib/clang/18/include"
+  - "-I/usr/local/include"
+  - "-I/usr/include"
+  - "-I/usr/include/EGL"

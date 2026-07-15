@@ -1,0 +1,15 @@
+name: gl
+description: OpenGL/EGL FFI bindings for Dart
+version: 1.0.0
+resolution: workspace
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  ffi: ^2.1.0
+
+dev_dependencies:
+  ffigen: ^13.0.0
+  lints: ^4.0.0
+  test: ^1.25.8

@@ -1,0 +1,17 @@
+name: gl_example
+description: OpenGL rendering example with Wayland
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  gl:
+    path: ../
+  window_toolkit:
+    path: ../../window_toolkit
+  wayland:
+    path: ../../wayland
+  ffi: ^2.1.0
+  result_dart: ^1.1.1

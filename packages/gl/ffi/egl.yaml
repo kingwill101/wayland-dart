@@ -1,0 +1,35 @@
+name: EGL
+description: |
+
+  Regenerate bindings with `dart run ffigen`.
+output: "../lib/src/bindings/egl_binding.dart"
+headers:
+  entry-points:
+      - /usr/include/EGL/egl.h
+      - /usr/include/EGL/eglext.h
+  include-directives:
+    - /usr/include/EGL/egl.h
+    - /usr/include/EGL/eglext.h
+    - /usr/include/EGL/eglplatform.h
+
+comments:
+  style: any
+  length: full
+  
+functions:
+  # exclude:
+  #   - ".*"
+  rename:
+    "egl(.*)": "$1"
+use-supported-typedefs: true
+include-unused-typedefs: true
+ignore-source-errors: true
+llvm-path:
+  - "/usr/lib/llvm"
+  - "/usr/lib64/libclang.so"
+
+compiler-opts:
+  - "-I/usr/lib/clang/18/include"
+  - "-I/usr/local/include"
+  - "-I/usr/include"
+  - "-I/usr/include/EGL"

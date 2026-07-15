@@ -1,0 +1,33 @@
+name: Glew
+description: |
+
+  Regenerate bindings with `dart run ffigen`.
+output: "../lib/src/bindings/glew_binding.dart"
+headers:
+  entry-points:
+      - /usr/include/GL/glew.h
+
+  include-directives:
+    - /usr/include/GL/glew.h
+
+comments:
+  style: any
+  length: full
+  
+# functions:
+  # # exclude:
+  # #   - ".*"
+  # rename:
+  #   "egl(.*)": "$1"
+use-supported-typedefs: true
+include-unused-typedefs: true
+ignore-source-errors: true
+llvm-path:
+  - "/usr/lib/llvm"
+  - "/usr/lib64/libclang.so"
+
+compiler-opts:
+  - "-I/usr/lib/clang/18/include"
+  - "-I/usr/local/include"
+  - "-I/usr/include"
+  - "-I/usr/include/EGL"

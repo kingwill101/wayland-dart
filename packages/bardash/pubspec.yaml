@@ -1,0 +1,14 @@
+name: bardash
+description: A customizable Wayland bar powered by wayland-toolkit and Lua config.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  window_toolkit: any
+  lualike: ^0.3.0
+  dbus: ^0.7.14
+  ffi: ^2.2.0

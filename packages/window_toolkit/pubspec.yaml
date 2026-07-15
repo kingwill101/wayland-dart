@@ -1,0 +1,21 @@
+name: window_toolkit
+description: Wayland window toolkit for Dart
+publish_to: none
+version: 1.0.0
+resolution: workspace
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  wayland: any
+  gl: any
+  skia_dart:
+    git:
+      url: https://github.com/knopp/skia_dart.git
+      path: packages/skia_dart
+  ffi: ^2.2.0
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.8
