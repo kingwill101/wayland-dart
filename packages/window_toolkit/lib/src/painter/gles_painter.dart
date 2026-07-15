@@ -232,7 +232,9 @@ class GlesPainter implements Painter {
       _shared ??= _GlesShared();
       _gles = _shared;
       _gles!.gl.resize(width, height);
-      _gles!.gl.makeCurrent();
+      if (!_gles!.gl.makeCurrent()) {
+        throw Exception('EGL context lost');
+      }
       _gles!.gl.viewport(0, 0, width, height);
       _gles!.gl.enable(GL_BLEND);
       _gles!.gl.blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

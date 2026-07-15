@@ -197,10 +197,16 @@ class GL {
 
   // ── Lifecycle ──────────────────────────────────────────────────
 
-  void makeCurrent() {
+  /// Returns false if the EGL context was lost (calls to [MakeCurrent]
+  /// can fail after suspend/resume or extended GPU resource exhaustion).
+  bool makeCurrent() {
     _checkNotDisposed();
-    _egl.MakeCurrent(_display, _surface, _surface, _context);
+    if (_egl.MakeCurrent(_display, _surface, _surface, _context) == 0) {
+      stderr.writeln('[gl] eglMakeCurrent failed — context lost');
+      return false;
+    }
     _gles2.glViewport(0, 0, _width, _height);
+    return true;
   }
 
   void resize(int width, int height) {
