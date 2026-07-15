@@ -55,7 +55,8 @@ class RenderWrap extends RenderBox {
     this.crossAxisAlignment = WrapCrossAlignment.start,
     this.spacing = 0,
     this.runSpacing = 0,
-  });
+  })  : assert(spacing >= 0, 'RenderWrap spacing must be >= 0'),
+        assert(runSpacing >= 0, 'RenderWrap runSpacing must be >= 0');
 
   bool get _isHorizontal => direction == Axis.horizontal;
 

@@ -37,7 +37,7 @@ abstract class RenderFlex extends RenderBox {
     this.mainAxisAlignment = MainAxisAlignment.start,
     this.crossAxisAlignment = CrossAxisAlignment.start,
     this.mainAxisSize = MainAxisSize.min,
-  });
+  })  : assert(gap >= 0, 'RenderFlex gap must be >= 0');
 
   bool get isRow;
 

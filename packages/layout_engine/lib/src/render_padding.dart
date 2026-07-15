@@ -11,7 +11,6 @@ class RenderPadding extends RenderBox {
   double right;
   double bottom;
 
-  /// The padded child, attached via [attach].
   RenderBox? get paddedChild => children.isNotEmpty ? children.first as RenderBox? : null;
 
   RenderPadding({
@@ -19,7 +18,8 @@ class RenderPadding extends RenderBox {
     this.top = 0,
     this.right = 0,
     this.bottom = 0,
-  });
+  })  : assert(left >= 0 && top >= 0 && right >= 0 && bottom >= 0,
+            'RenderPadding values must be >= 0');
 
   @override
   void layout(BoxConstraints constraints) {
