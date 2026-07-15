@@ -31,7 +31,7 @@ class Switch extends Widget {
         _borderColor = borderColor {
     width = trackWidth;
     height = trackHeight;
-    onClick = toggle;
+    onClick = () { toggle(); return true; };
     onMouseEnter = () => _hovered = true;
     onMouseLeave = () => _hovered = false;
   }

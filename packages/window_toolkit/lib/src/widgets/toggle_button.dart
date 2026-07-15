@@ -26,7 +26,7 @@ class ToggleButton extends Widget {
   }) {
     width = label.length * 8 + 16;
     height = 24;
-    onClick = toggle;
+    onClick = () { toggle(); return true; };
     onMouseEnter = () => _hovered = true;
     onMouseLeave = () => _hovered = false;
   }

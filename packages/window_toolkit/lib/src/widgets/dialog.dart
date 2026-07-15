@@ -22,7 +22,7 @@ class DialogButton extends Widget {
     height = 24;
     onMouseEnter = () => _hovered = true;
     onMouseLeave = () => _hovered = false;
-    onClick = () => onPressed?.call();
+    onClick = () { onPressed?.call(); return true; };
   }
 
   @override

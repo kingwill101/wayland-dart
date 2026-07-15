@@ -12,7 +12,10 @@ typedef VoidCallback = void Function();
 
 abstract class Widget {
   int x = 0, y = 0, width = 0, height = 0;
-  VoidCallback? onClick;
+  /// Click handler. Return true to consume the event and stop propagation.
+  /// The click bubbles up the widget tree: deepest widget is called first,
+  /// then its parent, grandparent, etc., until a handler returns true.
+  bool Function()? onClick;
   VoidCallback? onMouseEnter;
   VoidCallback? onMouseLeave;
 

@@ -46,6 +46,7 @@ class Tooltip extends Widget {
     };
     onClick = () {
       visible = !visible;
+      return true;
     };
   }
 

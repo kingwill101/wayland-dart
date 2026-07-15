@@ -25,7 +25,7 @@ class MouseRegion extends Widget {
       _hovered = false;
       onExit?.call();
     };
-    onClick = () => onTap?.call();
+    onClick = () { onTap?.call(); return true; };
   }
 
   @override

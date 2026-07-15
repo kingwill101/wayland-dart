@@ -141,7 +141,7 @@ class WidgetWindow extends Window {
         // Left click — dismiss popups and context menu
         popupHost?.dismiss();
         contextMenu?.hide();
-        hit.onClick?.call();
+        _dispatchClick(x, y);
       } else {
         // Right click — show context menu at cursor
         contextMenu?.show(x, y);
@@ -278,32 +278,48 @@ class WidgetWindow extends Window {
 
 
 
-  /// Find the deepest widget at (px,py) by walking the widget tree.
+  /// Collect hit-test ancestor path at (px,py), deepest widget first.
   /// Handles scroll offsets from ancestor ScrollAreas via [offX]/[offY].
-  Widget? _hitTestDeep(Widget w, int px, int py, [int offX = 0, int offY = 0]) {
+  /// Returns empty list for a miss, otherwise [Widget] list from deepest
+  /// to root, suitable for event bubbling.
+  List<Widget> _hitTestPath(Widget w, int px, int py, [int offX = 0, int offY = 0]) {
     if (w is ScrollArea) {
       final localPx = px + w.scrollX + offX;
       final localPy = py + w.scrollY + offY;
-      if (w.isOnScrollbar(px, py)) return w;
-      // Ensure child is positioned for hit-test, matching ScrollArea.hitTest.
+      if (w.isOnScrollbar(px, py)) return [w];
       w.child
         ..x = w.x
         ..y = w.y;
       if (w.child.hitTest(localPx, localPy)) {
-        return _hitTestDeep(w.child, localPx, localPy, 0, 0) ?? w;
+        final childPath = _hitTestPath(w.child, localPx, localPy, 0, 0);
+        if (childPath.isNotEmpty) return childPath;
       }
-      return w.hitTest(px, py) ? w : null;
+      return w.hitTest(px, py) ? [w] : const [];
     }
-    if (!w.hitTest(px, py)) return null;
+    if (!w.hitTest(px, py)) return const [];
     final children = w.children;
     for (final child in children.reversed) {
-      final result = _hitTestDeep(child, px, py, offX, offY);
-      if (result != null) return result;
+      final childPath = _hitTestPath(child, px, py, offX, offY);
+      if (childPath.isNotEmpty) return [w, ...childPath];
     }
-    return w;
+    return [w];
+  }
+
+  /// Bubbles [onClick] through the ancestor path at (px,py).
+  /// Returns true if any handler consumed the event.
+  bool _dispatchClick(int px, int py) {
+    final path = _hitTestPath(root, px, py);
+    for (final w in path) {
+      final handler = w.onClick;
+      if (handler != null) {
+        if (handler()) return true; // consumed, stop propagation
+      }
+    }
+    return false;
   }
 
   Widget? _hitTestRoot(int px, int py) {
-    return _hitTestDeep(root, px, py);
+    final path = _hitTestPath(root, px, py);
+    return path.isNotEmpty ? path.first : null;
   }
 }

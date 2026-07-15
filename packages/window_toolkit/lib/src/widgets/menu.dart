@@ -24,7 +24,7 @@ class MenuItem extends Widget {
     height = itemHeight;
     onMouseEnter = () => _hovered = true;
     onMouseLeave = () => _hovered = false;
-    onClick = () => onTriggered?.call();
+    onClick = () { onTriggered?.call(); return true; };
   }
 
   @override

@@ -24,7 +24,7 @@ class RadioButton extends Widget {
   }) {
     width = diameter + 8 + label.length * 8;
     height = diameter > 16 ? diameter : 16;
-    onClick = select;
+    onClick = () { select(); return true; };
   }
 
   void select() {

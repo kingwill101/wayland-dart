@@ -33,7 +33,7 @@ class Dropdown extends Widget {
         assert(maxVisibleItems > 0, 'Dropdown maxVisibleItems must be > 0') {
     width = 160;
     height = itemHeight;
-    onClick = () => opened = !opened;
+    onClick = () { opened = !opened; return true; };
     onMouseEnter = () => _hovered = true;
     onMouseLeave = () => _hovered = false;
   }

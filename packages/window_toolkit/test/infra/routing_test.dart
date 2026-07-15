@@ -13,7 +13,7 @@ class _TestWidget extends Widget {
   final List<String> log = [];
 
   _TestWidget(this.id) {
-    onClick = () { clicks++; log.add('click:$id'); };
+    onClick = () { clicks++; log.add('click:$id'); return true; };
     onMouseEnter = () { enters++; log.add('enter:$id'); };
     onMouseLeave = () { leaves++; log.add('leave:$id'); };
   }

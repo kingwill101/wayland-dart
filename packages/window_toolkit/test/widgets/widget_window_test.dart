@@ -10,6 +10,7 @@ class _Child extends Widget {
   _Child(this.id) {
     onClick = () {
       clicks++;
+      return true;
     };
     onMouseEnter = () {
       enters++;

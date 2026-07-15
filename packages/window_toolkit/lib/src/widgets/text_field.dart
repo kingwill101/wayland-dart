@@ -31,7 +31,7 @@ class TextField extends Widget {
         _placeholderColor = placeholderColor {
     height = 24;
     tabIndex = 1;
-    onClick = () => _focused = true;
+    onClick = () { _focused = true; return true; };
   }
 
   @override

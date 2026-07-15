@@ -25,7 +25,7 @@ class IconButton extends Widget {
   })  : assert(iconSize > 0, 'IconButton iconSize must be > 0') {
     width = iconSize + 12;
     height = iconSize + 12;
-    onClick = press;
+    onClick = () { press(); return true; };
     onMouseEnter = () => _hovered = true;
     onMouseLeave = () => _hovered = false;
   }

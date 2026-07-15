@@ -24,7 +24,7 @@ class Checkbox extends Widget {
     width = boxSize;
     height = boxSize;
     tabIndex = 1;
-    onClick = toggle;
+    onClick = () { toggle(); return true; };
   }
 
   Color get boxColor => _boxColor ?? palette.base;

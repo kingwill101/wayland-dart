@@ -10,7 +10,10 @@ class Offset {
   const Offset(this.dx, this.dy);
   static const zero = Offset(0, 0);
 
+  @pragma('vm:prefer-inline')
   Offset operator +(Offset other) => Offset(dx + other.dx, dy + other.dy);
+
+  @pragma('vm:prefer-inline')
   Offset operator -(Offset other) => Offset(dx - other.dx, dy - other.dy);
 
   @override
@@ -30,7 +33,10 @@ class Size {
   const Size(this.width, this.height);
   static const zero = Size(0, 0);
 
+  @pragma('vm:prefer-inline')
   Size operator +(Size other) => Size(width + other.width, height + other.height);
+
+  @pragma('vm:prefer-inline')
   Size operator -(Size other) => Size(width - other.width, height - other.height);
 
   @override
@@ -49,20 +55,40 @@ class Rect {
   final double top;
   final double width;
   final double height;
+
   const Rect.fromLTWH(this.left, this.top, this.width, this.height);
+
+  /// Pre-compute [right] and [bottom] for hot-path access.
+  /// Use [fromLTWH] when you need cached right/bottom.
+  const Rect.fromLTRB(double l, double t, double r, double b)
+      : left = l,
+        top = t,
+        width = r - l,
+        height = b - t;
+
   Rect.fromOffsetAndSize(Offset offset, Size size)
       : left = offset.dx,
         top = offset.dy,
         width = size.width,
         height = size.height;
 
+  @pragma('vm:prefer-inline')
   double get right => left + width;
+
+  @pragma('vm:prefer-inline')
   double get bottom => top + height;
+
+  @pragma('vm:prefer-inline')
   Offset get offset => Offset(left, top);
+
+  @pragma('vm:prefer-inline')
   Size get size => Size(width, height);
+
+  @pragma('vm:prefer-inline')
   Rect shift(double dx, double dy) =>
       Rect.fromLTWH(left + dx, top + dy, width, height);
 
+  @pragma('vm:prefer-inline')
   bool containsPoint(double x, double y) =>
       x >= left && x < right && y >= top && y < bottom;
 
@@ -86,27 +112,30 @@ class BoxConstraints {
 
   static const tight = BoxConstraints();
 
+  @pragma('vm:prefer-inline')
   bool get hasBoundedWidth => maxWidth < double.infinity;
+
+  @pragma('vm:prefer-inline')
   bool get hasBoundedHeight => maxHeight < double.infinity;
+
+  @pragma('vm:prefer-inline')
   bool get isTight => minWidth == maxWidth && minHeight == maxHeight;
 
   /// Constrain [size] to fit within these constraints.
+  @pragma('vm:prefer-inline')
   Size constrain(Size size) {
     return Size(
       size.width < minWidth
           ? minWidth
-          : size.width > maxWidth
-              ? maxWidth
-              : size.width,
+          : size.width > maxWidth ? maxWidth : size.width,
       size.height < minHeight
           ? minHeight
-          : size.height > maxHeight
-              ? maxHeight
-              : size.height,
+          : size.height > maxHeight ? maxHeight : size.height,
     );
   }
 
   /// Tighten constraints to a specific size.
+  @pragma('vm:prefer-inline')
   BoxConstraints tighten({double? width, double? height}) {
     return BoxConstraints(
       minWidth: width ?? minWidth,
@@ -117,6 +146,7 @@ class BoxConstraints {
   }
 
   /// Loosen constraints (set min to 0).
+  @pragma('vm:prefer-inline')
   BoxConstraints loosen() {
     return BoxConstraints(
       minWidth: 0,

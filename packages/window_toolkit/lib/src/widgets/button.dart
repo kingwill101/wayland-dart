@@ -30,7 +30,7 @@ class Button extends Widget {
     width = text.length * charWidth + padding * 2;
     height = charHeight + padding * 2;
     tabIndex = 1;
-    onClick = onPressed;
+    onClick = () { onPressed?.call(); return true; };
     onMouseEnter = () => _hovered = true;
     onMouseLeave = () => _hovered = false;
   }
