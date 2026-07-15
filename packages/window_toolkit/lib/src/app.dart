@@ -52,13 +52,17 @@ class Application {
     _eventReceivers.insert(0, receiver);
   }
 
+
+
   void _execTick() {
     if (!_running) return;
 
     if (connection.isConnected) {
-      // Non-blocking dispatch. The EINTR fix in native_socket's
-      // socket_has_data handles SIGPROF interruptions from the CPU
-      // profiler without dropping the connection.
+      // Use scheduleMicrotask to re-dispatch immediately — this ensures
+      // Wayland polling happens BEFORE any VM service event processing.
+      // async.Timer.run posts to the event loop, which lets VM service
+      // messages (profiler data) queue between iterations and delay the
+      // next poll, causing the compositor to disconnect.
       connection.dispatch();
       // If the Wayland socket died, stop running.
       if (connection.isConnected && !connection.context.isConnected) {
@@ -77,11 +81,10 @@ class Application {
 
     if (_running) {
       if (nextTimer > Duration.zero) {
-        async.Timer(nextTimer, _execTick);
+        async.Timer(nextTimer, () => _execTick());
       } else {
-        // Small yield to let the event loop process VM service requests.
-        // Without this, the tight poll() loop can starve the VM service.
-        async.Timer.run(_execTick);
+        // Schedule as microtask — runs before any event loop events.
+        async.scheduleMicrotask(() => _execTick());
       }
     }
   }
