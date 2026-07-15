@@ -1,48 +1,61 @@
+import 'package:layout_engine/layout_engine.dart' as le;
+
 import '../painter/painter.dart';
 import '../widget.dart';
+import '../font/font_database.dart';
+import '../font/font.dart';
 
+/// Horizontal row of children, backed by [le.RenderRow] for layout.
 class HBox extends Widget {
   @override
 
   final List<Widget> children;
   int spacing;
+  final le.RenderRow _renderRow = le.RenderRow();
+  final List<_RenderWidgetBox> _renderChildren = [];
 
   HBox({this.spacing = 0, List<Widget>? children})
       : assert(spacing >= 0, 'HBox spacing must be >= 0'),
         children = children ?? [];
 
+  void _ensureRenderTree() {
+    _renderRow.children.clear();
+    _renderChildren.clear();
+    for (final child in children) {
+      final r = _RenderWidgetBox(child);
+      _renderChildren.add(r);
+      _renderRow.attach(r);
+    }
+  }
+
   @override
   void performLayout(int containerWidth) {
-    width = containerWidth;
-    var maxHeight = 0;
-    for (final child in children) {
-      child.performLayout(child.width > 0 ? child.width : width ~/ children.length);
-      if (child.height > maxHeight) maxHeight = child.height;
+    _ensureRenderTree();
+    _renderRow.gap = spacing.toDouble();
+
+    for (final r in _renderChildren) {
+      r.widget.performLayout(r.widget.width > 0 ? r.widget.width : containerWidth);
     }
-    height = maxHeight;
-    // Set child positions so hit-test works without a prior draw.
-    var cx = x;
-    for (final child in children) {
-      child.x = cx;
-      child.y = y;
-      cx += child.width + spacing;
+
+    _renderRow.layout(le.BoxConstraints(
+      maxWidth: containerWidth.toDouble(),
+      maxHeight: double.infinity,
+    ));
+
+    width = _renderRow.size.width.round();
+    height = _renderRow.size.height.round();
+
+    for (var i = 0; i < _renderChildren.length; i++) {
+      final r = _renderChildren[i];
+      r.widget.x = x + r.offset.dx.round();
+      r.widget.y = y + r.offset.dy.round();
+      r.widget.height = r.size.height.round();
     }
   }
 
   void layout(int containerWidth, int containerHeight) {
-    width = containerWidth;
-    // Do not call [performLayout] here: the default implementation sets
-    // `child.width = containerWidth`, which stretches intrinsic children
-    // (e.g. bar ModuleWidgets) and creates huge gaps between icons.
+    performLayout(containerWidth);
     if (containerHeight > 0) height = containerHeight;
-
-    int cx = x;
-    for (final child in children) {
-      child.x = cx;
-      child.y = y;
-      child.height = height;
-      cx += child.width + spacing;
-    }
   }
 
   @override
@@ -61,7 +74,9 @@ class HBox extends Widget {
 
   @override
   void draw(Painter canvas) {
-    layout(width, height);
+    if (_renderChildren.isEmpty && width > 0) {
+      performLayout(width);
+    }
     for (final child in children) {
       child.draw(canvas);
     }
@@ -69,11 +84,26 @@ class HBox extends Widget {
 
   @override
   bool hitTest(int px, int py) {
-    layout(width, height);
     if (!super.hitTest(px, py)) return false;
     for (final child in children.reversed) {
       if (child.hitTest(px, py)) return true;
     }
     return false;
+  }
+}
+
+/// Adapter: wraps a [Widget] as a [le.RenderBox] for layout.
+class _RenderWidgetBox extends le.RenderBox {
+  final Widget widget;
+  _RenderWidgetBox(this.widget);
+
+  @override
+  void layout(le.BoxConstraints constraints) {
+    // Use the child's intrinsic width first; fall back to constraints.
+    final childWidth = widget.width > 0
+        ? widget.width
+        : constraints.maxWidth.round();
+    widget.performLayout(childWidth);
+    size = le.Size(widget.width.toDouble(), widget.height.toDouble());
   }
 }

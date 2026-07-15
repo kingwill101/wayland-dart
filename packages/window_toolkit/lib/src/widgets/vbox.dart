@@ -77,6 +77,9 @@ class VBox extends Widget {
 
   @override
   void draw(Painter canvas) {
+    if (_renderChildren.isEmpty && width > 0) {
+      performLayout(width);
+    }
     for (final child in children) {
       child.draw(canvas);
     }
@@ -99,7 +102,10 @@ class _RenderWidgetBox extends le.RenderBox {
 
   @override
   void layout(le.BoxConstraints constraints) {
-    widget.performLayout(constraints.maxWidth.round());
+    final childWidth = widget.width > 0
+        ? widget.width
+        : constraints.maxWidth.round();
+    widget.performLayout(childWidth);
     size = le.Size(widget.width.toDouble(), widget.height.toDouble());
   }
 }
