@@ -12,6 +12,11 @@ class Context {
 
   Context() {
     _socket = UnixSocket.connect(Address.file(_waylandSocketPath()));
+    // Increase socket buffers so the compositor can push events during
+    // VM service pauses (GC, heap snapshot) without filling up and
+    // disconnecting us. Default is often 208-256 KB; 1 MB gives headroom.
+    _socket.setReceiveBufferSize(1024 * 1024); // 1 MB receive buffer
+    _socket.setSendBufferSize(512 * 1024);     // 512 KB send buffer
   }
 
   static String _waylandSocketPath() {
