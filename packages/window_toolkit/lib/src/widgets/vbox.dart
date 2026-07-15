@@ -24,6 +24,13 @@ class VBox extends Widget {
     }
     height = totalH;
     if (maxW > 0) width = maxW.clamp(0, containerWidth);
+    // Set child positions so hit-test works without a prior draw.
+    var cy = y;
+    for (final child in children) {
+      child.x = x;
+      child.y = cy;
+      cy += child.height + spacing;
+    }
   }
 
   void layout(int containerWidth, int containerHeight) {

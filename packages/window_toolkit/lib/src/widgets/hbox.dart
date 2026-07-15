@@ -19,6 +19,13 @@ class HBox extends Widget {
       if (child.height > maxHeight) maxHeight = child.height;
     }
     height = maxHeight;
+    // Set child positions so hit-test works without a prior draw.
+    var cx = x;
+    for (final child in children) {
+      child.x = cx;
+      child.y = y;
+      cx += child.width + spacing;
+    }
   }
 
   void layout(int containerWidth, int containerHeight) {
