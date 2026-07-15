@@ -18,6 +18,7 @@ export 'src/font/fonts.dart';
 export 'src/keymap.dart';
 export 'src/tooltip_overlay.dart';
 export 'src/animation/animation.dart';
+export 'package:layout_engine/layout_engine.dart' show ElementWidget, ElementTree, StatefulWidget, StatelessWidget, State, BuildContext, InheritedWidget;
 export 'src/animation/animation_controller.dart';
 export 'src/animation/curves.dart';
 export 'src/animation/tween.dart';

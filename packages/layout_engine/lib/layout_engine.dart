@@ -4,7 +4,7 @@
 /// layout algorithms. No dependencies on any rendering backend.
 library layout_engine;
 
-export 'src/element_tree.dart';
+export 'src/element_tree.dart' show BuildOwner, BuildContext, Element, ElementTree, InheritedElement, StatefulElement, StatelessElement, WidgetElement, NeedsBuildCallback, createElement;
 export 'src/framework.dart';
 export 'src/geometry.dart';
 export 'src/render_object.dart';

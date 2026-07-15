@@ -10,6 +10,10 @@ import 'style.dart';
 // Re-export so widget implementations can type-check KeyEvent.
 export 'mixins/event.dart' show KeyEvent;
 
+// Re-export layout_engine Element types so users can build StatefulWidgets.
+export 'package:layout_engine/layout_engine.dart'
+    show BuildContext, Element, ElementTree, InheritedWidget, StatefulElement, StatelessElement;
+
 typedef VoidCallback = void Function();
 
 abstract class Widget extends ElementWidget {

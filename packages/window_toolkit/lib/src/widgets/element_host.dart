@@ -39,25 +39,26 @@ List<Widget> autoElementList(List<ElementWidget> items) {
 /// pipeline.
 class ElementHost extends Widget {
   final ElementWidget child;
-  ElementTree? _tree;
+  /// The internal element tree. Exposed for testing/state access.
+  ElementTree? tree;
 
   ElementHost({required this.child}) {
     if (child is StatefulWidget || child is StatelessWidget) {
-      _tree = ElementTree();
-      _tree!.mount(child);
-      _tree!.build();
+      tree = ElementTree();
+      tree!.mount(child);
+      tree!.build();
     }
   }
 
   /// Rebuild the element tree if dirty.
   void _rebuildIfNeeded() {
-    _tree?.build();
+    tree?.build();
   }
 
   /// Get the renderable output from the element tree.
   Widget? get _renderable {
     _rebuildIfNeeded();
-    final render = _tree?.root?.renderWidget;
+    final render = tree?.root?.renderWidget;
     if (render is Widget) return render;
     return null;
   }
@@ -95,7 +96,7 @@ class ElementHost extends Widget {
 
   @override
   void dispose() {
-    _tree?.unmount();
+    tree?.unmount();
     super.dispose();
   }
 }
