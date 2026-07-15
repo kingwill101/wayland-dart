@@ -29,7 +29,8 @@ class Dropdown extends Widget {
     this.itemHeight = 22,
     this.maxVisibleItems = 8,
     this.onChanged,
-  }) {
+  })  : assert(itemHeight > 0, 'Dropdown itemHeight must be > 0'),
+        assert(maxVisibleItems > 0, 'Dropdown maxVisibleItems must be > 0') {
     width = 160;
     height = itemHeight;
     onClick = () => opened = !opened;

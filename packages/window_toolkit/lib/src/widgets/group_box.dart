@@ -27,7 +27,9 @@ class GroupBox extends Widget {
     this.padding = 12,
     this.spacing = 8,
     this.titleHeight = 22,
-  });
+  })  : assert(borderWidth >= 0, 'GroupBox borderWidth must be >= 0'),
+        assert(padding >= 0, 'GroupBox padding must be >= 0'),
+        assert(spacing >= 0, 'GroupBox spacing must be >= 0');
 
   int get _titleOffset => title == null ? 0 : titleHeight;
 

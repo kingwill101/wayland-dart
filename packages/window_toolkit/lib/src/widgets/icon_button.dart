@@ -22,7 +22,7 @@ class IconButton extends Widget {
     this.borderColor = const Color(30, 30, 30),
     this.iconSize = 16,
     this.onPressed,
-  }) {
+  })  : assert(iconSize > 0, 'IconButton iconSize must be > 0') {
     width = iconSize + 12;
     height = iconSize + 12;
     onClick = press;

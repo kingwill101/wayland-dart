@@ -30,7 +30,8 @@ class RangeSlider extends Widget {
     this.thumbColor = const Color(240, 240, 240),
     this.activeThumbColor = const Color(255, 255, 255),
     this.onChanged,
-  })  : lower = lower.clamp(min, max),
+  })  : assert(max > min, 'RangeSlider max must be > min'),
+        lower = lower.clamp(min, max),
         upper = upper.clamp(min, max) {
     width = 160;
     height = thumbRadius * 2 > trackHeight ? thumbRadius * 2 : trackHeight;

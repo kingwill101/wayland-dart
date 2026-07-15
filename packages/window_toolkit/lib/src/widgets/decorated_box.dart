@@ -19,7 +19,9 @@ class DecoratedBox extends Widget {
     this.borderWidth = 0,
     double? borderRadius,
     this.padding = 0,
-  }) : borderRadius = borderRadius ?? ThemeMetrics.current.borderRadiusSm;
+  })  : assert(borderWidth >= 0, 'DecoratedBox borderWidth must be >= 0'),
+        assert(padding >= 0, 'DecoratedBox padding must be >= 0'),
+        borderRadius = borderRadius ?? ThemeMetrics.current.borderRadiusSm;
 
   @override
   void measure(Painter painter) {

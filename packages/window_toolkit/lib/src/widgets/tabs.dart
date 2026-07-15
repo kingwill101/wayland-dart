@@ -25,7 +25,7 @@ class TabBar extends Widget {
     this.textColor = const Color(200, 200, 200),
     this.tabHeight = 28,
     this.onChanged,
-  }) {
+  })  : assert(tabHeight > 0, 'TabBar tabHeight must be > 0') {
     height = tabHeight;
   }
 

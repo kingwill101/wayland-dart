@@ -19,7 +19,7 @@ class MenuItem extends Widget {
     this.hoverColor = const Color(55, 55, 55),
     this.itemHeight = 24,
     this.onTriggered,
-  }) {
+  })  : assert(itemHeight > 0, 'MenuItem itemHeight must be > 0') {
     width = label.length * 8 + 24;
     height = itemHeight;
     onMouseEnter = () => _hovered = true;

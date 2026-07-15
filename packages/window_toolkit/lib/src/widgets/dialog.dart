@@ -17,7 +17,7 @@ class DialogButton extends Widget {
     this.backgroundColor = const Color(55, 55, 55),
     this.hoverColor = const Color(80, 80, 80),
     this.onPressed,
-  }) {
+  })  : assert(label.isNotEmpty, 'DialogButton label must not be empty') {
     width = label.length * 8 + 16;
     height = 24;
     onMouseEnter = () => _hovered = true;
@@ -65,7 +65,7 @@ class Dialog extends Widget {
     this.textColor = const Color(200, 200, 200),
     this.titleBarHeight = 30,
     this.padding = 16,
-  }) {
+  })  : assert(padding >= 0, 'Dialog padding must be >= 0') {
     width = 300;
     final msgLines = (message.length / 40).ceil().clamp(1, 4);
     height = titleBarHeight + padding * 2 + msgLines * 20 + 40;

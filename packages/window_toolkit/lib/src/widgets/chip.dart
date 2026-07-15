@@ -30,7 +30,9 @@ class Chip extends Widget {
     this.selected = false,
     this.hovered = false,
     double? fontSize,
-  })  : borderRadius = borderRadius ?? ThemeMetrics.current.borderRadiusMd,
+  })  : assert(paddingH == null || paddingH >= 0, 'Chip paddingH must be >= 0'),
+        assert(paddingV == null || paddingV >= 0, 'Chip paddingV must be >= 0'),
+        borderRadius = borderRadius ?? ThemeMetrics.current.borderRadiusMd,
         paddingH = paddingH ?? ThemeMetrics.current.paddingMd,
         paddingV = paddingV ?? ThemeMetrics.current.paddingSm,
         fontSize = fontSize ?? ThemeMetrics.current.fontSize {

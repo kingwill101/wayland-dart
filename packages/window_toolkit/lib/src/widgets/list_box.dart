@@ -28,7 +28,7 @@ class ListBox extends Widget {
     this.itemHeight = 22,
     this.multiSelect = false,
     this.onChanged,
-  });
+  })  : assert(itemHeight > 0, 'ListBox itemHeight must be > 0');
 
   int get _maxScroll => (items.length * itemHeight - height).clamp(0, items.length * itemHeight);
 

@@ -21,7 +21,8 @@ class Badge extends Widget {
     this.padding = 4,
     this.minSize = 8,
     this.showZero = false,
-  }) {
+  })  : assert(padding >= 0, 'Badge padding must be >= 0'),
+        assert(minSize > 0, 'Badge minSize must be > 0') {
     final text = label ?? (count.toString());
     width = text.length * 8 + padding * 2;
     if (width < minSize) width = minSize;

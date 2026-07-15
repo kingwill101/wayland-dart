@@ -11,7 +11,8 @@ class ImageIcon extends Widget {
 
   ImageIcon(this.shape,
       {this.iconColor = const Color(255, 255, 255), this.size = 16})
-      : super() {
+      : assert(size > 0, 'ImageIcon size must be > 0'),
+        super() {
     width = size;
     height = size;
   }
