@@ -3,6 +3,12 @@ library;
 
 import 'dart:math' as math;
 
+/// The axis of a layout (horizontal or vertical).
+enum Axis { horizontal, vertical }
+
+/// Whether an enum value is horizontal.
+bool isHorizontal(Axis a) => a == Axis.horizontal;
+
 /// An offset in layout units.
 class Offset {
   final double dx;

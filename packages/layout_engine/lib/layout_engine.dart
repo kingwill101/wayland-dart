@@ -8,6 +8,7 @@ export 'src/geometry.dart';
 export 'src/render_object.dart';
 export 'src/render_flex.dart';
 export 'src/render_padding.dart';
+export 'src/render_scroll.dart';
 export 'src/render_stack.dart';
 export 'src/render_wrap.dart';
 export 'src/text_measure.dart';

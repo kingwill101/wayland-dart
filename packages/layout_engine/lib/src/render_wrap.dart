@@ -8,9 +8,6 @@ import 'dart:math' as math;
 import 'geometry.dart';
 import 'render_object.dart';
 
-/// Direction for wrap layout.
-enum Axis { horizontal, vertical }
-
 /// Alignment along the main axis within a wrap run.
 enum WrapAlignment { start, end, center, spaceBetween, spaceAround, spaceEvenly }
 

@@ -61,6 +61,11 @@ abstract class RenderObject {
   }
 }
 
+/// Per-child layout data stored on a [RenderObject] by its parent.
+class ParentData {
+  Offset offset = Offset.zero;
+}
+
 /// A render object that may have a single child.
 abstract class RenderBox extends RenderObject {}
 
