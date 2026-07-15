@@ -27,8 +27,8 @@ DynamicLibrary _getSkia() {
   // Fallback: process symbols.
   try {
     _skiaLib = DynamicLibrary.process();
-    final ptr = _skiaLib!.lookup('sk_graphics_purge_all_caches');
-    if (ptr.isNull) throw Exception('Symbol not found');
+    _skiaLib!.lookup('sk_graphics_purge_all_caches');
+    // If lookup didn't throw, the symbol exists.
     return _skiaLib!;
   } catch (_) {}
   throw UnsupportedError('Cannot load Skia shared library');
