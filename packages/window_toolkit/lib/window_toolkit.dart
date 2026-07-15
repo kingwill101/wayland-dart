@@ -49,6 +49,7 @@ export 'src/widgets/flex.dart';
 export 'src/widgets/frame.dart';
 export 'src/widgets/group_box.dart';
 export 'src/widgets/hbox.dart';
+export 'src/widgets/implicit_animation.dart';
 export 'src/widgets/icon_button.dart';
 export 'src/widgets/image_icon.dart';
 export 'src/widgets/label.dart';
