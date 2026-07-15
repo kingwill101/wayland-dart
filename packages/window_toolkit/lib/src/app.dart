@@ -58,6 +58,11 @@ class Application {
 
     if (connection.isConnected) {
       connection.dispatch();
+      // If the Wayland socket died, stop running.
+      if (connection.isConnected && !connection.context.isConnected) {
+        _running = false;
+        return;
+      }
     }
     for (var backend in _backends) {
       if (!backend.isRunning) {

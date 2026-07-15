@@ -5,6 +5,10 @@ import 'package:wayland/wayland.dart';
 
 class Context {
   late UnixSocket _socket;
+  bool _connected = true;
+
+  /// Whether the Wayland socket is still alive.
+  bool get isConnected => _connected;
 
   Context() {
     _socket = UnixSocket.connect(Address.file(_waylandSocketPath()));
@@ -33,6 +37,7 @@ class Context {
   /// Returns true if any messages were processed.
   /// Pass -1 to block forever, 0 to not block at all.
   bool dispatchTimeout(int timeoutMs) {
+    if (!_connected) return false;
     try {
       if (timeoutMs != 0 && !_socket.waitForData(timeoutMs)) return false;
       var processed = false;
@@ -44,7 +49,8 @@ class Context {
       }
       return processed;
     } catch (e, st) {
-      stderr.writeln('dispatch error: $e\n$st');
+      stderr.writeln('[wt] Wayland socket error — connection lost');
+      _connected = false;
       return false;
     }
   }
@@ -103,7 +109,12 @@ class Context {
   }
 
   void sendMessage(Uint8List message, [int? fd]) {
-    _socket.send(message, fd: fd ?? -1);
+    if (!_connected) return;
+    try {
+      _socket.send(message, fd: fd ?? -1);
+    } catch (_) {
+      _connected = false;
+    }
   }
 
   int _nextClientId = 1;
