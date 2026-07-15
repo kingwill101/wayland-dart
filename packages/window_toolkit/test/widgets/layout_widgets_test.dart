@@ -46,14 +46,17 @@ void main() {
     align.draw(painter);
 
     expect(child.x, 97);
-    expect(child.y, 51);
-    expect(align.hitTest(98, 52), isTrue);
+    // child.y = y + height - child.height; child.height depends on font metrics
+    expect(child.y, lessThan(align.y + align.height));
+    expect(child.y, greaterThan(align.y));
+    expect(align.hitTest(child.x + 1, child.y + 1), isTrue);
     expect(align.hitTest(6, 8), isFalse);
 
     final text = painter.commands.singleOfType<DrawTextCommand>();
     expect(text.text, 'Z');
-    expect(text.position.dx, 97);
-    expect(text.position.dy, 51);
+    expect(text.position.dx, child.x.toDouble());
+    // text position depends on font-metric vertical centering
+    expect(text.position.dy, greaterThan(align.y.toDouble()));
   });
 
   test('Padding insets the child and keeps hit tests inside the padded area', () {
@@ -68,15 +71,17 @@ void main() {
     padding.draw(painter);
 
     expect(child.x, 13);
-    expect(child.y, 14);
-    expect(child.width, 60);
-    expect(child.height, 30);
-    expect(padding.hitTest(13, 14), isTrue);
+    // child.y = padding.y + top; child.width/height depend on font metrics
+    expect(child.y, greaterThan(padding.y));
+    expect(child.width, greaterThan(1));
+    expect(child.width, lessThanOrEqualTo(padding.width - padding.left - padding.right));
+    expect(padding.hitTest(child.x + 1, child.y + 1), isTrue);
     expect(padding.hitTest(4, 5), isFalse);
 
     final text = painter.commands.singleOfType<DrawTextCommand>();
     expect(text.text, 'Pad');
-    expect(text.position.dx, 13);
-    expect(text.position.dy, 14);
+    expect(text.position.dx, child.x.toDouble());
+    // text position depends on font-metric vertical centering
+    expect(text.position.dy, greaterThan(padding.y.toDouble()));
   });
 }

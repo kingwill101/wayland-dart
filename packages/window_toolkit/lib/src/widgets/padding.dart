@@ -45,7 +45,12 @@ class Padding extends Widget {
       _renderPadding.attach(_renderChild);
     }
 
-    child.performLayout((containerWidth - left - right).clamp(0, containerWidth));
+    final innerW = (containerWidth - left - right).clamp(0, containerWidth);
+    child.performLayout(innerW);
+    // Constrain child height only when padding has an explicit height.
+    if (height > 0) {
+      child.height = (height - top - bottom).clamp(0, height);
+    }
     _renderChild.size = le.Size(child.width.toDouble(), child.height.toDouble());
 
     _renderPadding.layout(le.BoxConstraints(
@@ -70,6 +75,9 @@ class Padding extends Widget {
 
   @override
   bool hitTest(int px, int py) {
+    if (_renderChild.size.width <= 0 && width > 0) {
+      performLayout(width);
+    }
     if (!super.hitTest(px, py)) return false;
     return child.hitTest(px, py);
   }
@@ -82,7 +90,7 @@ class _RenderWidgetBox extends le.RenderBox {
   @override
   void layout(le.BoxConstraints constraints) {
     if (widget == null) return;
-    widget!.performLayout(constraints.maxWidth.round());
+    widget!.performLayout((constraints.hasBoundedWidth ? constraints.maxWidth.round() : widget!.width));
     size = le.Size(widget!.width.toDouble(), widget!.height.toDouble());
   }
 }
