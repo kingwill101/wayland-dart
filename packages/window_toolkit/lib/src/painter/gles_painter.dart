@@ -44,6 +44,24 @@ class _GlesShared {
   late final int uGradAngle = gradProgram.getUniformLocation('uAngle');
 
 
+  /// Reusable VBO pool — avoids glGenBuffers/glDeleteBuffers per draw call.
+  final List<VertexBuffer> _vboPool = [];
+  int _vboIndex = 0;
+
+  VertexBuffer _getVbo() {
+    if (_vboIndex < _vboPool.length) {
+      return _vboPool[_vboIndex++];
+    }
+    final vbo = VertexBuffer();
+    _vboPool.add(vbo);
+    return vbo;
+  }
+
+  void _resetVboPool() => _vboIndex = 0;
+
+  /// Pre-allocated quad vertex buffer (16 floats) — reused for all textured quads.
+  final Float32List _quadVerts = Float32List(16);
+
   _GlesShared()
       : gl = GL.create(width: 1, height: 1),
         rectProgram = _buildRectProgram(),
@@ -440,7 +458,7 @@ class GlesPainter implements Painter {
     final (r, b) = _toClip(rect.right, rect.bottom);
     final verts = Float32List.fromList([l, b, r, b, r, t, l, t]);
 
-    final vbo = VertexBuffer();
+    final vbo = _vbo!;
     vbo.setData(verts, usage: GL_STREAM_DRAW);
     vbo.bind();
 
@@ -459,7 +477,6 @@ class GlesPainter implements Painter {
 
     _applyScissor();
     vbo.drawArrays(GL_TRIANGLE_FAN, 0, 4);
-    vbo.dispose();
   }
 
   @override
@@ -476,7 +493,7 @@ class GlesPainter implements Painter {
       rect.right * _sx - 1, 1 - rect.top * _sy,
       rect.left * _sx - 1, 1 - rect.top * _sy,
     ]);
-    final vbo = VertexBuffer();
+    final vbo = _vbo!;
     vbo.setData(verts, usage: GL_STREAM_DRAW);
     vbo.bind();
 
@@ -492,7 +509,6 @@ class GlesPainter implements Painter {
     g.gl.enableVertexAttrib(g.aGradPos);
     _applyScissor();
     vbo.drawArrays(GL_TRIANGLE_FAN, 0, 4);
-    vbo.dispose();
   }
 
   @override
@@ -531,14 +547,14 @@ class GlesPainter implements Painter {
     final py = position.dy.roundToDouble();
     final (l, t) = _toClip(px, py);
     final (r, b) = _toClip(px + tw.toDouble(), py + th.toDouble());
-    final verts = Float32List(16);
-    verts[0] = l;  verts[1] = b;  verts[2] = 0;  verts[3] = 1;
-    verts[4] = r;  verts[5] = b;  verts[6] = 1;  verts[7] = 1;
-    verts[8] = r;  verts[9] = t;  verts[10] = 1;  verts[11] = 0;
-    verts[12] = l; verts[13] = t; verts[14] = 0;  verts[15] = 0;
+    final q = g._quadVerts;
+    q[0] = l;  q[1] = b;  q[2] = 0;  q[3] = 1;
+    q[4] = r;  q[5] = b;  q[6] = 1;  q[7] = 1;
+    q[8] = r;  q[9] = t;  q[10] = 1; q[11] = 0;
+    q[12] = l; q[13] = t; q[14] = 0; q[15] = 0;
 
-    final vbo = VertexBuffer();
-    vbo.setData(verts, usage: GL_STREAM_DRAW);
+    final vbo = _vbo!;
+    vbo.setData(q, usage: GL_STREAM_DRAW);
     vbo.bind();
 
     g.textProgram.use();
@@ -553,8 +569,6 @@ class GlesPainter implements Painter {
     tex.bind();
     _applyScissor();
     vbo.drawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-    vbo.dispose();
     tex.dispose();
   }
 
@@ -641,14 +655,14 @@ class GlesPainter implements Painter {
       final g = _gles!;
       final (l, t) = _toClip(x, y);
       final (r, b) = _toClip(x + dstW.toDouble(), y + dstH.toDouble());
-      final verts = Float32List(16);
-      verts[0] = l;  verts[1] = b;  verts[2] = 0;  verts[3] = 1;
-      verts[4] = r;  verts[5] = b;  verts[6] = 1;  verts[7] = 1;
-      verts[8] = r;  verts[9] = t;  verts[10] = 1;  verts[11] = 0;
-      verts[12] = l; verts[13] = t; verts[14] = 0;  verts[15] = 0;
+      final q = g._quadVerts;
+      q[0] = l;  q[1] = b;  q[2] = 0;  q[3] = 1;
+      q[4] = r;  q[5] = b;  q[6] = 1;  q[7] = 1;
+      q[8] = r;  q[9] = t;  q[10] = 1; q[11] = 0;
+      q[12] = l; q[13] = t; q[14] = 0; q[15] = 0;
 
-      final vbo = VertexBuffer();
-      vbo.setData(verts, usage: GL_STREAM_DRAW);
+      final vbo = _vbo!;
+      vbo.setData(q, usage: GL_STREAM_DRAW);
       vbo.bind();
       g.imageProgram.use();
       g.gl.uniform1i(g.uImgTex, 0);
@@ -660,7 +674,6 @@ class GlesPainter implements Painter {
       tex.bind();
       _applyScissor();
       vbo.drawArrays(GL_TRIANGLE_FAN, 0, 4);
-      vbo.dispose();
       tex.dispose();
     } catch (_) {
       _drawImgPlaceholder(x, y, width, height);
@@ -673,14 +686,14 @@ class GlesPainter implements Painter {
     final snapY = py.roundToDouble();
     final (l, t) = _toClip(snapX, snapY);
     final (r, b) = _toClip(snapX + w, snapY + h);
-    final verts = Float32List(16);
-    verts[0] = l;  verts[1] = b;  verts[2] = 0;  verts[3] = 1;
-    verts[4] = r;  verts[5] = b;  verts[6] = 1;  verts[7] = 1;
-    verts[8] = r;  verts[9] = t;  verts[10] = 1;  verts[11] = 0;
-    verts[12] = l; verts[13] = t; verts[14] = 0;  verts[15] = 0;
+    final q = g._quadVerts;
+    q[0] = l;  q[1] = b;  q[2] = 0;  q[3] = 1;
+    q[4] = r;  q[5] = b;  q[6] = 1;  q[7] = 1;
+    q[8] = r;  q[9] = t;  q[10] = 1; q[11] = 0;
+    q[12] = l; q[13] = t; q[14] = 0; q[15] = 0;
 
-    final vbo = VertexBuffer();
-    vbo.setData(verts, usage: GL_STREAM_DRAW);
+    final vbo = _vbo!;
+    vbo.setData(q, usage: GL_STREAM_DRAW);
     vbo.bind();
     g.textProgram.use();
     g.gl.uniform4f(g.uTexColor, c[0], c[1], c[2], c[3]);
@@ -693,7 +706,6 @@ class GlesPainter implements Painter {
     tex.bind();
     _applyScissor();
     vbo.drawArrays(GL_TRIANGLE_FAN, 0, 4);
-    vbo.dispose();
   }
 
   void _drawImgPlaceholder(double x, double y, double? w, double? h) {
