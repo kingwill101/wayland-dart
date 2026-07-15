@@ -270,4 +270,11 @@ class WaylandConnection {
   void dispatch() {
     context.dispatchTimeout(0);
   }
+
+  /// Dispatch Wayland events, blocking up to [timeoutMs] ms for data.
+  /// Use a positive timeout (e.g. 16ms) instead of 0 so the poll()
+  /// syscall survives VM service pauses (CPU profiler, heap snapshot).
+  void dispatchTimeout(int timeoutMs) {
+    context.dispatchTimeout(timeoutMs);
+  }
 }
