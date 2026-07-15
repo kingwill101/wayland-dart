@@ -20,12 +20,12 @@ abstract class Widget extends ElementWidget {
   bool mounted = false;
 
   /// Called once when the widget is first mounted into a widget tree.
-  /// Override to initialize resources (animation controllers, listeners).
   void initState() {}
 
   /// Called when the widget is removed from the widget tree.
-  /// Override to release resources (animation controllers, timers).
   void dispose() {}
+
+
 
   int x = 0, y = 0, width = 0, height = 0;
   /// Click handler. Return true to consume the event and stop propagation.

@@ -12,10 +12,25 @@
 /// ```
 library;
 
-import 'package:layout_engine/layout_engine.dart';
+import 'package:layout_engine/layout_engine.dart' show BuildContext, ElementTree, ElementWidget, State, StatefulWidget, StatelessWidget;
 
 import '../painter/painter.dart';
 import '../widget.dart';
+
+/// Wraps [child] in [ElementHost] if it's a StatefulWidget or StatelessWidget.
+/// Use in container widgets to auto-wrap children.
+Widget autoElement(ElementWidget child) {
+  if (child is Widget) return child;
+  if (child is StatefulWidget || child is StatelessWidget) {
+    return ElementHost(child: child);
+  }
+  throw ArgumentError('Cannot wrap $child as Widget');
+}
+
+/// Apply [autoElement] to a list.
+List<Widget> autoElementList(List<ElementWidget> items) {
+  return [for (final item in items) autoElement(item)];
+}
 
 /// Wraps a [StatefulWidget] or [StatelessWidget] for use in the rendering tree.
 ///
