@@ -9,6 +9,7 @@ workspace:
   - packages/gl
   - packages/window_toolkit
   - packages/bardash
+  - packages/window_toolkit_test
 
 dependency_overrides:
   dawn_dart_api:

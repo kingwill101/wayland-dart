@@ -1,0 +1,18 @@
+name: window_toolkit_test
+description: Testing utilities for window_toolkit applications.
+  Provides test backends, widget finders, and a pump-driven test
+  harness similar to Flutter's flutter_test package.
+version: 1.0.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  window_toolkit:
+    path: ../window_toolkit
+  test: ^1.25.0
+
+dev_dependencies:
+  lints: ^4.0.0

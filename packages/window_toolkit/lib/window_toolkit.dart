@@ -21,6 +21,7 @@ export 'src/input.dart';
 export 'src/metrics.dart';
 export 'src/renderer.dart';
 export 'src/palette.dart';
+export 'src/testing/recording_painter.dart';
 export 'src/style.dart';
 export 'src/surface_manager.dart';
 export 'src/mixins/event.dart';

@@ -22,7 +22,8 @@ void main() {
     expect(idleRect.rect.bottom, 32);
     expect(idleRect.paint.color, button.backgroundColor);
     expect(idleText.text, 'OK');
-    expect(idleText.position.dx, 16);
+    // Text is centred: x + (width - textWidth) / 2
+    expect(idleText.position.dx, closeTo(14.4, 0.1));
     expect(idleText.position.dy, 12);
 
     button.onMouseEnter?.call();
