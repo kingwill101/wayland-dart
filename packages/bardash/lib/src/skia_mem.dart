@@ -8,18 +8,27 @@ DynamicLibrary? _skiaLib;
 
 DynamicLibrary _getSkia() {
   if (_skiaLib != null) return _skiaLib!;
-  // Try the bundle's lib directory first.
+  // Try the bundle's lib directory first (AOT builds).
   try {
-    // AOT bundle layout: bin/bardash + lib/libskia_dart.so
     final script = Platform.script;
-    final dir = script.resolve('..').toFilePath();              // .../bundle/bin/
-    final bundle = '${dir}../lib/libskia_dart.so';              // .../bundle/lib/libskia_dart.so
+    final dir = script.resolve('..').toFilePath();
+    final bundle = '${dir}../lib/libskia_dart.so';
     _skiaLib = DynamicLibrary.open(bundle);
     return _skiaLib!;
   } catch (_) {}
-  // Fallback: process symbols (JIT / dart run).
+  // Try .dart_tool/lib/ (dart run / JIT, native assets cache).
+  try {
+    final script = Platform.script;
+    final dir = script.resolve('..').toFilePath();
+    final cached = '${dir}.dart_tool/lib/libskia_dart.so';
+    _skiaLib = DynamicLibrary.open(cached);
+    return _skiaLib!;
+  } catch (_) {}
+  // Fallback: process symbols.
   try {
     _skiaLib = DynamicLibrary.process();
+    final ptr = _skiaLib!.lookup('sk_graphics_purge_all_caches');
+    if (ptr.isNull) throw Exception('Symbol not found');
     return _skiaLib!;
   } catch (_) {}
   throw UnsupportedError('Cannot load Skia shared library');
