@@ -110,6 +110,19 @@ class BuildContext {
     }
     return null;
   }
+
+  /// Find the nearest inherited widget of type [T] and register as dependent.
+  T? dependOnInheritedWidgetOfExactType<T extends InheritedWidget>() {
+    var current = _element.parent;
+    while (current != null) {
+      if (current is InheritedElement && current.widget is T) {
+        current._addDependent(_element);
+        return current.widget as T;
+      }
+      current = current.parent;
+    }
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -298,6 +311,60 @@ class WidgetElement extends Element {
 }
 
 // ---------------------------------------------------------------------------
+// InheritedElement — propagates data down the tree
+// ---------------------------------------------------------------------------
+
+class InheritedElement extends Element {
+  final Set<Element> _dependents = {};
+
+  InheritedElement(super.widget);
+
+  /// Register [dependent] to be rebuilt when this widget changes.
+  void _addDependent(Element dependent) {
+    _dependents.add(dependent);
+  }
+
+  @override
+  void update(ElementWidget newWidget) {
+    final old = widget as InheritedWidget;
+    super.update(newWidget);
+    // Notify dependents if the widget says data changed.
+    if ((newWidget as InheritedWidget).updateShouldNotify(old)) {
+      for (final d in _dependents) {
+        d.markNeedsBuild();
+      }
+    }
+  }
+
+  @override
+  void performRebuild() {
+    final w = widget as InheritedWidget;
+    _updateChild(0, w.child);
+  }
+
+  void _updateChild(int index, ElementWidget newWidget) {
+    if (index >= children.length) {
+      final child = createElement(newWidget);
+      children.add(child);
+      child.owner = owner;
+      child.mount(this);
+    } else {
+      final child = children[index];
+      if (child.widget.runtimeType == newWidget.runtimeType) {
+        child.update(newWidget);
+        child.markNeedsBuild();
+      } else {
+        child.unmount();
+        final newChild = createElement(newWidget);
+        children[index] = newChild;
+        newChild.owner = owner;
+        newChild.mount(this);
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Element tree root
 // ---------------------------------------------------------------------------
 
@@ -349,5 +416,6 @@ class ElementTree {
 Element createElement(ElementWidget widget) {
   if (widget is StatefulWidget) return StatefulElement(widget);
   if (widget is StatelessWidget) return StatelessElement(widget);
+  if (widget is InheritedWidget) return InheritedElement(widget);
   return WidgetElement(widget);
 }

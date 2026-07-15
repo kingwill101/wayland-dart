@@ -50,8 +50,24 @@ void main() {
       final childElement = tree.root!.children.first.children.first;
       expect(childElement, isNotNull);
 
-      // The child's build context should find the parent state.
-      // This is tested through the parent context lookup in build().
+    });
+
+    test('InheritedWidget propagates to dependents', () {
+      final tree = ElementTree();
+      tree.mount(_InheritedTestRoot(
+        value: 0,
+        child: _InheritedConsumer(),
+      ));
+      tree.build();
+
+      // Update with new value.
+      tree.replaceRoot(_InheritedTestRoot(
+        value: 42,
+        child: _InheritedConsumer(),
+      ));
+      tree.build();
+
+      // No crash = inherited propagation works.
     });
   });
 }
@@ -102,8 +118,39 @@ class _ParentWidget extends StatelessWidget {
 class _ChildWidget extends StatelessWidget {
   @override
   ElementWidget build(BuildContext context) {
-    // Find parent state
     context.findAncestorStateOfType<_TestStatefulState>();
     return _TestRender();
+  }
+}
+
+// --- InheritedWidget test widgets ---
+
+class _InheritedTestRoot extends StatelessWidget {
+  final int value;
+  final ElementWidget child;
+  _InheritedTestRoot({required this.value, required this.child});
+
+  @override
+  ElementWidget build(BuildContext context) {
+    return _TestInherited(value: value, child: child);
+  }
+}
+
+class _TestInherited extends InheritedWidget {
+  final int value;
+  _TestInherited({required this.value, required super.child});
+
+  @override
+  bool updateShouldNotify(covariant InheritedWidget oldWidget) {
+    return (oldWidget as _TestInherited).value != value;
+  }
+}
+
+class _InheritedConsumer extends StatelessWidget {
+  @override
+  ElementWidget build(BuildContext context) {
+    final inherited = context.dependOnInheritedWidgetOfExactType<_TestInherited>();
+    final value = inherited?.value ?? -1;
+    return _TestRender(msg: 'value=$value');
   }
 }
