@@ -80,6 +80,7 @@ class WaylandBackend with Size, Events implements Backend {
         _ensureBuffer();
         onConfigure?.call(width, height);
       } else {
+        stderr.writeln('[wt] surf cfg skip w=$width h=$height');
         surface.commit();
       }
     });
@@ -92,6 +93,7 @@ class WaylandBackend with Size, Events implements Backend {
     xdgToplevel.onConfigure((e) {
       final newW = e.width != 0 ? e.width : (width == 0 ? 800 : width);
       final newH = e.height != 0 ? e.height : (height == 0 ? 600 : height);
+      stderr.writeln('[wt] toplevel cfg w=${e.width} h=${e.height} -> ${newW}x$newH (cur ${width}x$height) invalidate=${newW!=width||newH!=height} busy=$_bufferBusy pool=$_pool');
       if (newW != width || newH != height) {
         width = newW;
         height = newH;
@@ -113,9 +115,7 @@ class WaylandBackend with Size, Events implements Backend {
     final stride = width * 4;
     final size = stride * height;
 
-    // Guard against zero-size buffers (e.g. during resize edge cases).
-    // Sending a zero-size SHM pool to the compositor can crash it.
-    if (size <= 0) return;
+    if (size <= 0) { stderr.writeln('[wt] ensureBuffer skip size=$size'); return; }
     if (_pool != null && size <= _poolSize) return;
 
     _pool?.destroy();
@@ -142,6 +142,7 @@ class WaylandBackend with Size, Events implements Backend {
   }
 
   void _invalidateBuffer() {
+    stderr.writeln('[wt] invalidate pool=$_pool buf=$_buffer fd=$_fd w=${width}x$height');
     _buffer?.destroy();
     _buffer = null;
     _pool?.destroy();
@@ -149,7 +150,6 @@ class WaylandBackend with Size, Events implements Backend {
     _poolSize = 0;
     closeFd(_fd);
     _fd = -1;
-    // Mark that a repaint is needed once the new buffer is ready.
     _needsPaint = true;
   }
 
@@ -161,6 +161,8 @@ class WaylandBackend with Size, Events implements Backend {
   }
 
   bool _present() {
+    if (_buffer == null) { stderr.writeln('[wt] present skip — no buffer'); return false; }
+    if (_bufferBusy) { stderr.writeln('[wt] present skip — buffer busy'); return false; }
     if (_bufferBusy || _buffer == null) return false;
 
     _bufferBusy = true;
@@ -227,7 +229,10 @@ class WaylandBackend with Size, Events implements Backend {
       painter.flush();
     }
     if (!_present()) {
+      stderr.writeln('[wt] paint deferred — present failed');
       _needsPaint = true;
+    } else {
+      stderr.writeln('[wt] paint ok buf=$_buffer busy=$_bufferBusy');
     }
   }
 
