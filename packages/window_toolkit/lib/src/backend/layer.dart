@@ -135,12 +135,15 @@ class LayerBackend with Size, Events implements Backend {
 
     layerSurface.onConfigure((e) {
       layerSurface.ackConfigure(e.serial);
+      stderr.writeln('[wt:layer] configured: ${e.width}x${e.height}');
       if (e.width > 0 && e.height > 0) {
         width = e.width;
         height = e.height;
+        stderr.writeln('[wt:layer] setting size $width x $height');
         _ensureBuffer();
         onConfigure?.call(width, height);
       } else {
+        stderr.writeln('[wt:layer] configure with zero size, just committing');
         surface.commit();
       }
     });
@@ -157,39 +160,48 @@ class LayerBackend with Size, Events implements Backend {
     final stride = width * 4;
     final size = stride * height;
 
-    if (_pool != null && size <= _poolSize) return;
+    if (_pool != null && size <= _poolSize) {
+      stderr.writeln('[wt:layer] _ensureBuffer: pool already sufficient (${_poolSize}B)');
+      return;
+    }
 
     // Guard against zero-size buffers (not-yet-configured dimensions).
     if (size <= 0) {
+      stderr.writeln('[wt:layer] _ensureBuffer: size=$size (not configured yet), destroying pool');
       _pool?.destroy();
       _pool = null;
       _poolSize = 0;
       return;
     }
 
+    stderr.writeln('[wt:layer] _ensureBuffer: allocating ${size}B buffer (${width}x$height)');
     _skia?.dispose();
     _skia = null;
     _pool?.destroy();
     closeFd(_fd);
     _fd = createAnonymousFile(size);
+    stderr.writeln('[wt:layer] created anonymous file fd=$_fd size=$size');
     _pool = shm.createPool(_fd, size).getOrElse((e) {
-      stderr.writeln('[wt] createPool failed: $e');
+      stderr.writeln('[wt:layer] createPool failed: $e');
       return WlShmPool(context);
     });
     _poolSize = size;
 
     _buffer?.destroy();
     _buffer = _pool!.createBuffer(0, width, height, stride, 0).getOrElse((e) {
-      stderr.writeln('[wt] createBuffer failed: $e');
+      stderr.writeln('[wt:layer] createBuffer failed: $e');
       return WlBuffer(context);
     });
     _buffer!.onRelease((_) {
+      stderr.writeln('[wt:layer] buffer released');
       _bufferBusy = false;
       if (_needsPaint) {
+        stderr.writeln('[wt:layer] deferred paint after buffer release');
         _needsPaint = false;
         onFrameReady?.call();
       }
     });
+    stderr.writeln('[wt:layer] buffer ready');
   }
 
   void paintTo(Canvas canvas) {
@@ -205,35 +217,46 @@ class LayerBackend with Size, Events implements Backend {
     // Backend selection from WindowBehavior mixin, or auto by default.
     final wb = (this is WindowBehavior) ? this as WindowBehavior : null;
     final b = wb?.rendererBackend ?? RendererBackend.auto;
+    stderr.writeln('[wt:layer] createPainter($width, $height) backend=$b fd=$_fd');
     switch (b) {
       case RendererBackend.gl:
-        return GlesPainter(_fd, width, height);
+        try {
+          return GlesPainter(_fd, width, height);
+        } catch (e) {
+          stderr.writeln('[wt:layer] GlesPainter failed: $e');
+          rethrow;
+        }
       case RendererBackend.skia:
         try {
           return SkiaPainter(_fd, width, height);
         } catch (e) {
-          stderr.writeln('[wt] SkiaPainter unavailable, falling back to RawPainter: $e');
+          stderr.writeln('[wt:layer] SkiaPainter failed: $e');
+          rethrow;
         }
-        return RawPainter(_fd, width, height);
       case RendererBackend.auto:
         try {
+          stderr.writeln('[wt:layer] trying GlesPainter...');
           return GlesPainter(_fd, width, height);
         } catch (e) {
-          stderr.writeln('[wt] GlesPainter unavailable: $e');
+          stderr.writeln('[wt:layer] GlesPainter unavailable: $e');
         }
         try {
+          stderr.writeln('[wt:layer] trying SkiaPainter...');
           return SkiaPainter(_fd, width, height);
         } catch (e) {
-          stderr.writeln('[wt] SkiaPainter unavailable, falling back to RawPainter: $e');
+          stderr.writeln('[wt:layer] SkiaPainter unavailable: $e');
         }
+        stderr.writeln('[wt:layer] falling back to RawPainter');
         return RawPainter(_fd, width, height);
     }
   }
 
   @override
   void paintWithPainter(Painter painter) {
+    stderr.writeln('[wt:layer] paintWithPainter width=$width height=$height');
     painter.flush();
     if (!_present()) {
+      stderr.writeln('[wt:layer] _present() returned false, scheduling retry');
       _needsPaint = true;
     }
   }
@@ -251,8 +274,20 @@ class LayerBackend with Size, Events implements Backend {
   }
 
   bool _present() {
-    if (_bufferBusy || _buffer == null) return false;
+    if (_bufferBusy) {
+      stderr.writeln('[wt:layer] _present: buffer busy, deferring');
+      return false;
+    }
+    if (_buffer == null) {
+      stderr.writeln('[wt:layer] _present: buffer is null!');
+      _ensureBuffer();
+      if (_buffer == null) {
+        stderr.writeln('[wt:layer] _present: still null after _ensureBuffer!');
+        return false;
+      }
+    }
 
+    stderr.writeln('[wt:layer] presenting buffer $_buffer size=${width}x$height');
     _bufferBusy = true;
     surface.attach(_buffer!, 0, 0);
     surface.damageBuffer(0, 0, width, height);
@@ -260,10 +295,11 @@ class LayerBackend with Size, Events implements Backend {
     final frameResult = surface.frame();
     frameResult
         .getOrElse((e) {
-          stderr.writeln('[wt] frame() failed: $e');
+          stderr.writeln('[wt:layer] frame() failed: $e');
           return WlCallback(context);
         })
         .onDone((_) {
+          stderr.writeln('[wt:layer] frame callback done');
           if (_needsPaint) {
             _needsPaint = false;
             onFrameReady?.call();
@@ -271,10 +307,12 @@ class LayerBackend with Size, Events implements Backend {
         });
 
     surface.commit();
+    stderr.writeln('[wt:layer] surface committed');
     return true;
   }
 
   void requestPaint() {
+    stderr.writeln('[wt:layer] requestPaint bufferBusy=$_bufferBusy');
     if (_bufferBusy) {
       _needsPaint = true;
       return;

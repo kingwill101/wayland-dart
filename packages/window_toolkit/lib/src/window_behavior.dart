@@ -1,3 +1,5 @@
+import 'dart:io' show stderr;
+
 import 'app.dart';
 import 'backend/backend.dart';
 import 'mixins/event.dart';
@@ -24,13 +26,19 @@ mixin WindowBehavior on Backend, EventReceiver {
   }
 
   void paint() {
+    stderr.writeln('[wt] paint() called width=$width height=$height canPaint=$canPaint');
     if (!canPaint) {
+      stderr.writeln('[wt] paint: canPaint=false, requesting deferred paint');
       requestPaint();
       return;
     }
     // Skip paint until the compositor sends a configure with real dimensions.
-    if (width <= 0 || height <= 0) return;
+    if (width <= 0 || height <= 0) {
+      stderr.writeln('[wt] paint: skipping (width=$width height=$height)');
+      return;
+    }
     final painter = createPainter(width, height);
+    stderr.writeln('[wt] paint: painter=$painter');
     try {
       painter.clear(Palette.current.forState(true, true).window);
       draw(painter);

@@ -102,6 +102,7 @@ class HyprlandWorkspacesModule extends BarModule {
         ipc.hyprctl('dispatch hl.dsp.focus({ workspace = "$capturedId" })',
             useJson: false);
         _refresh();
+        return true;
       };
       buttons.add(btn);
       if (i < _workspaces.length - 1) {

@@ -40,6 +40,7 @@ class BardashBar extends LayerWindow {
         exclusiveZone: config.exclusiveZone,
         namespace: 'bardash',
       ) {
+    stderr.writeln('[bardash] Bar created anchor=${config.anchor} height=${config.height}');
     // Ensure density tokens are active even if config was built without
     // fromLua (tests / programmatic construction).
     config.applyMetrics();
@@ -47,6 +48,7 @@ class BardashBar extends LayerWindow {
         Platform.environment['BARDASH_DEBUG_LAYOUT'] == '1';
     _layout.spacing = config.spacing;
     _buildLayout();
+    stderr.writeln('[bardash] Bar layout built, ${_entries.length} modules');
   }
 
   void _buildLayout() {
@@ -335,6 +337,7 @@ class BardashBar extends LayerWindow {
 
   @override
   void draw(Painter painter) {
+    stderr.writeln('[bardash] draw() painter=$painter size=${painter.width.round()}x${painter.height.round()}');
     // Wire tray module to the live layer surface for dbusmenu popups.
     for (final e in _entries) {
       if (e.module is SniModule) {
@@ -349,11 +352,13 @@ class BardashBar extends LayerWindow {
       }
     }
 
+    stderr.writeln('[bardash] clearing with bg=${config.backgroundColor}');
     painter.clear(config.backgroundColor);
     _layout.x = 0;
     _layout.y = 0;
     _layout.width = painter.width.round();
     _layout.height = painter.height.round();
+    stderr.writeln('[bardash] layout: ${_layout.width}x${_layout.height}');
     _layout.draw(painter);
     if (ModuleWidget.debugLayout) {
       for (final e in _entries) {
@@ -361,5 +366,6 @@ class BardashBar extends LayerWindow {
       }
       ModuleWidget.debugLayoutDone();
     }
+    stderr.writeln('[bardash] draw complete');
   }
 }
