@@ -9,23 +9,48 @@ import '../lib/more_controls_examples.dart';
 
 class Showcase extends WidgetWindow {
   bool _darkMode = true;
-  Label _statusLabel;
   bool _showSecond = false;
-  final ViewportScrollController _scrollCtrl = ViewportScrollController();
   Color _boxColor = const Color(60, 60, 70);
   int _boxRadius = 0;
 
-  Showcase()
-      : _statusLabel = Label('Interactive demo — right-click for animated demos'),
-        super(ScrollArea(child: SizedBox(width: 600, height: 30, child: Label('Loading...')))) {
-    _statusLabel.x = 10;
-    _statusLabel.y = 100;
+  // Persistent animated widgets — created once, not per frame.
+  final AnimatedContainer _animBox;
+  final AnimatedCrossFade _crossFade;
+  final Label _statusLabel;
+  final ViewportScrollController _scrollCtrl = ViewportScrollController();
+  final Scrollbar _scrollbar;
+  final Widget _scrollContent;
+  final Label _themeLabel;
+  final Label _hint;
 
+  Showcase()
+      : _animBox = AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          child: Center(child: Label('Right-click menu → Animate: Color')),
+        ),
+        _crossFade = AnimatedCrossFade(
+          firstChild: Padding(all: 4, child: Label('First child — right-click toggle')),
+          secondChild: Padding(
+            all: 4,
+            child: HBox(spacing: 8, children: [
+              Button('Fade'),
+              Label('Second child'),
+            ]),
+          ),
+          duration: const Duration(milliseconds: 200),
+        ),
+        _statusLabel = Label(''),
+        _scrollbar = Scrollbar(controller: ViewportScrollController(), viewportHeight: 200, thickness: 6),
+        _scrollContent = _buildScrollContent(),
+        _themeLabel = Label(''),
+        _hint = Label('Right-click for animated demos'),
+        super(ScrollArea(child: SizedBox(width: 600, height: 600, child: Label('')))) {
     contextMenu = ContextMenu(
       items: [
         MenuItem('Toggle Dark/Light Theme', onTriggered: toggleTheme),
         MenuItem('Animate: Cross-Fade', onTriggered: () {
           _showSecond = !_showSecond;
+          _crossFade.showFirst = !_showSecond;
           _statusLabel.text = _showSecond ? 'Showing second child' : 'Showing first child';
           paint();
         }),
@@ -33,28 +58,41 @@ class Showcase extends WidgetWindow {
           _boxColor = _boxColor.r == 60
               ? const Color(0, 120, 255)
               : const Color(60, 60, 70);
+          // Rebuild animated container with new color
+          _rebuildAnimBox();
+          _statusLabel.text = _boxColor.r == 60 ? 'Blue!' : 'Grey';
           paint();
         }),
         MenuItem('Animate: Border Radius', onTriggered: () {
           _boxRadius = _boxRadius == 0 ? 12 : 0;
+          _rebuildAnimBox();
           _statusLabel.text = _boxRadius > 0 ? 'Rounded corners' : 'Sharp corners';
           paint();
         }),
         MenuItem('Reset Scroll', onTriggered: () {
           _scrollCtrl.jumpTo(0);
           _statusLabel.text = 'Scroll reset';
+          paint();
         }),
         MenuItem('Say Hello', onTriggered: () {
           _statusLabel.text = 'Hello from window_toolkit!';
+          paint();
         }),
       ],
     );
+    _rebuildAnimBox();
+    Widget.onNeedsRepaint = requestRedraw;
+  }
+
+  void _rebuildAnimBox() {
+    _animBox.color = _boxColor;
+    _animBox.borderRadius = _boxRadius.toDouble();
   }
 
   void toggleTheme() {
     _darkMode = !_darkMode;
     Palette.current = _darkMode ? Palette.darkPalette : Palette.lightPalette;
-    _statusLabel.text = _darkMode ? 'Dark theme' : 'Light theme';
+    _statusLabel.text = _darkMode ? 'Light theme' : 'Dark theme';
     paint();
   }
 
@@ -62,93 +100,77 @@ class Showcase extends WidgetWindow {
   void draw(Painter painter) {
     super.draw(painter);
 
-    // Animated container demo at the top
-    AnimatedContainer(
-      color: _boxColor,
-      boxWidth: width - 20,
-      boxHeight: 50,
-      borderRadius: _boxRadius.toDouble(),
-      duration: const Duration(milliseconds: 300),
-      child: Center(
-        child: Label(_boxColor.r == 60 ? 'Right-click → Animate: Color' : 'Blue!'),
-      ),
-    )
+    // Animated container at top
+    _animBox
       ..x = 10
-      ..y = 10
+      ..y = 8
+      ..boxWidth = width - 20
+      ..boxHeight = 48
       ..performLayout(width)
       ..draw(painter);
 
-    // Cross-fade demo
-    AnimatedCrossFade(
-      firstChild: Padding(all: 4, child: Label('First child — right-click toggle')),
-      secondChild: Padding(
-        all: 4,
-        child: HBox(spacing: 8, children: [
-          Button('Fade'),
-          Label('Second child'),
-        ]),
-      ),
-      showFirst: !_showSecond,
-      duration: const Duration(milliseconds: 200),
-    )
+    // Cross-fade
+    _crossFade
       ..x = 10
-      ..y = 70
+      ..y = 64
+      ..width = width - 20
       ..performLayout(width)
       ..draw(painter);
 
-    // Scrollable content area with proper scrollbar
-    final contentY = 120;
-    final contentH = height - contentY - 60;
-    final scrollContent = _buildScrollContent();
-    scrollContent
+    // Scrollable content
+    final contentY = 118;
+    final contentH = height - contentY - 56;
+
+    _scrollContent
       ..x = 10
       ..y = contentY
       ..performLayout(width - 30);
+    // Position children manually (VBoxLayout needs explicit layout call).
+    // VBox.layout() handles child positioning internally.
 
-    // Clip to viewport
     painter.save();
     painter.clipRect(Rect.fromLTWH(
       10, contentY.toDouble(), (width - 30).toDouble(), contentH.toDouble(),
     ));
     painter.translate(0, -_scrollCtrl.offset.toDouble());
-    scrollContent.draw(painter);
+    _scrollContent.draw(painter);
     painter.restore();
 
     // Scrollbar
     _scrollCtrl.updateMetrics(
       viewportExtent: contentH,
-      contentExtent: scrollContent.height,
+      contentExtent: _scrollContent.height,
     );
-    Scrollbar(
-      controller: _scrollCtrl,
-      viewportHeight: contentH,
-      thickness: 6,
-    )
+    _scrollbar
+      ..controller = _scrollCtrl
+      ..viewportHeight = contentH
       ..x = width - 16
       ..y = contentY
       ..width = 6
       ..draw(painter);
 
     // Status bar
-    _statusLabel.x = 10;
-    _statusLabel.y = height - 24;
-    _statusLabel.draw(painter);
+    _statusLabel
+      ..x = 10
+      ..y = height - 24
+      ..draw(painter);
 
-    // Theme indicator
-    final themeLabel = Label(_darkMode ? '🌙 Dark' : '☀️ Light');
-    themeLabel.x = width - 80;
-    themeLabel.y = height - 24;
-    themeLabel.draw(painter);
+    // Theme + hint
+    _themeLabel
+      ..text = _darkMode ? '🌙 Dark' : '☀️ Light'
+      ..x = width - 80
+      ..y = height - 24
+      ..draw(painter);
 
-    // Right-click hint
-    final hint = Label('Right-click for animated demos');
-    hint.x = 10;
-    hint.y = height - 40;
-    hint.draw(painter);
+    _hint
+      ..x = 10
+      ..y = height - 40
+      ..draw(painter);
   }
 
-  Widget _buildScrollContent() {
-    return VBoxLayout(
+  static Widget _buildScrollContent() {
+    // Use VBox (layout-engine backed) for reliable child positioning.
+    return VBox(
       spacing: 6,
       children: [
         Label('— Layouts —'),

@@ -24,9 +24,9 @@ import '../widget.dart';
 /// Scrollbar(controller: ctrl, viewportHeight: 300)
 /// ```
 class Scrollbar extends Widget {
-  final le.ScrollController controller;
-  final int thickness;
-  final int viewportHeight;
+  le.ScrollController controller;
+  int thickness;
+  int viewportHeight = 0;
   final Color? trackColor;
   final Color? thumbColor;
   final Color? hoverColor;
@@ -38,11 +38,13 @@ class Scrollbar extends Widget {
   Scrollbar({
     required this.controller,
     this.thickness = 6,
-    this.viewportHeight = 0,
+    int viewportHeight = 0,
     this.trackColor,
     this.thumbColor,
     this.hoverColor,
-  });
+  }) {
+    this.viewportHeight = viewportHeight;
+  }
 
   Color get _trackColor => trackColor ?? palette.mid;
   Color get _thumbColor => _dragging

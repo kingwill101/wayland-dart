@@ -238,12 +238,12 @@ class AnimatedSlide extends Widget {
 
 /// Animates between two container states: color, size, padding, border radius.
 class AnimatedContainer extends Widget {
-  final Color color;
-  final int boxWidth, boxHeight, padL, padT, padR, padB;
-  final double borderRadius;
+  Color color;
+  int boxWidth = 0, boxHeight = 0, padL = 0, padT = 0, padR = 0, padB = 0;
+  double borderRadius = 0;
   final Duration duration;
   final Curve curve;
-  final Widget? child;
+  Widget? child;
   AnimationController? _controller;
 
   Color _currentColor;
@@ -252,8 +252,8 @@ class AnimatedContainer extends Widget {
 
   AnimatedContainer({
     this.color = const Color(0, 0, 0),
-    this.boxWidth = 0,
-    this.boxHeight = 0,
+    int? boxWidth,
+    int? boxHeight,
     this.padL = 0,
     this.padT = 0,
     this.padR = 0,
@@ -268,7 +268,10 @@ class AnimatedContainer extends Widget {
         _currentPadT = padding ?? 0,
         _currentPadR = padding ?? 0,
         _currentPadB = padding ?? 0,
-        _currentRadius = 0;
+        _currentRadius = 0 {
+    if (boxWidth != null) this.boxWidth = boxWidth;
+    if (boxHeight != null) this.boxHeight = boxHeight;
+  }
 
   @override
   void draw(Painter canvas) {
@@ -376,7 +379,7 @@ class AnimatedContainer extends Widget {
 class AnimatedCrossFade extends Widget {
   final Widget firstChild;
   final Widget secondChild;
-  final bool showFirst;
+  bool showFirst;
   final Duration duration;
   final Curve curve;
   AnimationController? _controller;
