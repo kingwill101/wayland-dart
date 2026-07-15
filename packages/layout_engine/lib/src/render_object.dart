@@ -1,8 +1,4 @@
 /// Render object layer for widget layout.
-///
-/// Framework-agnostic layout tree. Concrete render objects (RenderRow,
-/// RenderColumn, etc.) calculate sizes and positions in [layout], then
-/// wait for the host framework to paint them.
 library;
 
 import 'geometry.dart';
@@ -15,6 +11,10 @@ abstract class RenderObject {
   Offset offset = Offset.zero;
   BoxConstraints constraints = const BoxConstraints();
 
+  /// Per-child data for special layout (stack positioning, flex sizing, etc.).
+  /// Cast to the appropriate parent data type when reading.
+  Object? parentData;
+
   void attach(RenderObject child) {
     children.add(child);
     child.parent = this;
@@ -26,14 +26,11 @@ abstract class RenderObject {
     child.parent = null;
   }
 
-  /// Lay out this node given [constraints].
-  /// Sets [size] and positions children via their [offset].
   void layout(BoxConstraints constraints) {
     this.constraints = constraints;
     size = constraints.constrain(Size.zero);
   }
 
-  /// Walk the tree collecting hit results at (x, y) in local coords.
   bool hitTest(HitTestResult result, {required double localX, required double localY}) {
     if (localX < 0 || localY < 0 || localX >= size.width || localY >= size.height) {
       return false;
@@ -50,7 +47,6 @@ abstract class RenderObject {
     return true;
   }
 
-  /// Apply [transform] to all child offsets.
   void transform(Offset transform) {
     offset += transform;
     for (final child in children) {
@@ -59,10 +55,10 @@ abstract class RenderObject {
   }
 }
 
-/// A render object with a single child.
+/// A render object that may have a single child.
 abstract class RenderBox extends RenderObject {}
 
-/// Concrete [RenderBox] that delegates layout and paint.
+/// Concrete [RenderBox] that delegates layout.
 class RenderDelegateBox extends RenderBox {
   final void Function(RenderDelegateBox, BoxConstraints) layoutFn;
   final void Function(RenderDelegateBox)? _afterLayout;

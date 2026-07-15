@@ -19,6 +19,12 @@ enum FlexFit { tight, loose }
 /// How much space the flex layout consumes on its main axis.
 enum MainAxisSize { min, max }
 
+/// Per-child data for flex layouts.
+class FlexParentData {
+  final int flex;
+  const FlexParentData({this.flex = 0});
+}
+
 /// Base class for row and column render objects.
 abstract class RenderFlex extends RenderBox {
   double gap;
@@ -190,8 +196,9 @@ abstract class RenderFlex extends RenderBox {
   }
 
   int _flexOf(RenderObject child) {
-    // Simple: all children are inflexible by default.
-    // Callers can set child data to indicate flex.
+    if (child.parentData is FlexParentData) {
+      return (child.parentData as FlexParentData).flex;
+    }
     return 0;
   }
 }
