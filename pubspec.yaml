@@ -18,3 +18,5 @@ dependency_overrides:
       url: https://github.com/knopp/skia_dart.git
       path: packages/dawn_dart_api
   hooks: ^2.0.0
+  native_socket:
+    path: /home/kingwill101/code/dart_packages/native_socket

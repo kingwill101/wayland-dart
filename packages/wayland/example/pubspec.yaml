@@ -11,3 +11,7 @@ dependencies:
     path: ../
   image:
   pcanvas: ^1.1.0
+
+dependency_overrides:
+  native_socket:
+    path: /home/kingwill101/code/dart_packages/native_socket
