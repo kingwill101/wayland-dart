@@ -15,7 +15,8 @@ class PopupWindow {
   PopupWindow({
     required this.backend,
     required this.root,
-  });
+  })  : assert(backend.width > 0, 'PopupWindow backend width must be > 0'),
+        assert(backend.height > 0, 'PopupWindow backend height must be > 0');
 
   bool get visible => _visible;
 
