@@ -56,11 +56,10 @@ class Application {
     if (!_running) return;
 
     if (connection.isConnected) {
-      // Block up to 16ms waiting for Wayland events. This is a kernel
-      // poll() syscall — it naturally survives VM service pauses (CPU
-      // profiler, heap snapshot) because the thread is blocked at the OS
-      // level. When the VM resumes, poll() returns and we process events.
-      connection.dispatchTimeout(16);
+      // Non-blocking dispatch. The EINTR fix in native_socket's
+      // socket_has_data handles SIGPROF interruptions from the CPU
+      // profiler without dropping the connection.
+      connection.dispatch();
       // If the Wayland socket died, stop running.
       if (connection.isConnected && !connection.context.isConnected) {
         _running = false;
@@ -82,7 +81,7 @@ class Application {
       } else {
         // Small yield to let the event loop process VM service requests.
         // Without this, the tight poll() loop can starve the VM service.
-        async.Timer(const Duration(milliseconds: 1), _execTick);
+        async.Timer.run(_execTick);
       }
     }
   }
