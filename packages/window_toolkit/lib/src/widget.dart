@@ -37,6 +37,19 @@ abstract class Widget {
   /// Override in composite widgets that contain children.
   List<Widget> get children => const [];
 
+  /// Called when this widget gains or loses keyboard focus.
+  void onFocusChanged(bool focused) {}
+
+  /// Whether this widget accepts keyboard focus (e.g. Button, TextField).
+  bool get acceptsFocus => false;
+
+  /// Focus order for Tab key navigation. Widgets with the same
+  /// [tabIndex] are focused in hit-test order. Default 0 (no focus).
+  int tabIndex = 0;
+
+  /// Whether this widget can be reached via Tab key.
+  bool get isFocusable => tabIndex > 0 && acceptsFocus;
+
   /// Scroll / wheel input. Override in widgets that respond to scroll.
   /// Called by WidgetWindow when this widget is under the cursor.
   /// Return true to consume the event and stop propagation.

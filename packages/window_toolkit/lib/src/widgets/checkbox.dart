@@ -23,6 +23,7 @@ class Checkbox extends Widget {
         _checkColor = checkColor {
     width = boxSize;
     height = boxSize;
+    tabIndex = 1;
     onClick = toggle;
   }
 

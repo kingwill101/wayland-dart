@@ -29,9 +29,18 @@ class Button extends Widget {
         _hoverColor = hoverColor {
     width = text.length * charWidth + padding * 2;
     height = charHeight + padding * 2;
+    tabIndex = 1;
     onClick = onPressed;
     onMouseEnter = () => _hovered = true;
     onMouseLeave = () => _hovered = false;
+  }
+
+  @override
+  bool get acceptsFocus => true;
+
+  @override
+  void onFocusChanged(bool focused) {
+    _hovered = focused;
   }
 
   Color get textColor => _textColor ?? palette.buttonText;

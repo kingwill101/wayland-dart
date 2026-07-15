@@ -30,7 +30,16 @@ class TextField extends Widget {
         _borderColor = borderColor,
         _placeholderColor = placeholderColor {
     height = 24;
+    tabIndex = 1;
     onClick = () => _focused = true;
+  }
+
+  @override
+  bool get acceptsFocus => true;
+
+  @override
+  void onFocusChanged(bool focused) {
+    _focused = focused;
   }
 
   Color get textColor => _textColor ?? const Color(0xff, 0xff, 0xff);

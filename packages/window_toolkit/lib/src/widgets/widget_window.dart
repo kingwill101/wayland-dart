@@ -216,13 +216,63 @@ class WidgetWindow extends Window {
 
   @override
   void onKeyPressed(KeyEvent event) {
+    // Escape to quit.
     if (event.key == 41) {
       Application.instance.quit();
+      return;
+    }
+    // Tab / Shift+Tab for focus cycling.
+    if (event.key == 43) {
+      _focusNext();
+      return;
+    }
+    if (event.key == 44) {
+      _focusPrevious();
       return;
     }
     final focused = focus.focusedWidget;
     if (focused != null) {
       focused.onKeyPressed(event);
+    }
+  }
+
+  /// Move focus to the next focusable widget (Tab order).
+  void _focusNext() {
+    final all = <Widget>[];
+    _collectFocusable(root, all);
+    if (all.isEmpty) return;
+    all.sort((a, b) => a.tabIndex.compareTo(b.tabIndex));
+    final current = focus.focusedWidget;
+    final idx = current == null ? -1 : all.indexOf(current);
+    final next = (idx + 1) % all.length;
+    _setFocus(all[next]);
+  }
+
+  /// Move focus to the previous focusable widget (Shift+Tab).
+  void _focusPrevious() {
+    final all = <Widget>[];
+    _collectFocusable(root, all);
+    if (all.isEmpty) return;
+    all.sort((a, b) => a.tabIndex.compareTo(b.tabIndex));
+    final current = focus.focusedWidget;
+    final idx = current == null ? 0 : all.indexOf(current);
+    final prev = (idx - 1 + all.length) % all.length;
+    _setFocus(all[prev]);
+  }
+
+  void _setFocus(Widget w) {
+    final old = focus.focusedWidget;
+    if (old == w) return;
+    old?.onFocusChanged(false);
+    focus.focusedWidget = w;
+    w.onFocusChanged(true);
+    if (_canPaint) paint();
+  }
+
+  void _collectFocusable(Widget w, List<Widget> out) {
+    if (w.isFocusable) out.add(w);
+    for (final child in w.children) {
+      _collectFocusable(child, out);
     }
   }
 
