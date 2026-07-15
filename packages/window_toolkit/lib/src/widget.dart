@@ -14,6 +14,17 @@ abstract class Widget {
   /// Set by [WidgetWindow] so animated widgets can trigger repaints.
   static VoidCallback? onNeedsRepaint;
 
+  /// Whether this widget is mounted in a widget tree.
+  bool mounted = false;
+
+  /// Called once when the widget is first mounted into a widget tree.
+  /// Override to initialize resources (animation controllers, listeners).
+  void initState() {}
+
+  /// Called when the widget is removed from the widget tree.
+  /// Override to release resources (animation controllers, timers).
+  void dispose() {}
+
   int x = 0, y = 0, width = 0, height = 0;
   /// Click handler. Return true to consume the event and stop propagation.
   /// The click bubbles up the widget tree: deepest widget is called first,

@@ -40,6 +40,13 @@ abstract class ImplicitlyAnimated extends Widget {
     _controller!.forward();
   }
 
+  @override
+  void dispose() {
+    _controller?.dispose();
+    _controller = null;
+    super.dispose();
+  }
+
   void _onTick() {
     if (_controller == null) return;
     Widget.onNeedsRepaint?.call();
@@ -129,6 +136,13 @@ class AnimatedOpacity extends Widget {
     child.x = x;
     child.y = y;
     return child.hitTest(px, py);
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    _controller = null;
+    super.dispose();
   }
 }
 
