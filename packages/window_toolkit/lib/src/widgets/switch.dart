@@ -23,7 +23,9 @@ class Switch extends Widget {
     this.trackWidth = 42,
     this.trackHeight = 22,
     this.onChanged,
-  })  : _trackOnColor = trackOnColor,
+  })  : assert(trackWidth > 0, 'Switch trackWidth must be > 0'),
+        assert(trackHeight > 0, 'Switch trackHeight must be > 0'),
+        _trackOnColor = trackOnColor,
         _trackOffColor = trackOffColor,
         _thumbColor = thumbColor,
         _borderColor = borderColor {
