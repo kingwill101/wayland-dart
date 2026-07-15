@@ -304,6 +304,10 @@ class GlesPainter implements Painter {
     _textCacheOrder.clear();
   }
 
+  /// Returns true if this painter's GL context is still usable.
+  /// Call after catching GL errors to decide whether to fall back.
+  bool get isHealthy => !_failed && !_disposed && _gles != null;
+
   // ── Painter interface ──────────────────────────────────────────
 
   @override
