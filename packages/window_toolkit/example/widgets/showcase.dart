@@ -12,6 +12,8 @@ class Showcase extends WidgetWindow {
   bool _showSecond = false;
   Color _boxColor = const Color(60, 60, 70);
   int _boxRadius = 0;
+  int _contentY = 118;
+  int _contentH = 0;
 
   // Persistent animated widgets — created once, not per frame.
   final AnimatedContainer _animBox;
@@ -84,6 +86,50 @@ class Showcase extends WidgetWindow {
     Widget.onNeedsRepaint = requestRedraw;
   }
 
+  // ── Event handlers ──────────────────────────────────
+
+  @override
+  void onMouseWheel(MouseWheelEvent event) {
+    final x = event.x.toInt();
+    final y = event.y.toInt();
+    final sbx = width - 16;
+    if (x > sbx - 10 || (y >= _contentY && y < _contentY + _contentH)) {
+      _scrollCtrl.scrollBy(event.dy.round());
+      _scrollbar.hovered = true;
+      paint();
+    }
+    super.onMouseWheel(event);
+  }
+
+  @override
+  void onMouseMotion(MouseMotionEvent event) {
+    final x = event.x.toInt();
+    final y = event.y.toInt();
+    final sbx = width - 16;
+    _scrollbar.hovered = x >= sbx && x < sbx + 6 && y >= _contentY && y < _contentY + _contentH;
+    paint();
+    super.onMouseMotion(event);
+  }
+
+  @override
+  void onMouseButtonPressed(MouseButtonEvent event) {
+    _scrollbar.onMouseDown(event.x.toInt(), event.y.toInt(), event.button);
+    super.onMouseButtonPressed(event);
+  }
+
+  @override
+  void onMouseButtonReleased(MouseButtonEvent event) {
+    _scrollbar.onMouseUp(event.x.toInt(), event.y.toInt(), event.button);
+    super.onMouseButtonReleased(event);
+  }
+
+  @override
+  void onMouseDrag(int x, int y) {
+    _scrollbar.onMouseDrag(x, y);
+    paint();
+    super.onMouseDrag(x, y);
+  }
+
   void _rebuildAnimBox() {
     _animBox.color = _boxColor;
     _animBox.borderRadius = _boxRadius.toDouble();
@@ -118,19 +164,17 @@ class Showcase extends WidgetWindow {
       ..draw(painter);
 
     // Scrollable content
-    final contentY = 118;
-    final contentH = height - contentY - 56;
+    _contentY = 118;
+    _contentH = height - _contentY - 56;
 
     _scrollContent
       ..x = 10
-      ..y = contentY
+      ..y = _contentY
       ..performLayout(width - 30);
-    // Position children manually (VBoxLayout needs explicit layout call).
-    // VBox.layout() handles child positioning internally.
 
     painter.save();
     painter.clipRect(Rect.fromLTWH(
-      10, contentY.toDouble(), (width - 30).toDouble(), contentH.toDouble(),
+      10, _contentY.toDouble(), (width - 30).toDouble(), _contentH.toDouble(),
     ));
     painter.translate(0, -_scrollCtrl.offset.toDouble());
     _scrollContent.draw(painter);
@@ -138,14 +182,14 @@ class Showcase extends WidgetWindow {
 
     // Scrollbar
     _scrollCtrl.updateMetrics(
-      viewportExtent: contentH,
+      viewportExtent: _contentH,
       contentExtent: _scrollContent.height,
     );
     _scrollbar
       ..controller = _scrollCtrl
-      ..viewportHeight = contentH
+      ..viewportHeight = _contentH
       ..x = width - 16
-      ..y = contentY
+      ..y = _contentY
       ..width = 6
       ..draw(painter);
 

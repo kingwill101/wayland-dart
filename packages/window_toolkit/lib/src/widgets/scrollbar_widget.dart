@@ -30,7 +30,7 @@ class Scrollbar extends Widget {
   final Color? trackColor;
   final Color? thumbColor;
   final Color? hoverColor;
-  bool _hovered = false;
+  bool hovered = false;
   bool _dragging = false;
   int _dragStartScroll = 0;
   int _dragStartY = 0;
@@ -49,7 +49,7 @@ class Scrollbar extends Widget {
   Color get _trackColor => trackColor ?? palette.mid;
   Color get _thumbColor => _dragging
       ? (hoverColor ?? palette.windowText)
-      : (_hovered ? (hoverColor ?? palette.light) : (thumbColor ?? palette.light));
+      : (hovered ? (hoverColor ?? palette.light) : (thumbColor ?? palette.light));
   Color get _hoverTrackColor => trackColor ?? palette.mid;
 
   le.ScrollbarMetrics _computeMetrics() {
