@@ -1,5 +1,6 @@
 import 'dart:async' show scheduleMicrotask;
 import 'dart:io';
+import 'dart:developer' as dev;
 
 import 'package:window_toolkit/window_toolkit.dart';
 
@@ -49,6 +50,23 @@ class BardashBar extends LayerWindow {
     _layout.spacing = config.spacing;
     _buildLayout();
     stderr.writeln('[bardash] Bar layout built, ${_entries.length} modules');
+
+    // Periodic Skia cache cleanup — bar text labels change rarely so
+    // the shaped-text cache accumulates stale entries over hours.
+    _timers.add(EventLoop.instance.addTimer(
+      const Duration(seconds: 120),
+      _memoryHousekeeping,
+    ));
+  }
+
+  void _memoryHousekeeping() {
+    try {
+      final rss = ProcessInfo.currentRss;
+      stderr.writeln('[bardash] mem: rss=${rss ~/ 1024}KB');
+
+    } catch (e) {
+      stderr.writeln('[bardash] mem housekeeping error: $e');
+    }
   }
 
   void _buildLayout() {
