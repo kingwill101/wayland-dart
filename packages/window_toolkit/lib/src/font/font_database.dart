@@ -1,3 +1,5 @@
+import 'package:skia_dart/skia_dart.dart';
+
 import 'bitmap_font_engine.dart';
 import 'font.dart';
 import 'font_engine.dart';
@@ -66,6 +68,13 @@ class FontDatabase {
   /// Convenience: use Skia / platform font manager.
   void useSkiaEngine({SkiaFontEngine? engine}) {
     useEngine(engine ?? SkiaFontEngine());
+  }
+
+  /// Use Skia engine with an empty font manager (no FontConfig scan).
+  /// Fonts must be added via [addApplicationFont] or role families will
+  /// fall back to Skia's built-in typeface.
+  void useSkiaEngineLight({SkiaFontEngine? engine}) {
+    useEngine(engine ?? SkiaFontEngine(fontMgr: SkFontMgr.empty()));
   }
 
   // ── Qt QFontDatabase-style queries ──────────────────────────────────

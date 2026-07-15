@@ -51,6 +51,10 @@ class BardashBar extends LayerWindow {
     _buildLayout();
     stderr.writeln('[bardash] Bar layout built, ${_entries.length} modules');
 
+    // Cap Skia font cache at 8 MB to keep RSS bounded.
+    // Default is often 128+ MB on desktop Linux.
+    skiaSetFontCacheLimit(8 * 1024 * 1024);
+
     // Periodic Skia cache cleanup — bar text labels change rarely so
     // the shaped-text cache accumulates stale entries over hours.
     _timers.add(EventLoop.instance.addTimer(

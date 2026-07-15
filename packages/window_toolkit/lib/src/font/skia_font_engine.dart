@@ -11,8 +11,9 @@ import 'font_metrics.dart';
 /// Uses platform [SkFontMgr] for matching and [SkiaTextEngine] for shaped
 /// measure/draw (shared typeface + shape caches).
 class SkiaFontEngine extends FontEngineBase {
-  SkiaFontEngine({SkiaTextEngine? textEngine})
-      : _text = textEngine ?? SkiaTextEngine.shared;
+  SkiaFontEngine({SkiaTextEngine? textEngine, SkFontMgr? fontMgr})
+      : _text = textEngine ?? SkiaTextEngine.shared,
+        _mgr = fontMgr;
 
   final SkiaTextEngine _text;
   SkFontMgr? _mgr;
