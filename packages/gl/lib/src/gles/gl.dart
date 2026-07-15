@@ -206,7 +206,8 @@ class GL {
   void resize(int width, int height) {
     _checkNotDisposed();
     if (width == _width && height == _height) return;
-    _egl.DestroySurface(_display, _surface);
+    // Create new surface BEFORE destroying old one to avoid dangling
+    // surface if allocation fails (driver resource exhaustion).
     final pbAttribs = calloc<Int32>(5);
     pbAttribs[0] = _EGL_WIDTH;
     pbAttribs[1] = width;
@@ -219,6 +220,7 @@ class GL {
       stderr.writeln('[gl] resize: CreatePbufferSurface returned null');
       return;
     }
+    _egl.DestroySurface(_display, _surface);
     _surface = newSurface;
     _width = width;
     _height = height;
