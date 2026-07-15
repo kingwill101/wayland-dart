@@ -113,6 +113,9 @@ class WaylandBackend with Size, Events implements Backend {
     final stride = width * 4;
     final size = stride * height;
 
+    // Guard against zero-size buffers (e.g. during resize edge cases).
+    // Sending a zero-size SHM pool to the compositor can crash it.
+    if (size <= 0) return;
     if (_pool != null && size <= _poolSize) return;
 
     _pool?.destroy();
@@ -146,6 +149,8 @@ class WaylandBackend with Size, Events implements Backend {
     _poolSize = 0;
     closeFd(_fd);
     _fd = -1;
+    // Mark that a repaint is needed once the new buffer is ready.
+    _needsPaint = true;
   }
 
   void paintTo(Canvas canvas) {
@@ -211,8 +216,9 @@ class WaylandBackend with Size, Events implements Backend {
     } else if (painter is RawPainter) {
       painter.flush();
     }
-    _needsPaint = false;
-    _present();
+    if (!_present()) {
+      _needsPaint = true;
+    }
   }
 
   @override
