@@ -4,6 +4,8 @@
 /// layout algorithms. No dependencies on any rendering backend.
 library layout_engine;
 
+export 'src/element_tree.dart';
+export 'src/framework.dart';
 export 'src/geometry.dart';
 export 'src/render_object.dart';
 export 'src/render_flex.dart';
