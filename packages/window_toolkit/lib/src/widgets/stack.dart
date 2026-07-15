@@ -1,3 +1,5 @@
+import 'package:layout_engine/layout_engine.dart' as le;
+
 import '../painter/painter.dart';
 import '../widget.dart';
 
@@ -33,32 +35,27 @@ class Positioned extends Widget {
 
   @override
   void draw(Painter canvas) {
-    child
-      ..x = x
-      ..y = y
-      ..width = width
-      ..height = height;
+    child..x = x..y = y..width = width..height = height;
     child.draw(canvas);
   }
 
   @override
   bool hitTest(int px, int py) {
-    child
-      ..x = x
-      ..y = y
-      ..width = width
-      ..height = height;
+    child..x = x..y = y..width = width..height = height;
     return child.hitTest(px, py);
   }
 }
 
-/// Layers children on top of each other; non-positioned children fill the stack.
+/// Layers children. Backed by [le.RenderStack] for layout.
 class Stack extends Widget {
   final List<Widget> children;
-  final bool fitExpand;
+  final le.RenderStack _renderStack = le.RenderStack();
+  final List<_StackChildBox> _renderChildren = [];
 
-  Stack({List<Widget>? children, this.fitExpand = true})
-      : children = children ?? [];
+  Stack({List<Widget>? children, bool fitExpand = true})
+      : children = children ?? [] {
+    _renderStack.fit = fitExpand ? le.StackFit.expand : le.StackFit.loose;
+  }
 
   @override
   void measure(Painter painter) {
@@ -73,44 +70,45 @@ class Stack extends Widget {
     height = maxH;
   }
 
-  void _layoutChildren() {
+  void _ensureRenderTree() {
+    _renderStack.children.clear();
+    _renderChildren.clear();
     for (final child in children) {
-      if (child is Positioned) {
-        final w = child.fixedWidth ?? child.child.width;
-        final h = child.fixedHeight ?? child.child.height;
-        var cx = x;
-        var cy = y;
-        if (child.left != null) {
-          cx = x + child.left!;
-        } else if (child.right != null) {
-          cx = x + width - child.right! - w;
-        }
-        if (child.top != null) {
-          cy = y + child.top!;
-        } else if (child.bottom != null) {
-          cy = y + height - child.bottom! - h;
-        }
-        child.x = cx;
-        child.y = cy;
-        child.width = w;
-        child.height = h;
-      } else if (fitExpand) {
-        child
-          ..x = x
-          ..y = y
-          ..width = width
-          ..height = height;
-      } else {
-        child
-          ..x = x
-          ..y = y;
-      }
+      final r = _StackChildBox(child);
+      _renderChildren.add(r);
+      _renderStack.attach(r);
+    }
+  }
+
+  @override
+  void performLayout(int containerWidth) {
+    _ensureRenderTree();
+    for (final r in _renderChildren) {
+      r.widget.performLayout(r.widget.width > 0 ? r.widget.width : containerWidth);
+      r.size = le.Size(r.widget.width.toDouble(), r.widget.height.toDouble());
+    }
+    _renderStack.layout(le.BoxConstraints(
+      maxWidth: containerWidth.toDouble(),
+      maxHeight: double.infinity,
+    ));
+    width = _renderStack.size.width.round();
+    height = _renderStack.size.height.round();
+
+    for (var i = 0; i < _renderChildren.length; i++) {
+      final r = _renderChildren[i];
+      final w = r.widget;
+      w.x = x + r.offset.dx.round();
+      w.y = y + r.offset.dy.round();
+      w.width = r.size.width.round();
+      w.height = r.size.height.round();
     }
   }
 
   @override
   void draw(Painter canvas) {
-    _layoutChildren();
+    if (_renderChildren.isEmpty && width > 0) {
+      performLayout(width);
+    }
     for (final child in children) {
       child.draw(canvas);
     }
@@ -119,10 +117,33 @@ class Stack extends Widget {
   @override
   bool hitTest(int px, int py) {
     if (!super.hitTest(px, py)) return false;
-    _layoutChildren();
     for (final child in children.reversed) {
       if (child.hitTest(px, py)) return true;
     }
     return false;
+  }
+}
+
+class _StackChildBox extends le.RenderBox {
+  final Widget widget;
+  _StackChildBox(this.widget) {
+    if (widget is Positioned) {
+      final p = widget as Positioned;
+      parentData = le.StackParentData(
+        left: p.left?.toDouble(),
+        right: p.right?.toDouble(),
+        top: p.top?.toDouble(),
+        bottom: p.bottom?.toDouble(),
+        width: p.fixedWidth?.toDouble(),
+        height: p.fixedHeight?.toDouble(),
+      );
+    }
+  }
+
+  @override
+  void layout(le.BoxConstraints constraints) {
+    final childW = widget.width > 0 ? widget.width : (constraints.hasBoundedWidth ? constraints.maxWidth.round() : widget.width);
+    widget.performLayout(childW);
+    size = le.Size(widget.width.toDouble(), widget.height.toDouble());
   }
 }

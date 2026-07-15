@@ -102,7 +102,7 @@ class _RenderWidgetBox extends le.RenderBox {
     // Use the child's intrinsic width first; fall back to constraints.
     final childWidth = widget.width > 0
         ? widget.width
-        : constraints.maxWidth.round();
+        : (constraints.hasBoundedWidth ? constraints.maxWidth.round() : widget.width);
     widget.performLayout(childWidth);
     size = le.Size(widget.width.toDouble(), widget.height.toDouble());
   }

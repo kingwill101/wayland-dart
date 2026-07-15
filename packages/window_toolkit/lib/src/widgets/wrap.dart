@@ -1,12 +1,17 @@
+import 'package:layout_engine/layout_engine.dart' as le;
+
 import '../painter/painter.dart';
 import '../widget.dart';
 
+/// Wrap layout that flows children into multiple rows, backed by [le.RenderWrap].
 class WrapLayout extends Widget {
   @override
 
   final List<Widget> children;
   int spacing;
   int runSpacing;
+  final le.RenderWrap _renderWrap = le.RenderWrap();
+  final List<_WrapChildBox> _renderChildren = [];
 
   WrapLayout({
     this.spacing = 0,
@@ -14,62 +19,53 @@ class WrapLayout extends Widget {
     List<Widget>? children,
   }) : children = children ?? [];
 
+  void _ensureRenderTree() {
+    _renderWrap.children.clear();
+    _renderChildren.clear();
+    for (final child in children) {
+      final r = _WrapChildBox(child);
+      _renderChildren.add(r);
+      _renderWrap.attach(r);
+    }
+  }
+
   @override
   void performLayout(int containerWidth) {
-    for (final child in children) {
-      child.performLayout(child.width);
+    _ensureRenderTree();
+    _renderWrap.spacing = spacing.toDouble();
+    _renderWrap.runSpacing = runSpacing.toDouble();
+
+    for (final r in _renderChildren) {
+      r.widget.performLayout(r.widget.width > 0 ? r.widget.width : containerWidth);
+      r.size = le.Size(r.widget.width.toDouble(), r.widget.height.toDouble());
     }
-    width = containerWidth;
-    layout(width, 0);
+
+    _renderWrap.layout(le.BoxConstraints(
+      maxWidth: containerWidth.toDouble(),
+      maxHeight: double.infinity,
+    ));
+
+    width = _renderWrap.size.width.round();
+    height = _renderWrap.size.height.round();
+
+    for (var i = 0; i < _renderChildren.length; i++) {
+      final r = _renderChildren[i];
+      r.widget.x = x + r.offset.dx.round();
+      r.widget.y = y + r.offset.dy.round();
+    }
   }
 
-  int _intrinsicWidth() {
-    if (children.isEmpty) return 0;
-    var total = 0;
-    for (final child in children) {
-      total += child.width;
-    }
-    return total + (children.length - 1) * spacing;
-  }
-
+  /// Legacy API. Prefer [performLayout].
   void layout(int containerWidth, int containerHeight) {
-    final effectiveWidth = containerWidth > 0 ? containerWidth : _intrinsicWidth();
-    width = effectiveWidth;
-
-    var cx = x;
-    var cy = y;
-    var lineHeight = 0;
-    var usedHeight = 0;
-    var lineStartX = x;
-
-    for (final child in children) {
-      final childWidth = child.width;
-      final childHeight = child.height;
-
-      final shouldWrap =
-          cx > lineStartX && (cx + childWidth) > (x + effectiveWidth);
-      if (shouldWrap) {
-        cx = x;
-        cy += lineHeight + runSpacing;
-        usedHeight += lineHeight + runSpacing;
-        lineHeight = 0;
-      }
-
-      child.x = cx;
-      child.y = cy;
-      cx += childWidth + spacing;
-      if (childHeight > lineHeight) {
-        lineHeight = childHeight;
-      }
-    }
-
-    usedHeight += lineHeight;
-    height = containerHeight > 0 ? containerHeight : usedHeight;
+    performLayout(containerWidth);
+    if (containerHeight > 0) height = containerHeight;
   }
 
   @override
   void draw(Painter canvas) {
-    layout(width, height);
+    if (_renderChildren.isEmpty && width > 0) {
+      performLayout(width);
+    }
     for (final child in children) {
       child.draw(canvas);
     }
@@ -77,11 +73,25 @@ class WrapLayout extends Widget {
 
   @override
   bool hitTest(int px, int py) {
-    layout(width, height);
+    if (_renderChildren.isEmpty && width > 0) {
+      performLayout(width);
+    }
     if (!super.hitTest(px, py)) return false;
     for (final child in children.reversed) {
       if (child.hitTest(px, py)) return true;
     }
     return false;
+  }
+}
+
+class _WrapChildBox extends le.RenderBox {
+  final Widget widget;
+  _WrapChildBox(this.widget);
+
+  @override
+  void layout(le.BoxConstraints constraints) {
+    final childW = widget.width > 0 ? widget.width : (constraints.hasBoundedWidth ? constraints.maxWidth.round() : widget.width);
+    widget.performLayout(childW);
+    size = le.Size(widget.width.toDouble(), widget.height.toDouble());
   }
 }

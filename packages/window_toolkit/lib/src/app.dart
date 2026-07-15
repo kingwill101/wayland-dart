@@ -41,7 +41,6 @@ class Application {
   }
 
   void dispatchEvent(Event event) {
-    // Iterate a copy so receivers can add/remove during handling.
     for (final receiver in List<EventReceiver>.from(_eventReceivers)) {
       receiver.onEvent(event);
       if (event.accepted) break;
