@@ -235,6 +235,10 @@ class WidgetWindow extends Window {
       final localPx = px + w.scrollX + offX;
       final localPy = py + w.scrollY + offY;
       if (w.isOnScrollbar(px, py)) return w;
+      // Ensure child is positioned for hit-test, matching ScrollArea.hitTest.
+      w.child
+        ..x = w.x
+        ..y = w.y;
       if (w.child.hitTest(localPx, localPy)) {
         return _hitTestDeep(w.child, localPx, localPy, 0, 0) ?? w;
       }

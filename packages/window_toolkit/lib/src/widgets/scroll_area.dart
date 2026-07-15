@@ -165,6 +165,14 @@ class ScrollArea extends Widget {
   }
 
   @override
+  void performLayout(int containerWidth) {
+    width = containerWidth;
+    child.performLayout(width);
+    child.x = x;
+    child.y = y;
+  }
+
+  @override
   void draw(Painter canvas) {
     canvas.save();
     canvas.clipRect(

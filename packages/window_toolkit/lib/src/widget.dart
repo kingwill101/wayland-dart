@@ -52,8 +52,12 @@ abstract class Widget {
     width = containerWidth;
   }
 
-  bool hitTest(int px, int py) =>
-      px >= x && px < x + width && py >= y && py < y + height;
+  bool hitTest(int px, int py) {
+    assert(width >= 0 && height >= 0,
+        'Widget $runtimeType hit-tested before layout (width=$width height=$height). '
+        'Call performLayout() or pump() before hit-testing.');
+    return px >= x && px < x + width && py >= y && py < y + height;
+  }
 }
 
 class Container extends Widget {
