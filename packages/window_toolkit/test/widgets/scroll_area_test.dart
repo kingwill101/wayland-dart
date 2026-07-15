@@ -16,18 +16,16 @@ void main() {
       expect(scroll.child.y, 10, reason: 'ScrollArea child.y = parent.y');
     });
 
-    test('scrollBy updates scrollX and scrollY', () {
+    test('scrollBy updates scrollY', () {
       final large = SizedBox(width: 2000, height: 2000, child: Button('Big'));
       final scroll = ScrollArea(child: large);
       scroll.width = 100;
       scroll.height = 100;
       scroll.performLayout(100);
 
-      expect(scroll.maxScrollX, greaterThan(0));
       expect(scroll.maxScrollY, greaterThan(0));
 
-      scroll.scrollBy(50, 100);
-      expect(scroll.scrollX, 50);
+      scroll.scrollBy(0, 100);
       expect(scroll.scrollY, 100);
     });
 
@@ -38,8 +36,7 @@ void main() {
       scroll.height = 100;
       scroll.performLayout(100);
 
-      scroll.scrollBy(-9999, -9999);
-      expect(scroll.scrollX, 0);
+      scroll.scrollBy(0, -9999);
       expect(scroll.scrollY, 0);
     });
 

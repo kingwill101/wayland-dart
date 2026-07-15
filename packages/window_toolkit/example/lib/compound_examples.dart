@@ -8,7 +8,7 @@ Widget buildScrollAreaExample() {
     ],
   );
   content.width = 320;
-  final scroll = ScrollArea(child: content, scrollY: 0);
+  final scroll = ScrollArea(child: content);
   scroll.width = 320;
   scroll.height = 120;
   final card = Card(

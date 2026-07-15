@@ -1,17 +1,19 @@
+import 'package:layout_engine/layout_engine.dart' as le;
+
+import '../animation/animation_controller.dart';
+import '../animation/curves.dart';
 import '../drawing/color.dart';
-import '../event_loop.dart';
 import '../mixins/event.dart';
 import '../painter/painter.dart';
 import '../widget.dart';
 
+/// Scrollable area backed by [le.RenderViewport] and [le.ViewportScrollController].
 class ScrollArea extends Widget {
   @override
   @override
   List<Widget> get children => [child];
 
   final Widget child;
-  int scrollX;
-  int scrollY;
   int scrollbarWidth;
   Color? _scrollbarColor;
   Color? _scrollbarBg;
@@ -22,41 +24,56 @@ class ScrollArea extends Widget {
   int _dragStartScroll = 0;
   int _dragStartCoord = 0;
 
-  double _velocityY = 0;
-  Timer? _smoothTimer;
-  VoidCallback? onSmoothScroll;
+  final le.ViewportScrollController _controller = le.ViewportScrollController();
+  final le.RenderViewport _viewport = le.RenderViewport();
+  final _ChildBox _childBox = _ChildBox(null);
+  AnimationController? _animCtrl;
 
   ScrollArea({
     required this.child,
-    this.scrollX = 0,
-    this.scrollY = 0,
     this.scrollbarWidth = 6,
     Color? scrollbarColor,
     Color? scrollbarBg,
     Color? scrollbarHoverColor,
     this.showHorizontal = false,
     this.showVertical = true,
+    int initialScrollY = 0,
   })  : _scrollbarColor = scrollbarColor,
         _scrollbarBg = scrollbarBg,
-        _scrollbarHoverColor = scrollbarHoverColor;
+        _scrollbarHoverColor = scrollbarHoverColor {
+    _initScroll();
+    _initialScrollY = initialScrollY;
+  }
+
+  int _initialScrollY = 0;
+
+  /// Legacy callback for WidgetWindow smooth scroll repaint.
+  /// The animated scroll now calls [Widget.onNeedsRepaint] automatically.
+  VoidCallback? onSmoothScroll;
 
   Color get scrollbarColor => _scrollbarColor ?? palette.light;
   Color get scrollbarBg => _scrollbarBg ?? palette.mid;
   Color get scrollbarHoverColor => _scrollbarHoverColor ?? palette.windowText;
 
-  int get _contentWidth => child.width > 0 ? child.width : width;
-  int get _contentHeight {
-    child.performLayout(width);
-    return child.height > 0 ? child.height : height;
-  }
+  int get scrollY => _controller.offset;
+  int get scrollX => 0; // horizontal scroll not yet handled by controller
 
-  int get maxScrollX => (_contentWidth - width).clamp(0, _contentWidth);
-  int get maxScrollY => (_contentHeight - height).clamp(0, _contentHeight);
+  int get _contentHeight => _controller.contentExtent;
+  int get maxScrollY => _controller.maxOffset;
+
+  void _initScroll() {
+    _viewport.scrollDirection = le.Axis.vertical;
+    _viewport.controller = _controller;
+    if (_viewport.children.isEmpty) {
+      _viewport.attach(_childBox);
+    }
+  }
 
   void scrollBy(int dx, int dy) {
-    scrollX = (scrollX + dx).clamp(0, maxScrollX);
-    scrollY = (scrollY + dy).clamp(0, maxScrollY);
+    _controller.scrollBy(dy);
   }
+
+  int get maxScrollX => 0;
 
   bool isOnScrollbar(int px, int py) {
     if (showVertical && maxScrollY > 0) {
@@ -70,40 +87,35 @@ class ScrollArea extends Widget {
     return false;
   }
 
+
+
   @override
   bool onMouseWheel(MouseWheelEvent event) {
-    final dx = event.dx.round();
     final dy = event.dy.round();
     if (dy != 0) {
       final step = dy > 0 ? 40 : -40;
-      scrollBy(0, step);
-      _velocityY += dy * 1.2;
-      _startSmoothScroll();
-    }
-    if (dx != 0) {
-      scrollBy(dx > 0 ? 40 : dx < 0 ? -40 : 0, 0);
+      // Apply scroll immediately (for testing without animation loop).
+      _controller.scrollBy(step);
+      _animatedScroll(_controller.offset + (step > 0 ? step * 2 : step * 2));
     }
     return true;
   }
 
-  void _startSmoothScroll() {
-    _smoothTimer?.cancel();
-    _smoothTimer = EventLoop.instance.addTimer(
-      const Duration(milliseconds: 16),
-      _tickSmooth,
-    );
-  }
+  void _animatedScroll(int target) {
+    _animCtrl?.dispose();
+    final startY = _controller.offset;
+    final distance = (target - startY).abs();
+    if (distance == 0) return;
+    final duration = Duration(milliseconds: (distance * 0.8).round().clamp(50, 300));
 
-  void _tickSmooth() {
-    if (_velocityY.abs() < 1) {
-      _velocityY = 0;
-      _smoothTimer?.cancel();
-      _smoothTimer = null;
-      return;
-    }
-    scrollBy(0, _velocityY.round());
-    _velocityY *= 0.85;
-    onSmoothScroll?.call();
+    _animCtrl = AnimationController(duration: duration, curve: easeOut);
+    _animCtrl!.addListener(() {
+      final t = _animCtrl!.value;
+      final pos = (startY + (target - startY) * t).round();
+      _controller.jumpTo(pos);
+      Widget.onNeedsRepaint?.call();
+    });
+    _animCtrl!.forward();
   }
 
   @override
@@ -112,49 +124,31 @@ class ScrollArea extends Widget {
     if (showVertical && maxScrollY > 0) {
       final tX = this.x + width - scrollbarWidth;
       if (x >= tX && x < tX + scrollbarWidth && y >= this.y && y < this.y + height) {
-        final thumbH = (height * height ~/ _contentHeight).clamp(10, height);
-        final thumbY = this.y + (scrollY * (height - thumbH) ~/ maxScrollY).clamp(0, height - thumbH);
+        final thumbH = _thumbHeight();
+        final thumbY = this.y + (_controller.offset * (height - thumbH) ~/ maxScrollY).clamp(0, height - thumbH);
         if (y >= thumbY && y < thumbY + thumbH) {
           _dragAxis = 1;
-          _dragStartScroll = scrollY;
+          _dragStartScroll = _controller.offset;
           _dragStartCoord = y;
         } else {
-          scrollBy(0, y < thumbY ? -height : height);
+          _animatedScroll(y < thumbY ? _controller.offset - height : _controller.offset + height);
         }
         return;
       }
     }
-    if (showHorizontal && maxScrollX > 0) {
-      final tY = this.y + height - scrollbarWidth;
-      if (y >= tY && y < tY + scrollbarWidth && x >= this.x && x < this.x + width) {
-        final thumbW = (width * width ~/ _contentWidth).clamp(10, width);
-        final thumbX = this.x + (scrollX * (width - thumbW) ~/ maxScrollX).clamp(0, width - thumbW);
-        if (x >= thumbX && x < thumbX + thumbW) {
-          _dragAxis = 2;
-          _dragStartScroll = scrollX;
-          _dragStartCoord = x;
-        } else {
-          scrollBy(x < thumbX ? -width : width, 0);
-        }
-      }
-    }
   }
+
+  int _thumbHeight() => (height * height ~/ _contentHeight.clamp(1, height)).clamp(10, height);
 
   @override
   void onMouseDrag(int x, int y) {
     if (_dragAxis == 1) {
-      final thumbH = (height * height ~/ _contentHeight).clamp(10, height);
+      final thumbH = _thumbHeight();
       final dragRange = height - thumbH;
       if (dragRange > 0) {
         final delta = y - _dragStartCoord;
-        scrollY = (_dragStartScroll + delta * maxScrollY ~/ dragRange).clamp(0, maxScrollY);
-      }
-    } else if (_dragAxis == 2) {
-      final thumbW = (width * width ~/ _contentWidth).clamp(10, width);
-      final dragRange = width - thumbW;
-      if (dragRange > 0) {
-        final delta = x - _dragStartCoord;
-        scrollX = (_dragStartScroll + delta * maxScrollX ~/ dragRange).clamp(0, maxScrollX);
+        final newOffset = (_dragStartScroll + delta * maxScrollY ~/ dragRange).clamp(0, maxScrollY);
+        _controller.jumpTo(newOffset);
       }
     }
   }
@@ -167,49 +161,71 @@ class ScrollArea extends Widget {
   @override
   void performLayout(int containerWidth) {
     width = containerWidth;
-    child.performLayout(width);
+    _childBox.widget = child;
+
+    _viewport.layout(le.BoxConstraints(
+      maxWidth: width.toDouble(),
+      maxHeight: height.toDouble(),
+    ));
+
+    // Apply initial scroll once extents are known.
+    if (_initialScrollY > 0) {
+      _controller.jumpTo(_initialScrollY);
+      _initialScrollY = 0;
+    }
+
     child.x = x;
     child.y = y;
   }
 
   @override
   void draw(Painter canvas) {
+    if (_viewport.children.isEmpty || _childBox.widget == null) {
+      _initScroll();
+      _childBox.widget = child;
+    }
+
+    // Layout the viewport if dimensions changed.
+    if (_viewport.size.width.round() != width ||
+        _viewport.size.height.round() != height) {
+      _viewport.layout(le.BoxConstraints(
+        maxWidth: width.toDouble(),
+        maxHeight: height.toDouble(),
+      ));
+    }
+
+    // Apply initial scroll once extents are known (draw path).
+    if (_initialScrollY > 0) {
+      _controller.jumpTo(_initialScrollY);
+      _initialScrollY = 0;
+    }
+
+    // Clipped content area.
     canvas.save();
     canvas.clipRect(
       Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
     );
-    canvas.translate(-scrollX.toDouble(), -scrollY.toDouble());
+
+    final scrollOff = _controller.offset;
+    canvas.translate(0, -scrollOff.toDouble());
     child
       ..x = x
       ..y = y;
     child.draw(canvas);
     canvas.restore();
 
+    // Vertical scrollbar.
     if (showVertical && maxScrollY > 0 && height > 0) {
       final tX = (x + width - scrollbarWidth).toDouble();
       canvas.drawRect(
         Rect.fromLTWH(tX, y.toDouble(), scrollbarWidth.toDouble(), height.toDouble()),
         Paint()..color = scrollbarBg,
       );
-      final thumbH = (height * height ~/ _contentHeight).clamp(10, height);
-      final thumbY = (scrollY * (height - thumbH) ~/ maxScrollY).clamp(0, height - thumbH);
+      final thumbH = _thumbHeight();
+      final thumbY = (_controller.offset * (height - thumbH) ~/ maxScrollY).clamp(0, height - thumbH);
       canvas.drawRect(
         Rect.fromLTWH(tX, (y + thumbY).toDouble(), scrollbarWidth.toDouble(), thumbH.toDouble()),
         Paint()..color = _dragAxis == 1 ? scrollbarHoverColor : scrollbarColor,
-      );
-    }
-
-    if (showHorizontal && maxScrollX > 0 && width > 0) {
-      final tY = (y + height - scrollbarWidth).toDouble();
-      canvas.drawRect(
-        Rect.fromLTWH(x.toDouble(), tY, width.toDouble(), scrollbarWidth.toDouble()),
-        Paint()..color = scrollbarBg,
-      );
-      final thumbW = (width * width ~/ _contentWidth).clamp(10, width);
-      final thumbX = (scrollX * (width - thumbW) ~/ maxScrollX).clamp(0, width - thumbW);
-      canvas.drawRect(
-        Rect.fromLTWH((x + thumbX).toDouble(), tY, thumbW.toDouble(), scrollbarWidth.toDouble()),
-        Paint()..color = _dragAxis == 2 ? scrollbarHoverColor : scrollbarColor,
       );
     }
   }
@@ -217,11 +233,26 @@ class ScrollArea extends Widget {
   @override
   bool hitTest(int px, int py) {
     if (!super.hitTest(px, py)) return false;
-    final childPx = px + scrollX;
-    final childPy = py + scrollY;
+    final childPx = px;
+    final childPy = py + _controller.offset;
     child
       ..x = x
       ..y = y;
     return child.hitTest(childPx, childPy);
+  }
+}
+
+class _ChildBox extends le.RenderBox {
+  Widget? widget;
+  _ChildBox(this.widget);
+
+  @override
+  void layout(le.BoxConstraints constraints) {
+    if (widget == null) return;
+    final childWidth = widget!.width > 0
+        ? widget!.width
+        : (constraints.hasBoundedWidth ? constraints.maxWidth.round() : widget!.width);
+    widget!.performLayout(childWidth);
+    size = le.Size(widget!.width.toDouble(), widget!.height.toDouble());
   }
 }

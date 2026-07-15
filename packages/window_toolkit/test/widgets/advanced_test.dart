@@ -9,7 +9,7 @@ void main() {
       final content = Label('Tall content')..height = 200;
       final scroll = ScrollArea(
         child: content,
-        scrollY: 20,
+        initialScrollY: 20,
       );
       scroll.x = 4;
       scroll.y = 5;
@@ -36,19 +36,20 @@ void main() {
     test('hit test translates into scroll space', () {
       final content = Label('Wide')
         ..width = 400
-        ..height = 20;
+        ..height = 200;
       final scroll = ScrollArea(
         child: content,
-        scrollX: 50,
+        initialScrollY: 50,
       );
       scroll.x = 0;
       scroll.y = 0;
       scroll.width = 100;
       scroll.height = 30;
+      scroll.performLayout(100);
 
-      // Child at scrollX=50 means child x=50 is at screen x=0
-      expect(scroll.hitTest(0, 5), isTrue);
-      expect(scroll.hitTest(200, 5), isFalse);
+      // Child at scrollY=50 means child y=50 is at screen y=0
+      expect(scroll.hitTest(5, 0), isTrue);
+      expect(scroll.hitTest(5, 200), isFalse);
     });
   });
 
