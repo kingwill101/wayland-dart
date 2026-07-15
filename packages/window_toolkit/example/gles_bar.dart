@@ -28,8 +28,13 @@ class GlesBar extends LayerWindow {
 
   @override
   void draw(Painter painter) {
-    // Black background, white text.
-    painter.clear(const Color(0, 0, 0));
+    // Black background with subtle gradient.
+    painter.drawLinearGradient(
+      Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
+      const Color(0x08, 0x08, 0x0c),
+      const Color(0x14, 0x16, 0x1a),
+      angle: 0.0,
+    );
 
     final rh = height * 0.6;
     final pads = 12.0;

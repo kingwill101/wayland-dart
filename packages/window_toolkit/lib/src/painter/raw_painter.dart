@@ -115,6 +115,12 @@ class RawPainter implements Painter {
   }
 
   @override
+  void drawLinearGradient(Rect rect, Color color0, Color color1,
+      {double angle = 0.0}) {
+    drawRect(rect, Paint()..color = color0);
+  }
+
+  @override
   void drawImage(String filePath, double x, double y, {double? width, double? height}) {
     // RawPainter does not support image rendering; draw a placeholder.
     final w = width ?? 16;

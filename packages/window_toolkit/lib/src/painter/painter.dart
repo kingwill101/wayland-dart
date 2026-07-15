@@ -94,6 +94,14 @@ abstract class Painter {
   void translate(double dx, double dy);
   void scale(double sx, double sy);
 
+  /// Fill a rectangle with a linear gradient from [color0] to [color1]
+  /// at [angle] radians (0 = left→right, π/2 = bottom→top).
+  /// Default implementation draws a solid [color0] rect.
+  void drawLinearGradient(Rect rect, Color color0, Color color1,
+      {double angle = 0.0}) {
+    drawRect(rect, Paint()..color = color0);
+  }
+
   /// Flush any pending drawing to the backing store (e.g. PBuffer → SHM).
   void flush() {}
 

@@ -2,145 +2,76 @@
 
 A lightweight **Wayland client UI toolkit** for Dart. Build bars, panels, and
 simple desktop windows without Flutter — pure Dart over Wayland protocols
-(layer-shell, xdg-shell, subsurfaces) with Skia text/raster.
+(layer-shell, xdg-shell, subsurfaces).
 
 ## Features
 
 - **Layer shell bars** (`LayerWindow`) and **xdg toplevel windows**
 - **Widget tree**: layout (Row/Column/Flex/HBox/VBox/Stack/Wrap), padding, align
-- **Controls**: buttons, checkboxes, sliders, text fields, menus, tabs, dialogs
+- **Controls**: buttons, checkboxes, sliders, text fields, menus, tabs, dialogs, progress bars
 - **Theming**: `Palette` + `Style` + `ThemeMetrics`
 - **Tooltips** on layer surfaces via `TooltipOverlay` (subsurface)
-- **Skia** text shaping (HarfBuzz) + rounded rects
+- **GPU rendering** via GLES2 (`GlesPainter`) — SDF rounded rects, linear gradients, image loading, font-cached text
+- **Skia** text shaping (HarfBuzz) + font fallback
+- **Software fallback** via `RawPainter` when GPU unavailable
 
-## Getting started
+## Render Backend
 
-```yaml
-dependencies:
-  window_toolkit:
-    path: packages/window_toolkit
+Three backends via `RendererBackend` enum on `WindowBehavior`:
+
+```dart
+final bar = MyBar();
+bar.rendererBackend = RendererBackend.gl;  // force GLES2
+await bar.show();
 ```
+
+| Backend | Description |
+|---------|-------------|
+| `auto`  | Try GLES2 first, then Skia, then software (default) |
+| `gl`    | GPU-accelerated GLES2. Throws if unavailable. |
+| `skia`  | Skia raster via SHM. Falls back to software. |
+
+## GLES2 Backend (GlesPainter)
+
+The GL backend renders shapes using GPU shaders and reads pixels back via
+`glReadPixels` (with automatic row flip for Wayland SHM). Text is rendered
+by Skia into a temporary surface, uploaded as a GL texture, and drawn as a
+textured quad with alpha multiplication.
+
+Text textures are cached by content so repeated strings (clock, labels)
+reuse the same GPU texture across frames.
+
+- **`drawRect`** — filled or stroked (via `Paint.style` / `strokeWidth`)
+- **`drawRRect`** — signed-distance field rounded rect (anti-aliased corners)
+- **`drawCircle`** — filled or stroked (triangle fan / ring)
+- **`drawLine`** — thickened line quad
+- **`drawLinearGradient`** — two-colour gradient at any angle
+- **`drawText`** — Skia-shaped text → GL texture → textured quad
+- **`drawImage`** — Skia decode + scale → GL texture (tray icons, etc.)
+- **`clipRect`** — scissor test with save/restore stack
+- **`translate`** / **`scale`** — affine transform matrix stack
+
+## Font Configuration
+
+```dart
+FontDatabase.instance.setRoleFamily(FontRole.ui, 'Noto Sans');
+FontDatabase.instance.setRoleFamily(FontRole.icon, 'Hack Nerd Font');
+FontDatabase.instance.setRoleFamily(FontRole.mono, 'JetBrains Mono');
+```
+
+Roles are resolved in `Font.ui()` / `Font.icon()` / `Font.mono()` helpers.
+
+## Example
 
 ```dart
 import 'package:window_toolkit/window_toolkit.dart';
 
-Future<void> main() async {
-  final win = WidgetWindow(
-    title: 'Demo',
-    width: 400,
-    height: 300,
-  );
-  // ... set root widget, show, exec
-  await win.show();
+void main() async {
+  final bar = LayerWindow(anchor: Anchor.top, barHeight: 36);
+  bar.rendererBackend = RendererBackend.gl;
+  await bar.show();
   Application.instance.exec();
 }
 ```
 
-For a panel:
-
-```dart
-class MyBar extends LayerWindow {
-  MyBar() : super(anchor: Anchor.top, barHeight: 30, exclusiveZone: 30);
-
-  @override
-  void draw(Painter painter) {
-    painter.clear(Palette.current.active.window);
-    // draw modules...
-  }
-}
-```
-
-## Layout building blocks
-
-| Widget | Role |
-|--------|------|
-| `Row` / `Column` / `Flex` | Flexbox-like main/cross axis |
-| `HBox` / `VBox` | Simple horizontal / vertical stacks |
-| `Padding` / `Align` / `Center` | Spacing and alignment |
-| `SizedBox` / `ConstrainedBox` | Fixed / clamped size |
-| `Stack` / `Positioned` | Overlay children |
-| `DecoratedBox` | Background, border, rounded corners |
-| `Chip` | Pill button (workspaces, tags) |
-| `Label` | Measured text + ellipsis + baseline center |
-| `MouseRegion` | Hover / tap without changing layout |
-| `Separator` | Visual divider |
-
-## Theming
-
-```dart
-Palette.current = Palette.darkPalette;
-// or
-Palette.current = Palette.lightPalette;
-
-ThemeMetrics.current = ThemeMetrics.compact;
-```
-
-Colors live in `ColorGroup` (`tooltipBase`, `highlight`, `button`, …).
-Drawing chrome goes through `Style.current` (buttons, scrollbars, panels).
-
-## Fonts & text positioning (Qt-style)
-
-`FontDatabase` plus **rect-aligned text** — a small port of Qt’s font and
-`QPainter::drawText` stack with **pluggable engines**:
-
-| Qt | window_toolkit |
-|----|----------------|
-| `QFont` | `Font` |
-| `QFontDatabase` | `FontDatabase` |
-| `QFontMetricsF` | `FontMetrics` |
-| `QFontInfo` | `FontInfo` |
-| platform DB | `FontEngine` → `SkiaFontEngine` / `BitmapFontEngine` |
-| `Qt::Alignment` | `TextAlign` / `TextHAlign` / `TextVAlign` |
-| `QTextOption` | `TextOption` |
-| `QPainter::drawText(QRect, flags, text)` | `painter.drawTextInRect(...)` / `TextLayout` |
-
-```dart
-// Production (Skia + system Fontconfig via SkFontMgr)
-FontDatabase.instance.useSkiaEngine();
-FontDatabase.instance.setRoleFamily(FontRole.ui, 'Noto Sans');
-FontDatabase.instance.setRoleFamily(FontRole.icon, 'Hack Nerd Font');
-
-final m = FontDatabase.instance.metrics(Font.ui(pixelSize: 13));
-final width = m.horizontalAdvance('Apps'); // layout width (not loose ink bounds)
-
-// Align text in a rectangle (baseline computed for vertical center)
-painter.drawTextInRect(
-  'Apps',
-  Rect.fromLTWH(0, 0, 80, 30),
-  font: Font.ui(),
-  option: TextOption.leftCenter, // left + v-center
-);
-
-// Tests / raw painter
-FontDatabase.instance.useBitmapEngine();
-```
-
-**Baseline vs top:** low-level `drawText` is baseline-relative (Skia/QPainter).
-Always use `drawTextInRect` / `TextLayout.baselineInBox` for UI so glyphs sit
-optically mid-bar / mid-button — not stuck to the top of the box.
-
-Use **`horizontalAdvance`** for layout width. Prefer roles (`Font.ui` /
-`Font.icon` / `Font.mono`) over hard-coded family strings in apps.
-
-## Tooltips on layer surfaces
-
-`xdg_popup` cannot parent from a layer-shell surface. Use `TooltipOverlay`
-(subsurface) instead — see `docs/tooltip_popup_protocols.md`.
-
-## Tests
-
-```bash
-cd packages/window_toolkit && dart test
-```
-
-## Package layout
-
-```
-lib/src/
-  backend/     # Wayland connection, layer, popup
-  painter/     # Skia / raw painters
-  widgets/     # UI components
-  metrics.dart # ThemeMetrics
-  palette.dart # Color roles
-  style.dart   # Drawing chrome
-```
+See `example/` for more complete examples.

@@ -145,6 +145,12 @@ class SkiaPainter implements Painter {
   }
 
   @override
+  void drawLinearGradient(Rect rect, Color color0, Color color1,
+      {double angle = 0.0}) {
+    drawRect(rect, Paint()..color = color0);
+  }
+
+  @override
   void drawImage(String filePath, double x, double y, {double? width, double? height}) {
     try {
       final data = SkData.fromFile(filePath);
