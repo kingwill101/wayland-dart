@@ -80,7 +80,6 @@ class WaylandBackend with Size, Events implements Backend {
         _ensureBuffer();
         onConfigure?.call(width, height);
       } else {
-        stderr.writeln('[wt] surf cfg skip w=$width h=$height');
         surface.commit();
       }
     });
@@ -93,7 +92,6 @@ class WaylandBackend with Size, Events implements Backend {
     xdgToplevel.onConfigure((e) {
       final newW = e.width != 0 ? e.width : (width == 0 ? 800 : width);
       final newH = e.height != 0 ? e.height : (height == 0 ? 600 : height);
-      stderr.writeln('[wt] toplevel cfg w=${e.width} h=${e.height} -> ${newW}x$newH (cur ${width}x$height) invalidate=${newW!=width||newH!=height} busy=$_bufferBusy pool=$_pool');
       if (newW != width || newH != height) {
         width = newW;
         height = newH;
@@ -115,7 +113,7 @@ class WaylandBackend with Size, Events implements Backend {
     final stride = width * 4;
     final size = stride * height;
 
-    if (size <= 0) { stderr.writeln('[wt] ensureBuffer skip size=$size'); return; }
+    if (size <= 0) return;
     if (_pool != null && size <= _poolSize) return;
 
     _pool?.destroy();
@@ -142,7 +140,6 @@ class WaylandBackend with Size, Events implements Backend {
   }
 
   void _invalidateBuffer() {
-    stderr.writeln('[wt] invalidate pool=$_pool buf=$_buffer fd=$_fd w=${width}x$height');
     _buffer?.destroy();
     _buffer = null;
     _pool?.destroy();
@@ -150,6 +147,7 @@ class WaylandBackend with Size, Events implements Backend {
     _poolSize = 0;
     closeFd(_fd);
     _fd = -1;
+    _bufferBusy = false;
     _needsPaint = true;
   }
 
@@ -161,17 +159,12 @@ class WaylandBackend with Size, Events implements Backend {
   }
 
   bool _present() {
-    if (_buffer == null) { stderr.writeln('[wt] present skip — no buffer'); return false; }
-    if (_bufferBusy) { stderr.writeln('[wt] present skip — buffer busy'); return false; }
     if (_bufferBusy || _buffer == null) return false;
 
     _bufferBusy = true;
     surface.attach(_buffer!, 0, 0);
     surface.damageBuffer(0, 0, width, height);
 
-    // Use the frame callback to trigger the next paint when the
-    // compositor is ready, in case the buffer release callback
-    // never fires (e.g. during compositor state transitions).
     final frameResult = surface.frame();
     frameResult
         .getOrElse((e) {
@@ -179,8 +172,6 @@ class WaylandBackend with Size, Events implements Backend {
           return WlCallback(context);
         })
         .onDone((_) {
-          // Frame callback fired — compositor is ready for next frame.
-          // If we have a pending paint, fire it now.
           if (_needsPaint) {
             _needsPaint = false;
             onFrameReady?.call();
@@ -229,10 +220,7 @@ class WaylandBackend with Size, Events implements Backend {
       painter.flush();
     }
     if (!_present()) {
-      stderr.writeln('[wt] paint deferred — present failed');
       _needsPaint = true;
-    } else {
-      stderr.writeln('[wt] paint ok buf=$_buffer busy=$_bufferBusy');
     }
   }
 
