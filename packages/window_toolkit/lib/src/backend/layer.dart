@@ -263,7 +263,12 @@ class LayerBackend with Size, Events implements Backend {
           stderr.writeln('[wt] frame() failed: $e');
           return WlCallback(context);
         })
-        .onDone((_) {});
+        .onDone((_) {
+          if (_needsPaint) {
+            _needsPaint = false;
+            onFrameReady?.call();
+          }
+        });
 
     surface.commit();
     return true;

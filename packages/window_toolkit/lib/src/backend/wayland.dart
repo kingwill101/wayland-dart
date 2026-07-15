@@ -167,13 +167,23 @@ class WaylandBackend with Size, Events implements Backend {
     surface.attach(_buffer!, 0, 0);
     surface.damageBuffer(0, 0, width, height);
 
+    // Use the frame callback to trigger the next paint when the
+    // compositor is ready, in case the buffer release callback
+    // never fires (e.g. during compositor state transitions).
     final frameResult = surface.frame();
     frameResult
         .getOrElse((e) {
           stderr.writeln('[wt] frame() failed: $e');
           return WlCallback(context);
         })
-        .onDone((_) {});
+        .onDone((_) {
+          // Frame callback fired — compositor is ready for next frame.
+          // If we have a pending paint, fire it now.
+          if (_needsPaint) {
+            _needsPaint = false;
+            onFrameReady?.call();
+          }
+        });
     surface.commit();
     return true;
   }
