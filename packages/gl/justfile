@@ -1,0 +1,7 @@
+gen:
+    dart run ffigen --config ffi/glew.yaml
+    dart run ffigen --config ffi/glut.yaml
+    # dart run ffigen --config ffi/gl.yaml
+    # dart run ffigen --config ffi/egl.yaml
+    # dart run ffigen --config ffi/gles2.yaml
+    # dart run ffigen --config ffi/gles3.yaml
