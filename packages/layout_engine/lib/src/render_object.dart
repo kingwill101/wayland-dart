@@ -35,14 +35,20 @@ abstract class RenderObject {
     if (localX < 0 || localY < 0 || localX >= size.width || localY >= size.height) {
       return false;
     }
+    // Test children in reverse order (last painted = on top).
     for (var i = children.length - 1; i >= 0; i--) {
       final child = children[i];
-      if (child.hitTest(result,
-          localX: localX - child.offset.dx,
-          localY: localY - child.offset.dy)) {
-        return true;
+      final childX = localX - child.offset.dx;
+      final childY = localY - child.offset.dy;
+      if (childX < 0 || childY < 0 ||
+          childX >= child.size.width || childY >= child.size.height) {
+        continue;
+      }
+      if (child.hitTest(result, localX: childX, localY: childY)) {
+        break; // deepest hit found, collect full ancestor path
       }
     }
+    // Add ourselves to the result path (deepest → root order).
     result.add(HitTestEntry(this, localX, localY));
     return true;
   }
