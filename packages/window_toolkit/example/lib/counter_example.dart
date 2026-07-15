@@ -1,79 +1,110 @@
-/// Stateful counter demo — uses imperative setState-like pattern.
+/// Stateful counter demo using StatefulWidget + ElementHost.
+///
+/// CounterWidget extends StatefulWidget (from layout_engine) for Element
+/// tree lifecycle. Wrap it in ElementHost to use inside rendering containers.
+import 'package:layout_engine/layout_engine.dart'
+    show BuildContext, ElementWidget, State, StatefulWidget, StatelessWidget;
 import 'package:window_toolkit/window_toolkit.dart';
 
-/// A counter with increment/decrement/reset buttons.
-/// Uses a manual rebuild pattern (Window.requestRedraw) since the Element
-/// tree currently manages only the root widget.
-class CounterWidget extends Widget {
-  int _count = 0;
+/// Stateful counter with increment/decrement/reset.
+class CounterWidget extends StatefulWidget {
   final String label;
-  final VoidCallback? onChanged;
+  CounterWidget({this.label = 'Counter'});
 
-  CounterWidget({this.label = 'Counter', this.onChanged});
+  @override
+  State createState() => _CounterState();
+}
 
-  void increment() {
-    _count++;
-    Widget.onNeedsRepaint?.call();
-    onChanged?.call();
+class _CounterState extends State<CounterWidget> {
+  int _count = 0;
+
+  @override
+  ElementWidget build(BuildContext context) {
+    return _CounterRender(
+      label: widget.label,
+      count: _count,
+      onIncrement: () => setState(() => _count++),
+      onDecrement: () => setState(() => _count--),
+      onReset: () => setState(() => _count = 0),
+    );
   }
+}
 
-  void decrement() {
-    _count--;
-    Widget.onNeedsRepaint?.call();
-    onChanged?.call();
-  }
+/// The actual rendering widget — a plain Widget with draw/performLayout/hitTest.
+class _CounterRender extends Widget {
+  final String label;
+  final int count;
+  final VoidCallback onIncrement;
+  final VoidCallback onDecrement;
+  final VoidCallback onReset;
 
-  void reset() {
-    _count = 0;
-    Widget.onNeedsRepaint?.call();
-    onChanged?.call();
-  }
+  _CounterRender({
+    required this.label,
+    required this.count,
+    required this.onIncrement,
+    required this.onDecrement,
+    required this.onReset,
+  });
+
+  late final Button _decBtn = Button('−', onPressed: onDecrement);
+  late final Button _incBtn = Button('+', onPressed: onIncrement);
+  late final Button _resetBtn = Button('Reset', onPressed: onReset);
 
   @override
   void draw(Painter canvas) {
-    // Background
     canvas.drawRRect(
       Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
       4, 4,
       Paint()..color = palette.mid,
     );
 
-    // Label
-    final labelWidget = Label('$label: $_count');
-    labelWidget.x = x + 4;
-    labelWidget.y = y + 2;
-    labelWidget.draw(canvas);
-
-    // Buttons
-    final decBtn = Button('−', onPressed: decrement);
-    final incBtn = Button('+', onPressed: increment);
-    final resetBtn = Button('Reset', onPressed: reset);
+    final labelW = Label('$label: $count');
+    labelW.x = x + 4;
+    labelW.y = y + 2;
+    labelW.draw(canvas);
 
     var bx = x + width - 4;
-    resetBtn.x = bx - resetBtn.width;
-    resetBtn.y = y + 2;
-    bx -= resetBtn.width + 4;
-    incBtn.x = bx - incBtn.width;
-    incBtn.y = y + 2;
-    bx -= incBtn.width + 4;
-    decBtn.x = bx - decBtn.width;
-    decBtn.y = y + 2;
-
-    resetBtn.draw(canvas);
-    incBtn.draw(canvas);
-    decBtn.draw(canvas);
+    _resetBtn
+      ..x = bx - _resetBtn.width
+      ..y = y + 2
+      ..draw(canvas);
+    bx -= _resetBtn.width + 4;
+    _incBtn
+      ..x = bx - _incBtn.width
+      ..y = y + 2
+      ..draw(canvas);
+    bx -= _incBtn.width + 4;
+    _decBtn
+      ..x = bx - _decBtn.width
+      ..y = y + 2
+      ..draw(canvas);
   }
 
   @override
   void performLayout(int containerWidth) {
     width = containerWidth;
     height = 28;
+    _decBtn.performLayout(width);
+    _incBtn.performLayout(width);
+    _resetBtn.performLayout(width);
   }
 
   @override
   bool hitTest(int px, int py) {
     if (!super.hitTest(px, py)) return false;
-    // Delegate to buttons
-    return true;
+    if (_decBtn.hitTest(px, py) ||
+        _incBtn.hitTest(px, py) ||
+        _resetBtn.hitTest(px, py)) {
+      return true;
+    }
+    // Click on background doesn't interact
+    return false;
   }
 }
+
+/// Example usage inside a VBox:
+/// ```dart
+/// VBox(children: [
+///   ElementHost(child: CounterWidget(label: 'Demo')),
+/// ])
+/// ```

@@ -60,6 +60,7 @@ export 'src/widgets/popup_window.dart';
 export 'src/widgets/popup_host.dart';
 export 'src/widgets/dialog.dart';
 export 'src/widgets/dropdown.dart';
+export 'src/widgets/element_host.dart';
 export 'src/widgets/list_box.dart';
 export 'src/widgets/list_view.dart';
 export 'src/widgets/menu.dart';
