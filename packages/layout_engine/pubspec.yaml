@@ -1,0 +1,12 @@
+name: layout_engine
+description: Framework-agnostic layout engine extracted from artisanal.
+  Provides BoxConstraints, RenderObject, RenderBox, RenderRow/RenderColumn,
+  and RenderPadding — no dependencies on any rendering backend.
+version: 0.1.0
+resolution: workspace
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dev_dependencies:
+  test: ^1.25.0

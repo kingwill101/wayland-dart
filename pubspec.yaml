@@ -10,6 +10,7 @@ workspace:
   - packages/window_toolkit
   - packages/bardash
   - packages/window_toolkit_test
+  - packages/layout_engine
 
 dependency_overrides:
   dawn_dart_api:
