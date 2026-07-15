@@ -65,12 +65,11 @@ class BardashConfig {
     }
     FontDatabase.instance.setRoleFamily(FontRole.mono, 'monospace');
     // Emoji family is used directly by battery / volume modules.
-    // Bitmap font engine saves ~100+ MB RSS compared to Skia's font
-    // manager (which loads ALL system fonts). Adequate for status bar.
+    // Prefer Skia backend for production bars (proper font rendering).
     try {
-      FontDatabase.instance.useBitmapEngine();
+      FontDatabase.instance.useSkiaEngine();
     } catch (_) {
-      // Fallback should never happen.
+      // Tests / headless may only have bitmap.
     }
   }
 

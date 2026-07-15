@@ -1,6 +1,5 @@
 import 'dart:async' show scheduleMicrotask;
 import 'dart:io';
-import 'dart:developer' as dev;
 
 import 'package:window_toolkit/window_toolkit.dart';
 
@@ -8,6 +7,7 @@ import 'command.dart';
 import 'config.dart';
 import 'module_widget.dart';
 import 'modules/group.dart';
+import 'skia_mem.dart';
 import 'modules/module.dart';
 import 'modules/registry.dart';
 import 'modules/sni.dart';
@@ -62,8 +62,10 @@ class BardashBar extends LayerWindow {
   void _memoryHousekeeping() {
     try {
       final rss = ProcessInfo.currentRss;
-      stderr.writeln('[bardash] mem: rss=${rss ~/ 1024}KB');
-
+      final fontUsed = skiaFontCacheUsed();
+      final fontLimit = skiaFontCacheLimit();
+      stderr.writeln('[bardash] mem: rss=${rss ~/ 1024}KB skia_font_cache=${(fontUsed ~/ 1024)}KB/${(fontLimit ~/ 1024)}KB');
+      purgeSkiaCaches();
     } catch (e) {
       stderr.writeln('[bardash] mem housekeeping error: $e');
     }

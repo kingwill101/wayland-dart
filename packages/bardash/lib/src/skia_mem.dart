@@ -1,67 +1,63 @@
 /// Periodic Skia cache purging via FFI.
-///
-/// Purges Skia's font cache and resource cache to keep RSS bounded.
-/// Call periodically (every 60-120s).
 library;
 
 import 'dart:ffi';
-import 'dart:io';
+import 'dart:io' show Platform;
 
 DynamicLibrary? _skiaLib;
 
 DynamicLibrary _getSkia() {
   if (_skiaLib != null) return _skiaLib!;
-  // Try loading from the bundle's lib directory first.
-  final bundleLib = '${Platform.script.resolve('..').toFilePath()}/lib/libskia_dart.so';
+  // Try the bundle's lib directory first.
   try {
-    _skiaLib = DynamicLibrary.open(bundleLib);
+    final script = Platform.script;
+    final dir = script.resolve('..').toFilePath();
+    _skiaLib = DynamicLibrary.open('$dir/lib/libskia_dart.so');
     return _skiaLib!;
   } catch (_) {}
-  // Fall back to process symbols (for dart run / JIT).
+  // Fallback: process symbols (JIT / dart run).
   try {
     _skiaLib = DynamicLibrary.process();
     return _skiaLib!;
   } catch (_) {}
-  // Final fallback: dlopen with soname.
-  try {
-    _skiaLib = DynamicLibrary.open('libskia_dart.so');
-    return _skiaLib!;
-  } catch (_) {}
-  return _skiaLib!; // will throw on next call
+  throw UnsupportedError('Cannot load Skia shared library');
 }
 
-/// Purges Skia's font cache, resource cache, and all internal caches.
+/// Purges Skia caches (font, glyph, resource).
 void purgeSkiaCaches() {
-  final lib = _getSkia();
   try {
-    final purgeAll = lib.lookupFunction<Void Function(), void Function>(
+    final lib = _getSkia();
+    final ptr = lib.lookup<NativeFunction<Void Function()>>(
       'sk_graphics_purge_all_caches',
     );
-    purgeAll();
+    final fn = ptr.asFunction<void Function()>();
+    fn();
   } catch (_) {}
 }
 
-/// Returns current Skia font cache usage in bytes, or 0 if unavailable.
+/// Returns Skia font cache usage in bytes.
 int skiaFontCacheUsed() {
   try {
     final lib = _getSkia();
-    final getUsed = lib.lookupFunction<Int64 Function(), int Function>(
+    final ptr = lib.lookup<NativeFunction<Int64 Function()>>(
       'sk_graphics_get_font_cache_used',
     );
-    return getUsed();
+    final fn = ptr.asFunction<int Function()>();
+    return fn();
   } catch (_) {
     return 0;
   }
 }
 
-/// Returns Skia font cache limit in bytes, or 0 if unavailable.
+/// Returns Skia font cache limit in bytes.
 int skiaFontCacheLimit() {
   try {
     final lib = _getSkia();
-    final getLimit = lib.lookupFunction<Int64 Function(), int Function>(
+    final ptr = lib.lookup<NativeFunction<Int64 Function()>>(
       'sk_graphics_get_font_cache_limit',
     );
-    return getLimit();
+    final fn = ptr.asFunction<int Function()>();
+    return fn();
   } catch (_) {
     return 0;
   }
