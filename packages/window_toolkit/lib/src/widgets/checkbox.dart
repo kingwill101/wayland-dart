@@ -17,7 +17,8 @@ class Checkbox extends Widget {
     Color? checkColor,
     this.boxSize = 18,
     this.onChanged,
-  })  : _boxColor = boxColor,
+  })  : assert(boxSize > 0, 'Checkbox boxSize must be > 0'),
+        _boxColor = boxColor,
         _borderColor = borderColor,
         _checkColor = checkColor {
     width = boxSize;

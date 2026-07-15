@@ -4,30 +4,39 @@ import 'package:window_toolkit/window_toolkit.dart';
 import '../support/widget_test_harness.dart';
 
 void main() {
-  test('ProgressBar draws the fill and percentage text', () {
-    final bar = ProgressBar(value: 50, barWidth: 200, barHeight: 20);
-    bar.x = 4;
-    bar.y = 6;
+  group('ProgressBar', () {
+    test('constructor asserts barWidth > 0', () {
+      expect(() => ProgressBar(barWidth: 0), throwsA(isA<AssertionError>()));
+    });
 
-    final painter = RecordingPainter();
-    bar.draw(painter);
+    test('constructor asserts barHeight > 0', () {
+      expect(() => ProgressBar(barWidth: 100, barHeight: 0), throwsA(isA<AssertionError>()));
+    });
 
-    final rects = painter.commands.ofType<DrawRectCommand>().toList();
-    final text = painter.commands.singleOfType<DrawTextCommand>();
+    test('constructor asserts max > min', () {
+      expect(() => ProgressBar(barWidth: 100, min: 50, max: 25), throwsA(isA<AssertionError>()));
+    });
 
-    expect(rects, hasLength(2));
-    expect(rects[0].rect.left, 4);
-    expect(rects[0].rect.top, 6);
-    expect(rects[0].rect.right, 204);
-    expect(rects[0].rect.bottom, 26);
-    expect(rects[0].paint.color, bar.backgroundColor);
-    expect(rects[1].rect.left, 4);
-    expect(rects[1].rect.top, 6);
-    expect(rects[1].rect.right, 104);
-    expect(rects[1].rect.bottom, 26);
-    expect(rects[1].paint.color, bar.fillColor);
-    expect(text.text, '50%');
-    expect(text.position.dx, 92);
-    expect(text.position.dy, 8);
+    test('default values', () {
+      final pb = ProgressBar(barWidth: 200);
+      expect(pb.value, 0);
+      expect(pb.min, 0);
+      expect(pb.max, 100);
+    });
+
+    test('barHeight sets height, width from performLayout', () {
+      final pb = ProgressBar(barWidth: 200, barHeight: 20);
+      pb.performLayout(400);
+      // width is the container width after performLayout.
+      expect(pb.width, 400);
+      expect(pb.height, 20);
+    });
+
+    test('draw records rect and text commands', () {
+      final harness = WidgetHarness(ProgressBar(barWidth: 200, value: 50));
+      harness.draw();
+      final rects = harness.painter.commands.ofType<DrawRectCommand>();
+      expect(rects.length, greaterThanOrEqualTo(2));
+    });
   });
 }

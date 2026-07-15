@@ -9,10 +9,12 @@ class VBox extends Widget {
   int spacing;
 
   VBox({this.spacing = 0, List<Widget>? children})
-      : children = children ?? [];
+      : assert(spacing >= 0, 'VBox spacing must be >= 0'),
+        children = children ?? [];
 
   @override
   void performLayout(int containerWidth) {
+    assert(containerWidth >= 0, 'VBox.performLayout: containerWidth=$containerWidth must be >= 0');
     width = containerWidth;
     var totalH = 0;
     var maxW = 0;

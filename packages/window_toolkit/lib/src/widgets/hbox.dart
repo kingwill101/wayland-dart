@@ -8,7 +8,8 @@ class HBox extends Widget {
   int spacing;
 
   HBox({this.spacing = 0, List<Widget>? children})
-      : children = children ?? [];
+      : assert(spacing >= 0, 'HBox spacing must be >= 0'),
+        children = children ?? [];
 
   @override
   void performLayout(int containerWidth) {

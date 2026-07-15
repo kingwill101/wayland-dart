@@ -21,7 +21,9 @@ class ProgressBar extends Widget {
     this.fillColor = const Color(100, 200, 100),
     this.backgroundColor = const Color(50, 50, 50),
     this.showText = true,
-  }) {
+  })  : assert(barWidth > 0, 'ProgressBar barWidth must be > 0'),
+        assert(barHeight > 0, 'ProgressBar barHeight must be > 0'),
+        assert(max > min, 'ProgressBar max must be > min') {
     const charHeight = 16;
     width = barWidth;
     height = showText ? (barHeight > charHeight ? barHeight : charHeight) : barHeight;

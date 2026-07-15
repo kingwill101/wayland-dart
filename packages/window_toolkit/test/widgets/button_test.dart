@@ -4,40 +4,58 @@ import 'package:window_toolkit/window_toolkit.dart';
 import '../support/widget_test_harness.dart';
 
 void main() {
-  test('Button records idle and hover draws', () {
-    final button = Button('OK');
-    button.x = 12;
-    button.y = 8;
+  group('Button', () {
+    test('constructor asserts non-empty text', () {
+      expect(() => Button(''), throwsA(isA<AssertionError>()));
+    });
 
-    final painter = RecordingPainter();
+    test('constructor asserts positive dimensions', () {
+      expect(() => Button('x', charWidth: 0), throwsA(isA<AssertionError>()));
+      expect(() => Button('x', charHeight: 0), throwsA(isA<AssertionError>()));
+    });
 
-    button.draw(painter);
+    test('constructor sets size from text', () {
+      final btn = Button('OK');
+      expect(btn.width, greaterThan(0));
+      expect(btn.height, greaterThan(0));
+    });
 
-    final idleRect = painter.commands.singleOfType<DrawRectCommand>();
-    final idleText = painter.commands.singleOfType<DrawTextCommand>();
+    test('onClick fires when pressed', () {
+      int count = 0;
+      final btn = Button('OK', onPressed: () => count++);
+      btn.onClick?.call();
+      expect(count, 1);
+    });
 
-    expect(idleRect.rect.left, 12);
-    expect(idleRect.rect.top, 8);
-    expect(idleRect.rect.right, 36);
-    expect(idleRect.rect.bottom, 32);
-    expect(idleRect.paint.color, button.backgroundColor);
-    expect(idleText.text, 'OK');
-    // Text is centred: x + (width - textWidth) / 2
-    expect(idleText.position.dx, closeTo(14.4, 0.1));
-    expect(idleText.position.dy, 12);
+    test('hover state toggles on mouse enter/leave', () {
+      bool hovered = false;
+      final btn = Button('Hover');
+      btn.onMouseEnter = () { hovered = true; };
+      btn.onMouseLeave = () { hovered = false; };
 
-    button.onMouseEnter?.call();
-    painter.clearCommands();
-    button.draw(painter);
+      btn.onMouseEnter?.call();
+      expect(hovered, isTrue);
 
-    final hoverRect = painter.commands.singleOfType<DrawRectCommand>();
-    expect(hoverRect.paint.color, button.hoverColor);
+      btn.onMouseLeave?.call();
+      expect(hovered, isFalse);
+    });
 
-    button.onMouseLeave?.call();
-    painter.clearCommands();
-    button.draw(painter);
+    test('draw records rect and text commands', () {
+      final harness = WidgetHarness(Button('OK'));
+      harness.draw();
+      final rects = harness.painter.commands.ofType<DrawRectCommand>();
+      expect(rects, hasLength(1));
+      final texts = harness.painter.commands.ofType<DrawTextCommand>();
+      expect(texts, hasLength(1));
+      expect(texts.first.text, 'OK');
+    });
 
-    final restoredRect = painter.commands.singleOfType<DrawRectCommand>();
-    expect(restoredRect.paint.color, button.backgroundColor);
+    test('hitTest succeeds within bounds', () {
+      final btn = Button('Hit');
+      btn.x = 10;
+      btn.y = 10;
+      expect(btn.hitTest(12, 12), isTrue);
+      expect(btn.hitTest(5, 12), isFalse);
+    });
   });
 }

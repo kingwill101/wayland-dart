@@ -26,7 +26,10 @@ class Slider extends Widget {
     Color? thumbColor,
     this.showValue = true,
     this.onChanged,
-  })  : value = value.clamp(min, max).toDouble(),
+  })  : assert(max > min, 'Slider max must be > min'),
+        assert(trackHeight > 0, 'Slider trackHeight must be > 0'),
+        assert(thumbRadius > 0, 'Slider thumbRadius must be > 0'),
+        value = value.clamp(min, max).toDouble(),
         _trackColor = trackColor,
         _fillColor = fillColor,
         _thumbColor = thumbColor {
