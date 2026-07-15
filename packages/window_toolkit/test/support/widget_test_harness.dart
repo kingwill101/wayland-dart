@@ -49,6 +49,14 @@ final class DrawImageCommand extends PaintCommand {
   DrawImageCommand(this.filePath, this.x, this.y, {this.width, this.height});
 }
 
+final class DrawLinearGradientCommand extends PaintCommand {
+  final Rect rect;
+  final Color color0;
+  final Color color1;
+  final double angle;
+  const DrawLinearGradientCommand(this.rect, this.color0, this.color1, this.angle);
+}
+
 final class DrawTextCommand extends PaintCommand {
   final String text;
   final Offset position;
@@ -143,6 +151,19 @@ class RecordingPainter implements Painter {
       _transformOffset(to),
       RecordedPaint.fromPaint(paint),
     ));
+  }
+
+  @override
+  void flush() {}  // no-op for test harness
+
+  @override
+  void dispose() {}  // no-op for test harness
+
+  @override
+  void drawLinearGradient(Rect rect, Color color0, Color color1,
+      {double angle = 0.0}) {
+    commands.add(DrawLinearGradientCommand(
+        _transformRect(rect), color0, color1, angle));
   }
 
   @override
