@@ -38,7 +38,7 @@ class WidgetWindow extends Window {
   static const int minWidth = 100;
   static const int minHeight = 60;
 
-  final Widget root;
+  Widget root;
   final FocusModel focus = FocusModel();
   Widget? _lastHovered;
   Widget? _dragTarget;

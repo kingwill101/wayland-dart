@@ -3,7 +3,7 @@
 /// Demonstrates:
 /// - GLES2 rendering with gradient background
 /// - Reactive clock update (Timer → paint)
-/// - Interactive controls (Button, Slider)
+/// - Interactive controls (Button with callbacks)
 /// - Stroke/border rendering on shapes
 /// - Gradient fills via drawLinearGradient
 ///
@@ -27,15 +27,15 @@ class DemoWindow extends WidgetWindow {
   double _sliderVal = 50;
   String _clock = '--:--:--';
   async.Timer? _timer;
+  Widget? _body;
 
   late final Label _clockLbl;
   late final Label _clickLbl;
 
-  DemoWindow()
-      : _clockLbl = Label('--:--:--', fontSize: 48, color: const Color(0xee, 0xee, 0xee)),
-        _clickLbl = Label('Clicks: 0', fontSize: 14, color: const Color(0xaa, 0xaa, 0xaa)),
-        super(ScrollArea(child: _buildBody())) {
-    Application.instance.addEventReceiver(this);
+  DemoWindow() : super(Frame()) {
+    _clockLbl = Label('--:--:--', fontSize: 48, color: const Color(0xee, 0xee, 0xee));
+    _clickLbl = Label('Clicks: 0', fontSize: 14, color: const Color(0xaa, 0xaa, 0xaa));
+    root = _buildBody();
 
     _timer = async.Timer.periodic(const Duration(seconds: 1), (_) {
       final now = DateTime.now();
@@ -47,8 +47,8 @@ class DemoWindow extends WidgetWindow {
 
   static String _pad(int n) => n.toString().padLeft(2, '0');
 
-  static Widget _buildBody() {
-    return Padding(child: VBox(spacing: 12, children: [
+  Widget _buildBody() {
+    return ScrollArea(child: Padding(child: VBox(spacing: 12, children: [
       // Header
       HBox(spacing: 8, children: [
         Label('window_toolkit', fontSize: 22, color: const Color(0xff, 0xff, 0xff)),
@@ -60,8 +60,16 @@ class DemoWindow extends WidgetWindow {
       _DemoCanvas(400, 80),
 
       HBox(spacing: 8, children: [
-        Button('Click me', onPressed: () {}),
-        Button('Reset', onPressed: () {}),
+        Button('Click me', onPressed: () {
+          _clicks++;
+          _clickLbl.text = 'Clicks: $_clicks';
+          paint();
+        }),
+        Button('Reset', onPressed: () {
+          _clicks = 0;
+          _clickLbl.text = 'Clicks: 0';
+          paint();
+        }),
         Spacer(),
       ]),
 
@@ -73,7 +81,7 @@ class DemoWindow extends WidgetWindow {
             fontSize: 11, color: const Color(0x66, 0x66, 0x66)),
         horizontalAlignment: HorizontalAlignment.center,
       ),
-    ]), left: 12, top: 12, right: 12, bottom: 12);
+    ]), left: 12, top: 12, right: 12, bottom: 12));
   }
 
   @override
