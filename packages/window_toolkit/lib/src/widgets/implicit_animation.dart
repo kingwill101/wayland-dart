@@ -4,9 +4,12 @@
 /// when its target property changes.
 library;
 
+import 'dart:math' as math;
+
 import '../animation/animation.dart';
 import '../animation/animation_controller.dart';
 import '../animation/curves.dart';
+import '../drawing/color.dart';
 import '../painter/painter.dart';
 import '../widget.dart';
 
@@ -219,5 +222,219 @@ class AnimatedSlide extends Widget {
     child.x = x;
     child.y = y;
     return child.hitTest(px, py);
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    _controller = null;
+    super.dispose();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// AnimatedContainer
+// ---------------------------------------------------------------------------
+
+/// Animates between two container states: color, size, padding, border radius.
+class AnimatedContainer extends Widget {
+  final Color color;
+  final int boxWidth, boxHeight, padL, padT, padR, padB;
+  final double borderRadius;
+  final Duration duration;
+  final Curve curve;
+  final Widget? child;
+  AnimationController? _controller;
+
+  Color _currentColor;
+  int _currentPadL, _currentPadT, _currentPadR, _currentPadB;
+  double _currentRadius;
+
+  AnimatedContainer({
+    this.color = const Color(0, 0, 0),
+    this.boxWidth = 0,
+    this.boxHeight = 0,
+    this.padL = 0,
+    this.padT = 0,
+    this.padR = 0,
+    this.padB = 0,
+    this.borderRadius = 0,
+    this.duration = const Duration(milliseconds: 200),
+    this.curve = easeOut,
+    this.child,
+    int? padding,
+  })  : _currentColor = const Color(0, 0, 0),
+        _currentPadL = padding ?? 0,
+        _currentPadT = padding ?? 0,
+        _currentPadR = padding ?? 0,
+        _currentPadB = padding ?? 0,
+        _currentRadius = 0;
+
+  @override
+  void draw(Painter canvas) {
+    _maybeTransition();
+    final t = _controller?.value ?? 1.0;
+    final cc = _lerpColor(_currentColor, color, t);
+    final cr = _currentRadius + (borderRadius - _currentRadius) * t;
+    final cl = _lerpInt(_currentPadL, padL, t);
+    final ct = _lerpInt(_currentPadT, padT, t);
+
+    final drawW = boxWidth > 0 ? boxWidth : width;
+    final drawH = boxHeight > 0 ? boxHeight : height;
+
+    if (drawW > 0 && drawH > 0) {
+      if (cr > 0) {
+        canvas.drawRRect(
+          Rect.fromLTWH(x.toDouble(), y.toDouble(), drawW.toDouble(), drawH.toDouble()),
+          cr, cr, Paint()..color = cc,
+        );
+      } else {
+        canvas.drawRect(
+          Rect.fromLTWH(x.toDouble(), y.toDouble(), drawW.toDouble(), drawH.toDouble()),
+          Paint()..color = cc,
+        );
+      }
+    }
+
+    if (child != null) {
+      child!
+        ..x = x + cl
+        ..y = y + ct
+        ..width = drawW - cl - _lerpInt(_currentPadR, padR, t)
+        ..height = drawH - ct - _lerpInt(_currentPadB, padB, t);
+      child!.draw(canvas);
+    }
+
+    if (t >= 1.0) {
+      _currentColor = color;
+      _currentRadius = borderRadius;
+      _currentPadL = padL;
+      _currentPadT = padT;
+      _currentPadR = padR;
+      _currentPadB = padB;
+    }
+  }
+
+  int _lerpInt(int a, int b, double t) => (a + (b - a) * t).round();
+
+  Color _lerpColor(Color a, Color b, double t) {
+    return Color(
+      (a.r + (b.r - a.r) * t).round().clamp(0, 255),
+      (a.g + (b.g - a.g) * t).round().clamp(0, 255),
+      (a.b + (b.b - a.b) * t).round().clamp(0, 255),
+      (a.a + (b.a - a.a) * t).round().clamp(0, 255),
+    );
+  }
+
+  void _maybeTransition() {
+    if (_currentColor.r == color.r && _currentColor.g == color.g &&
+        _currentColor.b == color.b && _currentColor.a == color.a &&
+        _currentRadius == borderRadius &&
+        _currentPadL == padL && _currentPadT == padT &&
+        _currentPadR == padR && _currentPadB == padB) {
+      return;
+    }
+    _controller?.dispose();
+    _controller = AnimationController(duration: duration, curve: curve);
+    _controller!.addListener(() => Widget.onNeedsRepaint?.call());
+    _controller!.forward();
+  }
+
+  @override
+  void performLayout(int containerWidth) {
+    if (boxWidth > 0) width = boxWidth;
+    if (boxHeight > 0) height = boxHeight;
+    if (width <= 0) width = containerWidth;
+    if (height <= 0 && child != null) {
+      child!.performLayout(width);
+      height = child!.height;
+    }
+  }
+
+  @override
+  bool hitTest(int px, int py) {
+    if (!super.hitTest(px, py)) return false;
+    if (child == null) return true;
+    child!.x = x + _currentPadL;
+    child!.y = y + _currentPadT;
+    return child!.hitTest(px, py);
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    _controller = null;
+    super.dispose();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// AnimatedCrossFade
+// ---------------------------------------------------------------------------
+
+/// Cross-fades between [firstChild] and [secondChild].
+class AnimatedCrossFade extends Widget {
+  final Widget firstChild;
+  final Widget secondChild;
+  final bool showFirst;
+  final Duration duration;
+  final Curve curve;
+  AnimationController? _controller;
+  bool _prevShowFirst = true;
+
+  AnimatedCrossFade({
+    required this.firstChild,
+    required this.secondChild,
+    this.showFirst = true,
+    this.duration = const Duration(milliseconds: 200),
+    this.curve = easeOut,
+  }) : _prevShowFirst = showFirst;
+
+  @override
+  void draw(Painter canvas) {
+    if (showFirst != _prevShowFirst) {
+      _prevShowFirst = showFirst;
+      _startTransition();
+    }
+    final t = _controller?.value ?? (showFirst ? 1.0 : 0.0);
+    if (t >= 0.5) {
+      firstChild..x = x..y = y;
+      firstChild.draw(canvas);
+    } else {
+      secondChild..x = x..y = y;
+      secondChild.draw(canvas);
+    }
+  }
+
+  void _startTransition() {
+    _controller?.dispose();
+    _controller = AnimationController(duration: duration, curve: curve);
+    _controller!.addListener(() => Widget.onNeedsRepaint?.call());
+    _controller!.forward();
+  }
+
+  @override
+  void performLayout(int containerWidth) {
+    width = containerWidth;
+    firstChild.performLayout(containerWidth);
+    secondChild.performLayout(containerWidth);
+    height = math.max(firstChild.height, secondChild.height);
+  }
+
+  @override
+  bool hitTest(int px, int py) {
+    if (!super.hitTest(px, py)) return false;
+    final t = _controller?.value ?? (showFirst ? 1.0 : 0.0);
+    final target = t >= 0.5 ? firstChild : secondChild;
+    target.x = x;
+    target.y = y;
+    return target.hitTest(px, py);
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    _controller = null;
+    super.dispose();
   }
 }

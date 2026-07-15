@@ -63,4 +63,98 @@ void main() {
       expect(as.height, greaterThan(0));
     });
   });
+
+  group('AnimatedContainer', () {
+    test('draws background rect', () {
+      final ac = AnimatedContainer(
+        color: const Color(30, 30, 30),
+        boxWidth: 100,
+        boxHeight: 50,
+      );
+      ac.x = 5;
+      ac.y = 10;
+
+      final painter = RecordingPainter();
+      ac.draw(painter);
+
+      final rects = painter.commands.ofType<DrawRectCommand>().toList();
+      expect(rects, hasLength(1));
+      expect(rects[0].rect.left, 5);
+      expect(rects[0].rect.top, 10);
+      expect(rects[0].rect.width, 100);
+      expect(rects[0].rect.height, 50);
+    });
+
+    test('draws child inside padding', () {
+      final ac = AnimatedContainer(
+        color: const Color(0, 0, 0),
+        boxWidth: 80,
+        boxHeight: 30,
+        padL: 8,
+        padT: 4,
+        child: Label('Pad'),
+      );
+      ac.performLayout(100);
+
+      final painter = RecordingPainter();
+      ac.draw(painter);
+
+      final texts = painter.commands.ofType<DrawTextCommand>().toList();
+      expect(texts, hasLength(1));
+      expect(texts[0].text, 'Pad');
+    });
+
+    test('hitTest works with child', () {
+      final ac = AnimatedContainer(
+        color: const Color(0, 0, 0),
+        boxWidth: 100,
+        boxHeight: 50,
+        child: SizedBox(width: 80, height: 30, child: Label('Hit')),
+      );
+      ac.x = 0;
+      ac.y = 0;
+      ac.performLayout(100);
+      expect(ac.hitTest(50, 25), isTrue);
+      expect(ac.hitTest(200, 200), isFalse);
+    });
+  });
+
+  group('AnimatedCrossFade', () {
+    test('draws first child by default', () {
+      final cf = AnimatedCrossFade(
+        firstChild: Label('First'),
+        secondChild: Label('Second'),
+      );
+      final painter = RecordingPainter();
+      cf.draw(painter);
+
+      final texts = painter.commands.ofType<DrawTextCommand>().toList();
+      expect(texts, hasLength(1));
+      expect(texts[0].text, 'First');
+    });
+
+    test('draws second child when showFirst=false', () {
+      final cf = AnimatedCrossFade(
+        firstChild: Label('First'),
+        secondChild: Label('Second'),
+        showFirst: false,
+      );
+      final painter = RecordingPainter();
+      cf.draw(painter);
+
+      final texts = painter.commands.ofType<DrawTextCommand>().toList();
+      expect(texts, hasLength(1));
+      expect(texts[0].text, 'Second');
+    });
+
+    test('performs layout', () {
+      final cf = AnimatedCrossFade(
+        firstChild: SizedBox(width: 100, height: 30, child: Label('A')),
+        secondChild: SizedBox(width: 100, height: 50, child: Label('B')),
+      );
+      cf.performLayout(200);
+      expect(cf.width, 200);
+      expect(cf.height, 50); // max of both
+    });
+  });
 }
