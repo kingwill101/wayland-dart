@@ -1,3 +1,5 @@
+import 'package:layout_engine/layout_engine.dart';
+
 import '../app.dart';
 import '../painter/painter.dart';
 import '../mixins/event.dart';
@@ -61,8 +63,20 @@ class WidgetWindow extends Window {
     return _popupHost;
   }
 
+  /// Optional Element tree for StatefulWidget/StatelessWidget management.
+  ElementTree? elementTree;
+
   WidgetWindow(this.root) {
     Widget.onNeedsRepaint = requestRedraw;
+    _initElementTree();
+  }
+
+  void _initElementTree() {
+    if (root is StatefulWidget || root is StatelessWidget) {
+      elementTree = ElementTree();
+      elementTree!.onNeedsBuild = requestRedraw;
+      elementTree!.mount(root as ElementWidget);
+    }
   }
 
   @override
@@ -86,16 +100,23 @@ class WidgetWindow extends Window {
 
   @override
   void draw(Painter painter) {
-    // Clamp to minimum so layout doesn't break on tiny windows.
     final w = width < minWidth ? minWidth : width;
     final h = height < minHeight ? minHeight : height;
-    root
+
+    // Rebuild dirty elements in the element tree.
+    elementTree?.build();
+
+    // Resolve the renderable widget (element tree → built, or direct).
+    final renderRoot = elementTree?.root?.renderWidget;
+    final activeRoot = (renderRoot is Widget ? renderRoot : root) as Widget;
+
+    activeRoot
       ..x = 0
       ..y = 0
       ..width = w
       ..height = h;
-    root.performLayout(w);
-    root.draw(painter);
+    activeRoot.performLayout(w);
+    activeRoot.draw(painter);
 
     if (contextMenu != null && contextMenu!.visible) {
       contextMenu!.draw(painter);

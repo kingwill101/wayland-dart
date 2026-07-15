@@ -128,6 +128,10 @@ class Element {
 
   int get depth => _depth;
 
+  /// The renderable widget output (e.g., result of [State.build]).
+  /// Defaults to [widget] for plain widgets.
+  ElementWidget get renderWidget => widget;
+
   Element(this.widget) {
     context = BuildContext(this);
   }
@@ -173,6 +177,12 @@ class StatelessElement extends Element {
   StatelessElement(super.widget);
 
   @override
+  ElementWidget get renderWidget {
+    if (children.isNotEmpty) return children.first.widget;
+    return widget;
+  }
+
+  @override
   void performRebuild() {
     final w = widget as StatelessWidget;
     final built = w.build(context);
@@ -215,6 +225,14 @@ class StatefulElement extends Element {
     (state as dynamic).widgetOverride = w;
     state.contextOverride = context;
   }
+
+  @override
+  ElementWidget get renderWidget {
+    if (children.isNotEmpty) return children.first.widget;
+    return widget;
+  }
+
+  ElementWidget get builtWidget => renderWidget;
 
   @override
   void mount(Element? parent) {

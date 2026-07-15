@@ -1,3 +1,5 @@
+import 'package:layout_engine/layout_engine.dart' show ElementWidget;
+
 import 'layer_window.dart';
 import 'backend/layer.dart';
 import 'mixins/event.dart';
@@ -10,7 +12,7 @@ export 'mixins/event.dart' show KeyEvent;
 
 typedef VoidCallback = void Function();
 
-abstract class Widget {
+abstract class Widget extends ElementWidget {
   /// Set by [WidgetWindow] so animated widgets can trigger repaints.
   static VoidCallback? onNeedsRepaint;
 
