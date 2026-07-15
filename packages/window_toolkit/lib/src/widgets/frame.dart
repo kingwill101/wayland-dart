@@ -15,7 +15,8 @@ class Frame extends Widget {
     this.borderWidth = 0,
     this.borderColor,
     List<Widget>? children,
-  }) : children = children ?? [];
+  })  : assert(borderWidth >= 0, 'Frame borderWidth must be >= 0'),
+        children = children ?? [];
 
   @override
   void performLayout(int containerWidth) {

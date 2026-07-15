@@ -14,26 +14,18 @@ class Align extends Widget {
     required this.child,
     this.horizontalAlignment = HorizontalAlignment.center,
     this.verticalAlignment = VerticalAlignment.center,
-  });
+  }) : assert(horizontalAlignment != null,
+            'Align horizontalAlignment must not be null');
 
   @override
   void performLayout(int containerWidth) {
     width = containerWidth;
     child.performLayout(width);
     height = child.height;
+    _positionChild();
   }
 
-  @override
-  void measure(Painter painter) {
-    child.measure(painter);
-    width = child.width;
-    height = child.height;
-  }
-
-  void layout(int containerWidth, int containerHeight) {
-    width = containerWidth;
-    height = containerHeight;
-
+  void _positionChild() {
     int cx = x;
     if (horizontalAlignment == HorizontalAlignment.center) {
       cx = x + (width - child.width) ~/ 2;
@@ -50,6 +42,19 @@ class Align extends Widget {
 
     child.x = cx;
     child.y = cy;
+  }
+
+  @override
+  void measure(Painter painter) {
+    child.measure(painter);
+    width = child.width;
+    height = child.height;
+  }
+
+  void layout(int containerWidth, int containerHeight) {
+    width = containerWidth;
+    height = containerHeight;
+    _positionChild();
   }
 
   @override
