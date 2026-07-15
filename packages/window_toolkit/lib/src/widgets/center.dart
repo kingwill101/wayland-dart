@@ -3,6 +3,10 @@ import '../widget.dart';
 
 /// Centers [child] within the available size.
 class Center extends Widget {
+  @override
+  @override
+  List<Widget> get children => [child];
+
   final Widget child;
 
   Center({required this.child});

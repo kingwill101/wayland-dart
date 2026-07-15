@@ -10,6 +10,8 @@ enum MainAxisAlignment { start, center, end, spaceBetween, spaceAround, spaceEve
 enum CrossAxisAlignment { start, center, end, stretch }
 
 class Flexible extends Widget {
+  @override
+
   final Widget child;
   int flex;
   FlexFit fit;

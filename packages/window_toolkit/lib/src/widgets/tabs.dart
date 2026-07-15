@@ -3,6 +3,8 @@ import '../painter/painter.dart';
 import '../widget.dart';
 
 class TabBar extends Widget {
+  @override
+
   List<String> labels;
   int activeIndex;
   Color activeColor;
@@ -79,6 +81,8 @@ class TabBar extends Widget {
 }
 
 class TabView extends Widget {
+  @override
+  List<Widget> get children => pages;
   final TabBar header;
   final List<Widget> pages;
   final int index; // synced from header.activeIndex

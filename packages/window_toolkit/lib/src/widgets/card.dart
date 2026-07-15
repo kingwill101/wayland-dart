@@ -3,6 +3,8 @@ import '../painter/painter.dart';
 import '../widget.dart';
 
 class Card extends Widget {
+  @override
+
   String? title;
   List<Widget> children;
   Color backgroundColor;

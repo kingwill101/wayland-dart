@@ -3,6 +3,8 @@ import '../painter/painter.dart';
 import '../widget.dart';
 
 class Frame extends Widget {
+  @override
+
   Color color;
   int borderWidth;
   Color? borderColor;

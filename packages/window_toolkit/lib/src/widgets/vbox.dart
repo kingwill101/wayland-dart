@@ -3,6 +3,8 @@ import '../widget.dart';
 
 /// Vertical stack of children (counterpart to [HBox]).
 class VBox extends Widget {
+  @override
+
   final List<Widget> children;
   int spacing;
 

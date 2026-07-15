@@ -2,6 +2,10 @@ import '../painter/painter.dart';
 import '../widget.dart';
 
 class Align extends Widget {
+  @override
+  @override
+  List<Widget> get children => [child];
+
   Widget child;
   HorizontalAlignment horizontalAlignment;
   VerticalAlignment verticalAlignment;

@@ -5,6 +5,10 @@ import '../painter/painter.dart';
 import '../widget.dart';
 
 class ScrollArea extends Widget {
+  @override
+  @override
+  List<Widget> get children => [child];
+
   final Widget child;
   int scrollX;
   int scrollY;

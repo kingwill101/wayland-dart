@@ -83,9 +83,10 @@ class WidgetWindow extends Window {
       ..y = 0
       ..width = width
       ..height = height;
+    // Re-layout on every frame so children respond to resize.
+    root.performLayout(width);
     root.draw(painter);
 
-    // Draw context menu on top if visible
     if (contextMenu != null && contextMenu!.visible) {
       contextMenu!.draw(painter);
     }
@@ -194,7 +195,7 @@ class WidgetWindow extends Window {
       return;
     }
 
-    final children = _childrenOf(w);
+    final children = w.children;
     for (final child in children.reversed) {
       if (child.hitTest(px, py)) {
         _collectScrollAreas(child, px, py, offX, offY, out);
@@ -203,25 +204,7 @@ class WidgetWindow extends Window {
     }
   }
 
-  /// Extract children from known composite widget types.
-  List<Widget> _childrenOf(Widget w) {
-    // Try known composite types with a `children` field
-    try {
-      // dart:mirrors isn't available, so use explicit type checks
-      if (w is VBoxLayout) return w.children;
-      if (w is HBox) return w.children;
-      if (w is Flex) return w.children;
-      if (w is Frame) return w.children;
-      if (w is Card) return w.children;
-      if (w is GroupBox) return w.children;
-      if (w is WrapLayout) return w.children;
-      if (w is Padding) return [w.child];
-      if (w is Align) return [w.child];
-      if (w is Tooltip) return [w.child];
-      if (w is TabView) return w.pages;
-    } catch (_) {}
-    return const [];
-  }
+
 
   @override
   void onKeyPressed(KeyEvent event) {
@@ -250,7 +233,7 @@ class WidgetWindow extends Window {
       return w.hitTest(px, py) ? w : null;
     }
     if (!w.hitTest(px, py)) return null;
-    final children = _childrenOf(w);
+    final children = w.children;
     for (final child in children.reversed) {
       final result = _hitTestDeep(child, px, py, offX, offY);
       if (result != null) return result;

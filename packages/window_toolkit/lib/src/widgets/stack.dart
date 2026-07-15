@@ -3,6 +3,8 @@ import '../widget.dart';
 
 /// How a [Positioned] child is placed inside a [Stack].
 class Positioned extends Widget {
+  @override
+
   final Widget child;
   final int? left;
   final int? top;

@@ -3,6 +3,10 @@ import '../painter/painter.dart';
 import '../widget.dart';
 
 class Tooltip extends Widget {
+  @override
+  @override
+  List<Widget> get children => [child];
+
   String text;
   Widget child;
   int showDelayMs;

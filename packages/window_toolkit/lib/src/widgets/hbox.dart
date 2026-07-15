@@ -2,6 +2,8 @@ import '../painter/painter.dart';
 import '../widget.dart';
 
 class HBox extends Widget {
+  @override
+
   final List<Widget> children;
   int spacing;
 

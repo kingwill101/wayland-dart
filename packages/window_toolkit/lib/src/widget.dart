@@ -33,6 +33,10 @@ abstract class Widget {
   void onKeyPressed(KeyEvent event) {}
   void onKeyReleased(KeyEvent event) {}
 
+  /// The child widgets of this widget, for hit-test traversal and layout.
+  /// Override in composite widgets that contain children.
+  List<Widget> get children => const [];
+
   /// Scroll / wheel input. Override in widgets that respond to scroll.
   /// Called by WidgetWindow when this widget is under the cursor.
   /// Return true to consume the event and stop propagation.
