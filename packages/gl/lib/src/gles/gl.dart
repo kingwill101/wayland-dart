@@ -213,8 +213,13 @@ class GL {
     pbAttribs[2] = _EGL_HEIGHT;
     pbAttribs[3] = height;
     pbAttribs[4] = _EGL_NONE;
-    _surface = _egl.CreatePbufferSurface(_display, _config, pbAttribs);
+    final newSurface = _egl.CreatePbufferSurface(_display, _config, pbAttribs);
     calloc.free(pbAttribs);
+    if (newSurface == nullptr) {
+      stderr.writeln('[gl] resize: CreatePbufferSurface returned null');
+      return;
+    }
+    _surface = newSurface;
     _width = width;
     _height = height;
     makeCurrent();
