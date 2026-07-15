@@ -34,6 +34,10 @@ class FocusModel {
 }
 
 class WidgetWindow extends Window {
+  /// Minimum window dimensions to prevent layout corruption.
+  static const int minWidth = 100;
+  static const int minHeight = 60;
+
   final Widget root;
   final FocusModel focus = FocusModel();
   Widget? _lastHovered;
@@ -61,6 +65,8 @@ class WidgetWindow extends Window {
 
   @override
   Future<void> show() async {
+    if (width < minWidth) width = minWidth;
+    if (height < minHeight) height = minHeight;
     await super.show();
     SurfaceManager.init(connection, xdgSurface);
   }
@@ -74,17 +80,19 @@ class WidgetWindow extends Window {
     }
   }
 
-  bool get _canPaint => width > 0 && height > 0;
+  bool get _canPaint => width >= minWidth && height >= minHeight;
 
   @override
   void draw(Painter painter) {
+    // Clamp to minimum so layout doesn't break on tiny windows.
+    final w = width < minWidth ? minWidth : width;
+    final h = height < minHeight ? minHeight : height;
     root
       ..x = 0
       ..y = 0
-      ..width = width
-      ..height = height;
-    // Re-layout on every frame so children respond to resize.
-    root.performLayout(width);
+      ..width = w
+      ..height = h;
+    root.performLayout(w);
     root.draw(painter);
 
     if (contextMenu != null && contextMenu!.visible) {
