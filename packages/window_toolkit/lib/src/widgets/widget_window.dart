@@ -61,7 +61,9 @@ class WidgetWindow extends Window {
     return _popupHost;
   }
 
-  WidgetWindow(this.root);
+  WidgetWindow(this.root) {
+    Widget.onNeedsRepaint = requestRedraw;
+  }
 
   @override
   Future<void> show() async {

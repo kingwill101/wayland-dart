@@ -36,6 +36,7 @@ export 'src/painter/raw_painter.dart';
 export 'src/painter/gles_painter.dart';
 export 'src/widget.dart';
 export 'src/widgets/align.dart';
+export 'src/widgets/animated_builder.dart';
 export 'src/widgets/badge.dart';
 export 'src/widgets/button.dart';
 export 'src/widgets/card.dart';
