@@ -4,51 +4,173 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7fbbd816-7c1e-481e-9ba6-a2b8bf30a7dd" name="Changes" comment="write a basic application framework using wayland client bindings">
+    <list default="true" id="1d053fb0-e6c6-400b-9e22-e0b7d2af2942" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/cody_history.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/cody_history.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/libraries/Dart_Packages.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/libraries/Dart_Packages.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/wayland.iml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.vscode/launch.json" beforeDir="false" afterPath="$PROJECT_DIR$/.vscode/launch.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/example/bin/wayland.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/bin/wayland.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/example/bin/wayland2.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/bin/wayland2.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/example/lib/app.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/lib/app.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/example/lib/event_loop.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/lib/event_loop.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/example/lib/keyboard.dart" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/example/lib/mixins/event.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/lib/mixins/event.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/example/lib/widget.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/lib/widget.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/example/lib/window.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/lib/window.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/example/lib/window/wayland.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/lib/backend/wayland.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/src/protocol/connection.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/protocol/connection.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/src/protocol/context.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/protocol/context.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/src/protocol/log.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/protocol/log.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.vscode/launch.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.vscode/settings.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/alpha-modifier-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/content-type-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/cursor-shape-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/drm-lease-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/ext-foreign-toplevel-list-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/ext-idle-notify-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/ext-session-lock-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/ext-transient-seat-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/fractional-scale-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/fullscreen-shell-unstable-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/idle-inhibit-unstable-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/input-method-unstable-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/input-timestamps-unstable-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/keyboard-shortcuts-inhibit-unstable-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/linux-dmabuf-unstable-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/linux-dmabuf-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/linux-drm-syncobj-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/linux-explicit-synchronization-unstable-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/pointer-constraints-unstable-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/pointer-gestures-unstable-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/presentation-time.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/primary-selection-unstable-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/relative-pointer-unstable-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/security-context-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/single-pixel-buffer-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/tablet-unstable-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/tablet-v2.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/tearing-control-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/text-input-unstable-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/viewporter.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/wayland.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/xdg-activation-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/xdg-decoration-unstable-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/xdg-dialog-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/xdg-foreign-unstable-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/xdg-output-unstable-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/xdg-shell-unstable-v5.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/xdg-shell-unstable-v6.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/xdg-shell.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/xdg-toplevel-drag-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/xdg-toplevel-icon-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/xwayland-keyboard-grab-unstable-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.wayland-protocol-cache/xwayland-shell-v1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/CHANGELOG.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/LICENSE" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/analysis_options.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/bin/scanner.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/.vscode/launch.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/analysis_options.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/bin/test.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/bin/wayland.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/bin/wayland2.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/image.webp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/app.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/backend/backend.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/backend/wayland.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/drawing/canvas.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/drawing/color.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/drawing/drawing.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/drawing/shape.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/event_loop.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/input.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/mixins/dispatcher.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/mixins/event.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/mixins/painter.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/mixins/size.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/mixins/window.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/modifier_keys.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/widget.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/window.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/window/base.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/pubspec.lock" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/pubspec.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/thumbnail.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/justfile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/stable/linux-dmabuf/linux_dmabuf_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/stable/presentation-time/presentation_time.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/stable/tablet/tablet_v2.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/stable/viewporter/viewporter.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/stable/xdg-shell/xdg_shell.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/alpha-modifier/alpha_modifier_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/content-type/content_type_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/cursor-shape/cursor_shape_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/drm-lease/drm_lease_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/ext-foreign-toplevel-list/ext_foreign_toplevel_list_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/ext-idle-notify/ext_idle_notify_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/ext-session-lock/ext_session_lock_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/ext-transient-seat/ext_transient_seat_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/fractional-scale/fractional_scale_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/linux-drm-syncobj/linux_drm_syncobj_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/security-context/security_context_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/single-pixel-buffer/single_pixel_buffer_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/tearing-control/tearing_control_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/xdg-activation/xdg_activation_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/xdg-dialog/xdg_dialog_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/xdg-toplevel-drag/xdg_toplevel_drag_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/xdg-toplevel-icon/xdg_toplevel_icon_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/staging/xwayland-shell/xwayland_shell_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/fullscreen-shell/fullscreen_shell_unstable_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/idle-inhibit/idle_inhibit_unstable_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/input-method/input_method_unstable_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/input-timestamps/input_timestamps_unstable_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/keyboard-shortcuts-inhibit/keyboard_shortcuts_inhibit_unstable_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/linux-dmabuf/linux_dmabuf_unstable_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/linux-explicit-synchronization/linux_explicit_synchronization_unstable_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/pointer-constraints/pointer_constraints_unstable_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/pointer-gestures/pointer_gestures_unstable_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/primary-selection/primary_selection_unstable_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/relative-pointer/relative_pointer_unstable_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/tablet/tablet_unstable_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/text-input/text_input_unstable_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/xdg-decoration/xdg_decoration_unstable_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/xdg-foreign/xdg_foreign_unstable_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/xdg-output/xdg_output_unstable_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/xdg-shell/xdg_shell_unstable_v5.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/xdg-shell/xdg_shell_unstable_v6.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/unstable/xwayland-keyboard-grab/xwayland_keyboard_grab_unstable_v1.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/protocols/wayland.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/protocol/connection.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/protocol/context.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/protocol/log.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/protocol/message.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/protocol/protocol.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/protocol/proxy.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/protocol/shared_memory.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/protocol/strings.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/protocol/type.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/protocol/unix_socket.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/protocol/utils.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/scanner/commands/scan.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/scanner/generator.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/scanner/types.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/wayland.dart" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/protocols.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/pubspec.lock" beforeDir="false" afterPath="$PROJECT_DIR$/pubspec.lock" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/pubspec.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/wayland_test.dart" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="ChangesViewManager">
-    <option name="groupingKeys">
-      <option value="directory" />
-    </option>
-  </component>
   <component name="CodyActiveAccount">
     <option name="activeAccountId" value="VXNlcjo0MzYwOQ==" />
-  </component>
-  <component name="FileTemplateManagerImpl">
-    <option name="RECENT_TEMPLATES">
-      <list>
-        <option value="Dart File" />
-      </list>
-    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
   &quot;associatedIndex&quot;: 5
 }</component>
-  <component name="ProjectId" id="2jEYdqmTO13aEAgAOP2tbG3rTEW" />
+  <component name="ProjectId" id="2jp3LDdeXipGdUXQeLth5MjKwj3" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -58,94 +180,20 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "Dart Command Line App.build.dart.executor": "Debug",
-    "Dart Command Line App.sadf.dart.executor": "Debug",
-    "Dart Command Line App.scanner.executor": "Run",
-    "Dart Command Line App.t.dart.executor": "Run",
-    "Dart Command Line App.test.dart.executor": "Run",
-    "Dart Command Line App.wayland.dart.executor": "Run",
-    "Dart Command Line App.wayland2.dart.executor": "Run",
-    "NIXITCH_NIXPKGS_CONFIG": "",
-    "NIXITCH_NIX_CONF_DIR": "",
-    "NIXITCH_NIX_OTHER_STORES": "",
-    "NIXITCH_NIX_PATH": "",
-    "NIXITCH_NIX_PROFILES": "/nix/var/nix/profiles/default /home/kingwill101/.nix-profile",
-    "NIXITCH_NIX_REMOTE": "",
-    "NIXITCH_NIX_USER_PROFILE_DIR": "",
     "RunOnceActivity.CodyAccountHistoryMigration": "true",
     "RunOnceActivity.CodyConvertUrlToCodebaseName": "true",
     "RunOnceActivity.CodyHistoryLlmMigration": "true",
     "RunOnceActivity.CodyProjectSettingsMigration": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "dart.analysis.tool.window.visible": "false",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/home/kingwill101/code/dart_packages/wayland/example/lib",
     "node.js.detected.package.eslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "com.sourcegraph.cody.config.ui.CodeSearchConfigurable",
     "show.migrate.to.gradle.popup": "false"
   }
 }]]></component>
-  <component name="RecentsManager">
-    <key name="CopyFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/example/lib" />
-    </key>
-    <key name="MoveFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/example/lib/backend" />
-      <recent name="$PROJECT_DIR$/example/lib" />
-      <recent name="$PROJECT_DIR$/example/lib/window" />
-      <recent name="$PROJECT_DIR$/example/bin" />
-      <recent name="$PROJECT_DIR$/lib/src" />
-    </key>
-  </component>
-  <component name="RunManager" selected="Dart Command Line App.wayland.dart">
-    <configuration name="sadf.dart" type="DartCommandLineRunConfigurationType" factoryName="Dart Command Line Application" temporary="true" nameIsGenerated="true">
-      <option name="VMOptions" value="--enable-experiment=native-assets" />
-      <option name="filePath" value="$PROJECT_DIR$/example/bin/sadf.dart" />
-      <option name="workingDirectory" value="$PROJECT_DIR$/example" />
-      <method v="2" />
-    </configuration>
-    <configuration name="scanner" type="DartCommandLineRunConfigurationType" factoryName="Dart Command Line Application" temporary="true">
-      <option name="VMOptions" value="--enable-experiment=native-assets" />
-      <option name="arguments" value=" scan --prefix=wl --pkg=client --protocols=protocols.yaml --clean=true" />
-      <option name="filePath" value="$PROJECT_DIR$/bin/scanner.dart" />
-      <option name="workingDirectory" value="$PROJECT_DIR$" />
-      <method v="2" />
-    </configuration>
-    <configuration name="test.dart" type="DartCommandLineRunConfigurationType" factoryName="Dart Command Line Application" temporary="true" nameIsGenerated="true">
-      <option name="filePath" value="$PROJECT_DIR$/example/bin/test.dart" />
-      <option name="workingDirectory" value="$PROJECT_DIR$/example" />
-      <method v="2" />
-    </configuration>
-    <configuration name="wayland2.dart" type="DartCommandLineRunConfigurationType" factoryName="Dart Command Line Application" temporary="true" nameIsGenerated="true">
-      <option name="filePath" value="$PROJECT_DIR$/example/bin/wayland2.dart" />
-      <option name="workingDirectory" value="$PROJECT_DIR$/example" />
-      <method v="2" />
-    </configuration>
-    <configuration name="wayland.dart" type="DartCommandLineRunConfigurationType" factoryName="Dart Command Line Application" nameIsGenerated="true">
-      <option name="VMOptions" value="--enable-experiment=native-assets" />
-      <option name="filePath" value="$PROJECT_DIR$/example/bin/wayland.dart" />
-      <option name="workingDirectory" value="$PROJECT_DIR$/example" />
-      <method v="2" />
-    </configuration>
-    <list>
-      <item itemvalue="Dart Command Line App.wayland.dart" />
-      <item itemvalue="Dart Command Line App.test.dart" />
-      <item itemvalue="Dart Command Line App.wayland2.dart" />
-      <item itemvalue="Dart Command Line App.sadf.dart" />
-      <item itemvalue="Dart Command Line App.scanner" />
-    </list>
-    <recent_temporary>
-      <list>
-        <item itemvalue="Dart Command Line App.test.dart" />
-        <item itemvalue="Dart Command Line App.wayland2.dart" />
-        <item itemvalue="Dart Command Line App.sadf.dart" />
-        <item itemvalue="Dart Command Line App.scanner" />
-      </list>
-    </recent_temporary>
-  </component>
+  <component name="RunManager" selected="Shell Script.Melos -&gt; Bootstrap Workspace" />
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -157,120 +205,15 @@
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="7fbbd816-7c1e-481e-9ba6-a2b8bf30a7dd" name="Changes" comment="" />
-      <created>1698014411991</created>
+      <changelist id="1d053fb0-e6c6-400b-9e22-e0b7d2af2942" name="Changes" comment="" />
+      <created>1722070132982</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1698014411991</updated>
+      <updated>1722070132982</updated>
     </task>
-    <task id="LOCAL-00001" summary="big refactor">
-      <option name="closed" value="true" />
-      <created>1721303024933</created>
-      <option name="number" value="00001" />
-      <option name="presentableId" value="LOCAL-00001" />
-      <option name="project" value="LOCAL" />
-      <updated>1721303024933</updated>
-    </task>
-    <task id="LOCAL-00002" summary="big refactor">
-      <option name="closed" value="true" />
-      <created>1721303867419</created>
-      <option name="number" value="00002" />
-      <option name="presentableId" value="LOCAL-00002" />
-      <option name="project" value="LOCAL" />
-      <updated>1721303867419</updated>
-    </task>
-    <task id="LOCAL-00003" summary="switch to native_socket">
-      <option name="closed" value="true" />
-      <created>1721580551917</created>
-      <option name="number" value="00003" />
-      <option name="presentableId" value="LOCAL-00003" />
-      <option name="project" value="LOCAL" />
-      <updated>1721580551917</updated>
-    </task>
-    <task id="LOCAL-00004" summary="generator tweaks:&#10;support destructors&#10;use Result&lt;type, error&gt; for return types&#10;file descriptor checks">
-      <option name="closed" value="true" />
-      <created>1721580708062</created>
-      <option name="number" value="00004" />
-      <option name="presentableId" value="LOCAL-00004" />
-      <option name="project" value="LOCAL" />
-      <updated>1721580708062</updated>
-    </task>
-    <task id="LOCAL-00005" summary="regenerate protocols">
-      <option name="closed" value="true" />
-      <created>1721580721168</created>
-      <option name="number" value="00005" />
-      <option name="presentableId" value="LOCAL-00005" />
-      <option name="project" value="LOCAL" />
-      <updated>1721580721168</updated>
-    </task>
-    <task id="LOCAL-00006" summary="switch to using native_socket">
-      <option name="closed" value="true" />
-      <created>1721580757271</created>
-      <option name="number" value="00006" />
-      <option name="presentableId" value="LOCAL-00006" />
-      <option name="project" value="LOCAL" />
-      <updated>1721580757271</updated>
-    </task>
-    <task id="LOCAL-00007" summary="write a basic application framework using wayland client bindings">
-      <option name="closed" value="true" />
-      <created>1721580878262</created>
-      <option name="number" value="00007" />
-      <option name="presentableId" value="LOCAL-00007" />
-      <option name="project" value="LOCAL" />
-      <updated>1721580878262</updated>
-    </task>
-    <option name="localTasksCounter" value="8" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
-  </component>
-  <component name="Vcs.Log.Tabs.Properties">
-    <option name="TAB_STATES">
-      <map>
-        <entry key="MAIN">
-          <value>
-            <State />
-          </value>
-        </entry>
-      </map>
-    </option>
-  </component>
-  <component name="VcsManagerConfiguration">
-    <MESSAGE value="big refactor" />
-    <MESSAGE value="switch to native_socket" />
-    <MESSAGE value="generator tweaks:&#10;support destructors&#10;use Result&lt;type, error&gt; for return types&#10;file descriptor checks" />
-    <MESSAGE value="regenerate protocols" />
-    <MESSAGE value="switch to using native_socket" />
-    <MESSAGE value="write a basic application framework using wayland client bindings" />
-    <option name="LAST_COMMIT_MESSAGE" value="write a basic application framework using wayland client bindings" />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="Dart">
-          <url>file://$PROJECT_DIR$/example/lib/event_loop.dart</url>
-          <line>33</line>
-          <option name="timeStamp" value="260" />
-        </line-breakpoint>
-      </breakpoints>
-      <default-breakpoints>
-        <breakpoint enabled="true" log-message="true" log-stack="true" type="dart-exception">
-          <properties>
-            <option name="breakOnAllExceptions" value="true" />
-          </properties>
-        </breakpoint>
-      </default-breakpoints>
-    </breakpoint-manager>
-    <watches-manager>
-      <configuration name="DartCommandLineRunConfigurationType">
-        <watch expression="Application.instance" />
-        <watch expression="EventLoop.instance" />
-      </configuration>
-    </watches-manager>
-  </component>
-  <component name="XSLT-Support.FileAssociations.UIState">
-    <expand />
-    <select />
   </component>
 </project>

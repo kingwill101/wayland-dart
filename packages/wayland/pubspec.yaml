@@ -1,0 +1,27 @@
+name: wayland
+description: Wayland protocol bindings and client for Dart
+version: 1.0.0
+resolution: workspace
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  xml: ^6.5.0
+  args: ^2.5.0
+  ffi: ^2.1.0
+  http: ^1.4.0
+  path: ^1.9.0
+  yaml: ^3.1.2
+  result_dart: ^1.1.1
+  native_socket: ^0.4.0-wip
+  logging: ^1.2.0
+  pcanvas: ^1.1.0
+
+dev_dependencies:
+  ffigen: ^13.0.0
+  lints: ^4.0.0
+  test: ^1.25.8
+
+executables:
+  wayland-scanner: scanner

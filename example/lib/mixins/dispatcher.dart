@@ -1,3 +1,0 @@
-mixin Runner {
-  void dispatch() {}
-}

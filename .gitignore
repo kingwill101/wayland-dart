@@ -1,3 +1,31 @@
-# https://dart.dev/guides/libraries/private-files
-# Created by `dart pub`
+# Dart / Flutter
 .dart_tool/
+.pub/
+build/
+*.g.dart
+*.freezed.dart
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local reference clones for comparison
+scratch/
+
+# Wayland protocol cache
+.wayland-protocol-cache/
+
+# Native build artifacts
+*.so
+*.dylib
+*.dll
+*.o
+*.a

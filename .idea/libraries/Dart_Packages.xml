@@ -145,8 +145,9 @@
         <entry key="http">
           <value>
             <list>
-              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/http-1.2.1/lib" />
               <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/http-0.13.6/lib" />
+              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/http-1.2.2/lib" />
+              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/http-1.2.1/lib" />
             </list>
           </value>
         </entry>
@@ -188,8 +189,8 @@
         <entry key="lints">
           <value>
             <list>
-              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/lints-4.0.0/lib" />
               <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/lints-3.0.0/lib" />
+              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/lints-4.0.0/lib" />
             </list>
           </value>
         </entry>
@@ -448,24 +449,24 @@
         <entry key="web">
           <value>
             <list>
-              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/web-0.5.1/lib" />
               <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/web-1.0.0/lib" />
+              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/web-0.5.1/lib" />
             </list>
           </value>
         </entry>
         <entry key="web_socket">
           <value>
             <list>
-              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/web_socket-0.1.5/lib" />
               <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/web_socket-0.1.6/lib" />
+              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/web_socket-0.1.5/lib" />
             </list>
           </value>
         </entry>
         <entry key="web_socket_channel">
           <value>
             <list>
-              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/web_socket_channel-3.0.0/lib" />
               <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/web_socket_channel-3.0.1/lib" />
+              <option value="$USER_HOME$/.pub-cache/hosted/pub.dev/web_socket_channel-3.0.0/lib" />
             </list>
           </value>
         </entry>
@@ -522,6 +523,7 @@
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/glob-2.1.2/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/http-0.13.6/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/http-1.2.1/lib" />
+      <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/http-1.2.2/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/http_multi_server-3.2.1/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/http_parser-4.1.0/lib" />
       <root url="file://$USER_HOME$/.pub-cache/hosted/pub.dev/image-4.2.0/lib" />
