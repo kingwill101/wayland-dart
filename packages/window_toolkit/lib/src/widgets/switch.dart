@@ -42,7 +42,7 @@ class Switch extends Widget {
   Color get borderColor => _borderColor ?? palette.shadow;
 
   void toggle() {
-    value = !value;
+    setState(() => value = !value);
     onChanged?.call();
   }
 

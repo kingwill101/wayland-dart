@@ -29,14 +29,14 @@ class RadioButton extends Widget {
 
   void select() {
     if (!selected) {
-      selected = true;
+      setState(() => selected = true);
       onChanged?.call();
     }
   }
 
   void setSelected(bool value) {
     if (selected != value) {
-      selected = value;
+      setState(() => selected = value);
       onChanged?.call();
     }
   }

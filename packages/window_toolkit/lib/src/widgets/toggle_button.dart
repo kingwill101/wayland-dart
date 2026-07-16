@@ -32,7 +32,7 @@ class ToggleButton extends Widget {
   }
 
   void toggle() {
-    selected = !selected;
+    setState(() => selected = !selected);
     onChanged?.call();
   }
 

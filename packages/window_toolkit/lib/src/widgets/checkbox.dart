@@ -32,7 +32,7 @@ class Checkbox extends Widget {
   Color get checkColor => _checkColor ?? palette.text;
 
   void toggle() {
-    checked = !checked;
+    setState(() => checked = !checked);
     onChanged?.call();
   }
 
