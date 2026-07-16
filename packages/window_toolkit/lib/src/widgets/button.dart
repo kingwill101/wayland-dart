@@ -31,8 +31,8 @@ class Button extends Widget {
     height = charHeight + padding * 2;
     tabIndex = 1;
     onClick = () { onPressed?.call(); return true; };
-    onMouseEnter = () => _hovered = true;
-    onMouseLeave = () => _hovered = false;
+    onMouseEnter = () => setState(() => _hovered = true);
+    onMouseLeave = () => setState(() => _hovered = false);
   }
 
   @override
@@ -40,7 +40,7 @@ class Button extends Widget {
 
   @override
   void onFocusChanged(bool focused) {
-    _hovered = focused;
+    setState(() => _hovered = focused);
   }
 
   Color get textColor => _textColor ?? palette.buttonText;

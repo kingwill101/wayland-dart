@@ -29,7 +29,12 @@ abstract class Widget extends ElementWidget {
   /// Called when the widget is removed from the widget tree.
   void dispose() {}
 
-
+  /// Notify the framework that internal data changed.
+  /// Triggers a repaint on the next frame.
+  void setState(void Function() fn) {
+    fn();
+    onNeedsRepaint?.call();
+  }
 
   int x = 0, y = 0, width = 0, height = 0;
   /// Click handler. Return true to consume the event and stop propagation.
