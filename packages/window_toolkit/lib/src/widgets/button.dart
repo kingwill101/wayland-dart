@@ -21,12 +21,14 @@ class Button extends Widget {
     this.padding = 4,
     this.charWidth = 8,
     this.charHeight = 16,
+    Object? key,
   })  : assert(text.isNotEmpty, 'Button text must not be empty'),
         assert(padding >= 0, 'Button padding must be >= 0'),
         assert(charWidth > 0 && charHeight > 0, 'Button charWidth/charHeight must be > 0'),
         _textColor = textColor,
         _backgroundColor = backgroundColor,
-        _hoverColor = hoverColor {
+        _hoverColor = hoverColor,
+        super(key: key) {
     width = text.length * charWidth + padding * 2;
     height = charHeight + padding * 2;
     tabIndex = 1;

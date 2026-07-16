@@ -34,6 +34,9 @@ abstract class Widget extends le.ElementWidget {
   /// Set by [WidgetWindow] so animated widgets can trigger repaints.
   static VoidCallback? onNeedsRepaint;
 
+  /// Creates a widget with an optional [key] for reconciliation.
+  Widget({Object? key}) : super(key: key);
+
   /// Whether this widget is mounted in a widget tree.
   bool mounted = false;
 
