@@ -99,7 +99,7 @@ class Scrollbar extends Widget {
     final thumbEnd = (thumbStart + metrics.thumbSize).round();
 
     if (y >= thumbStart && y < thumbEnd) {
-      _dragging = true;
+      setState(() => _dragging = true);
       _dragStartScroll = controller.offset;
       _dragStartY = y;
     } else {
@@ -111,7 +111,7 @@ class Scrollbar extends Widget {
 
   @override
   void onMouseUp(int x, int y, int button) {
-    _dragging = false;
+    setState(() => _dragging = false);
   }
 
   @override

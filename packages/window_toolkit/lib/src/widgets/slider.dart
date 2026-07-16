@@ -44,7 +44,7 @@ class Slider extends Widget {
   @override
   void onMouseDown(int x, int y, int button) {
     if (button == 272) {
-      _dragging = true;
+      setState(() => _dragging = true);
       setFraction((x - this.x) / width);
     }
   }
@@ -58,7 +58,7 @@ class Slider extends Widget {
 
   @override
   void onMouseUp(int x, int y, int button) {
-    _dragging = false;
+    setState(() => _dragging = false);
   }
 
   double get fraction {

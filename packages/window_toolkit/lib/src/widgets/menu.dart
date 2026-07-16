@@ -22,8 +22,8 @@ class MenuItem extends Widget {
   })  : assert(itemHeight > 0, 'MenuItem itemHeight must be > 0') {
     width = label.length * 8 + 24;
     height = itemHeight;
-    onMouseEnter = () => _hovered = true;
-    onMouseLeave = () => _hovered = false;
+    onMouseEnter = () => setState(() => _hovered = true);
+    onMouseLeave = () => setState(() => _hovered = false);
     onClick = () { onTriggered?.call(); return true; };
   }
 

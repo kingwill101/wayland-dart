@@ -34,8 +34,8 @@ class Dropdown extends Widget {
     width = 160;
     height = itemHeight;
     onClick = () { opened = !opened; return true; };
-    onMouseEnter = () => _hovered = true;
-    onMouseLeave = () => _hovered = false;
+    onMouseEnter = () => setState(() => _hovered = true);
+    onMouseLeave = () => setState(() => _hovered = false);
   }
 
   String? get selectedLabel =>

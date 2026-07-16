@@ -26,8 +26,8 @@ class IconButton extends Widget {
     width = iconSize + 12;
     height = iconSize + 12;
     onClick = () { press(); return true; };
-    onMouseEnter = () => _hovered = true;
-    onMouseLeave = () => _hovered = false;
+    onMouseEnter = () => setState(() => _hovered = true);
+    onMouseLeave = () => setState(() => _hovered = false);
   }
 
   void press() {

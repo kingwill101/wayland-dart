@@ -18,11 +18,11 @@ class MouseRegion extends Widget {
     this.onTap,
   }) : assert(child != null, 'MouseRegion child must not be null') {
     onMouseEnter = () {
-      _hovered = true;
+      setState(() => _hovered = true);
       onEnter?.call();
     };
     onMouseLeave = () {
-      _hovered = false;
+      setState(() => _hovered = false);
       onExit?.call();
     };
     onClick = () { onTap?.call(); return true; };
