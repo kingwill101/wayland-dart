@@ -67,11 +67,10 @@ class ElementHost extends Widget {
   void draw(Painter canvas) {
     final render = _renderable;
     if (render == null) return;
-    render
-      ..x = x
-      ..y = y
-      ..width = width
-      ..height = height;
+    render.x = x;
+    render.y = y;
+    render.width = width;
+    render.height = height;
     render.draw(canvas);
   }
 
@@ -79,6 +78,11 @@ class ElementHost extends Widget {
   void performLayout(int containerWidth) {
     final render = _renderable;
     if (render == null) return;
+    // Propagate ElementHost's position/size to the renderable widget.
+    render.x = x;
+    render.y = y;
+    render.width = width;
+    render.height = height;
     render.performLayout(containerWidth);
     width = render.width;
     height = render.height;

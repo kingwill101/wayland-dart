@@ -45,6 +45,64 @@ void main() {
       expect(clicked, isTrue);
     });
   });
+
+  test('performs layout with correct size propagation', () {
+    final host = ElementHost(child: _SizedBox(size: 100));
+    host.x = 5;
+    host.y = 10;
+    host.width = 200;
+    host.height = 100;
+    host.performLayout(200);
+
+    // ElementHost should reflect the renderable widget's size
+    expect(host.width, greaterThan(0),
+        reason: 'width should be set from renderable widget');
+    expect(host.height, greaterThan(0),
+        reason: 'height should be set from renderable widget');
+
+    // The renderable widget should have received the position
+    final render = host.children.first;
+    expect(render.x, 5, reason: 'x should propagate to renderable');
+    expect(render.y, 10, reason: 'y should propagate to renderable');
+  });
+
+  test('renders ScrollArea with correct height', () {
+    final host = ElementHost(child: _ScrollContainer());
+    host.x = 0;
+    host.y = 0;
+    host.width = 400;
+    host.height = 300;
+    host.performLayout(400);
+
+    // The ScrollArea should have non-zero height from the host
+    expect(host.height, 300,
+        reason: 'height should match the host height');
+
+    // The renderable should be a ScrollArea
+    final render = host.children.first;
+    expect(render, isA<ScrollArea>(),
+        reason: 'renderable should be ScrollArea');
+  });
+}
+
+class _SizedBox extends StatelessWidget {
+  final double size;
+  _SizedBox({this.size = 50});
+
+  @override
+  ElementWidget build(BuildContext context) {
+    return SizedBox(width: size.round(), height: size.round());
+  }
+}
+
+class _ScrollContainer extends StatelessWidget {
+  @override
+  ElementWidget build(BuildContext context) {
+    return ScrollArea(
+      child: SizedBox(width: 200, height: 1000),
+      showVertical: true,
+    );
+  }
 }
 
 class _TestButton extends StatefulWidget {
