@@ -80,6 +80,7 @@ export 'src/widgets/tabs.dart';
 export 'src/widgets/toggle_button.dart';
 export 'src/widgets/text_editing_controller.dart';
 export 'src/widgets/text_field.dart';
+export 'src/widgets/theme.dart';
 export 'src/widgets/tooltip.dart';
 export 'src/widgets/switch.dart';
 export 'src/widgets/vbox.dart';

@@ -43,7 +43,7 @@ class ElementHost extends Widget {
   ElementTree? tree;
 
   ElementHost({required this.child}) {
-    if (child is StatefulWidget || child is StatelessWidget) {
+    if (child is! Widget) {
       tree = ElementTree();
       tree!.mount(child);
       tree!.build();
