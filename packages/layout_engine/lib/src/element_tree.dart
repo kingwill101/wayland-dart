@@ -236,8 +236,8 @@ class Element {
   // ── Focus navigation ──────────────────────────────────────
 
   /// Whether this element can receive keyboard focus.
-  /// Override in elements whose widgets are focusable.
-  bool get focusable => false;
+  /// Set by the framework (e.g., WidgetWindow syncs from Widget.isFocusable).
+  bool focusable = false;
 
   /// Called when this element receives focus.
   void onFocus() {}

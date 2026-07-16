@@ -264,6 +264,15 @@ class WidgetWindow extends Window {
 
   /// Move focus to the next focusable widget (Tab order).
   void _focusNext() {
+    // Use element tree focus navigation when available.
+    if (elementTree?.root != null) {
+      _syncElementFocusability(elementTree!.root!);
+      final currentEl = _currentFocusElement();
+      final next = Element.findNextFocus(elementTree!.root!, current: currentEl);
+      if (next != null) _setFocusElement(next);
+      return;
+    }
+    // Legacy widget-based focus.
     final all = <Widget>[];
     _collectFocusable(root, all);
     if (all.isEmpty) return;
@@ -274,8 +283,14 @@ class WidgetWindow extends Window {
     _setFocus(all[next]);
   }
 
-  /// Move focus to the previous focusable widget (Shift+Tab).
   void _focusPrevious() {
+    if (elementTree?.root != null) {
+      _syncElementFocusability(elementTree!.root!);
+      final currentEl = _currentFocusElement();
+      final prev = Element.findPreviousFocus(elementTree!.root!, current: currentEl);
+      if (prev != null) _setFocusElement(prev);
+      return;
+    }
     final all = <Widget>[];
     _collectFocusable(root, all);
     if (all.isEmpty) return;
@@ -293,6 +308,36 @@ class WidgetWindow extends Window {
     focus.focusedWidget = w;
     w.onFocusChanged(true);
     if (_canPaint) paint();
+  }
+
+  void _setFocusElement(Element el) {
+    _syncElementFocusability(el);
+    if (el.widget is Widget) {
+      _setFocus(el.widget as Widget);
+    }
+  }
+
+  /// Find the element whose widget is the currently focused widget.
+  Element? _currentFocusElement() {
+    final focused = focus.focusedWidget;
+    if (focused == null || elementTree?.root == null) return null;
+    Element? find(Element e) {
+      if (identical(e.widget, focused) || identical(e.renderWidget, focused)) return e;
+      for (final c in e.children) {
+        final r = find(c);
+        if (r != null) return r;
+      }
+      return null;
+    }
+    return find(elementTree!.root!);
+  }
+
+  /// Sync focusability from widgets to their elements.
+  void _syncElementFocusability(Element el) {
+    el.focusable = el.widget is Widget && (el.widget as Widget).isFocusable;
+    for (final c in el.children) {
+      _syncElementFocusability(c);
+    }
   }
 
   void _collectFocusable(Widget w, List<Widget> out) {
