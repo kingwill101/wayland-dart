@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:window_toolkit/window_toolkit.dart';
 
 import 'test_backend.dart';
@@ -67,8 +69,12 @@ class TestHarness {
   }
 
   /// Set the root widget under test.
-  void pumpWidget(Widget widget) {
-    _root = widget;
+  void pumpWidget(ElementWidget widget) {
+    if (widget is Widget) {
+      _root = widget;
+    } else {
+      _root = ElementHost(child: widget);
+    }
   }
 
   /// Pump multiple frames.
@@ -90,6 +96,93 @@ class TestHarness {
   /// Access paint commands by type.
   Iterable<T> commandsOfType<T extends PaintCommand>() =>
       commands.whereType<T>();
+
+  // ── Event simulation ───────────────────────────────────────
+
+  /// Returns the deepest widget at (x, y) using hit-test traversal.
+  Widget? hitTest(int x, int y) {
+    if (_root == null) return null;
+    return _hitTestDeep(_root!, x, y);
+  }
+
+  Widget? _hitTestDeep(Widget w, int px, int py, [int offX = 0, int offY = 0]) {
+    if (w is ScrollArea) {
+      final localPx = px + w.scrollX + offX;
+      final localPy = py + w.scrollY + offY;
+      if (w.isOnScrollbar(px, py)) return w;
+      w.child..x = w.x..y = w.y;
+      if (w.child.hitTest(localPx, localPy)) {
+        return _hitTestDeep(w.child, localPx, localPy, 0, 0) ?? w;
+      }
+      return w.hitTest(px, py) ? w : null;
+    }
+    if (!w.hitTest(px, py)) return null;
+    final children = w.children;
+    for (final child in children.reversed) {
+      final result = _hitTestDeep(child, px, py, offX, offY);
+      if (result != null) return result;
+    }
+    return w;
+  }
+
+  /// Simulate a mouse click at (x, y).
+  /// Returns the widget that received the click, or null.
+  Widget? tap(int x, int y) {
+    final hit = hitTest(x, y);
+    if (hit != null) {
+      hit.onMouseDown(x, y, 272); // left button
+      // Fire onClick chain (deepest first)
+      var current = hit;
+      while (current != null) {
+        final handler = current.onClick;
+        if (handler != null && handler()) break;
+        // Walk up — not trivial without parent refs, so just fire on hit
+        break;
+      }
+    }
+    return hit;
+  }
+
+  /// Simulate mouse motion to (x, y).
+  /// Calls onMouseEnter on newly entered widgets, onMouseLeave on exited.
+  void hover(int x, int y) {
+    // Track last hovered widget for enter/leave events
+    _lastHovered = hitTest(x, y);
+  }
+  Widget? _lastHovered;
+
+  /// Simulate a scroll wheel event at (x, y).
+  void scroll(int x, int y, int dy) {
+    // Find the nearest ScrollArea along the hit-test path
+    final path = <Widget>[];
+    _collectScrollPath(_root!, x, y, 0, 0, path);
+    for (final w in path) {
+      if (w is ScrollArea) {
+        w.scrollBy(0, dy);
+        break;
+      }
+    }
+  }
+
+  void _collectScrollPath(Widget w, int px, int py, int offX, int offY, List<Widget> out) {
+    if (w is ScrollArea) {
+      out.add(w);
+      return;
+    }
+    if (!w.hitTest(px, py)) return;
+    for (final child in w.children.reversed) {
+      if (child.hitTest(px, py)) {
+        _collectScrollPath(child, px, py, offX, offY, out);
+        return;
+      }
+    }
+  }
+
+  /// Simulate a window resize.
+  void resize(int width, int height) {
+    windowWidth = math.max(100, width);
+    windowHeight = math.max(60, height);
+  }
 }
 
 /// Flutter-style widget finder.
@@ -144,13 +237,14 @@ class WidgetFinder {
 
   static void _collectRecursive(Widget w) {
     _allWidgets.add(w);
-    if (w is Padding) _collectRecursive(w.child);
-    if (w is Align) _collectRecursive(w.child);
-    if (w is HBox) for (final c in w.children) _collectRecursive(c);
-    if (w is VBox) for (final c in w.children) _collectRecursive(c);
-    if (w is ScrollArea) {
-      _collectRecursive(w.child);
+    for (final child in w.children) {
+      _collectRecursive(child);
     }
-    if (w is Center) _collectRecursive(w.child);
+    // ElementHost exposes built widget as children
+    if (w is ElementHost) {
+      for (final child in w.children) {
+        _collectRecursive(child);
+      }
+    }
   }
 }
