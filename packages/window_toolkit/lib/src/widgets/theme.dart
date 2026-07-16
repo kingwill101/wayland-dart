@@ -1,27 +1,24 @@
-/// Theme inherited widget — propagates palette/colors down the widget tree.
+/// Theme inherited widget — propagates palette data down the widget tree.
+///
+/// Child widgets access the theme via [Theme.of] and automatically rebuild
+/// when the theme data changes.
 ///
 /// ```dart
-/// Theme(
-///   data: myDarkPalette,
-///   child: VBox(children: [ ... ]),
-/// )
-/// ```
-///
-/// Child widgets access the theme via:
-/// ```dart
-/// final theme = context.dependOnInheritedWidgetOfExactType<Theme>();
-/// final bg = theme?.data.window ?? defaultColor;
+/// Theme(data: Palette.current.active, child: VBox(children: [...]))
+/// // In any descendant:
+/// final bg = Theme.of(context)?.window ?? defaultColor;
 /// ```
 import 'package:layout_engine/layout_engine.dart' show BuildContext, ElementWidget, InheritedWidget;
 
 import '../palette.dart';
 
 /// Inherited theme that propagates [ColorGroup] data down the element tree.
+/// Dependents auto-rebuild when the theme data changes.
 class Theme extends InheritedWidget {
-  final ColorGroup? data;
+  final ColorGroup data;
 
   Theme({
-    this.data,
+    required this.data,
     required ElementWidget child,
   }) : super(child: child);
 
@@ -32,8 +29,6 @@ class Theme extends InheritedWidget {
 
   @override
   bool updateShouldNotify(covariant InheritedWidget oldWidget) {
-    final old = oldWidget as Theme;
-    // Simple comparison — notifies on any change.
-    return data != old.data;
+    return (oldWidget as Theme).data != data;
   }
 }

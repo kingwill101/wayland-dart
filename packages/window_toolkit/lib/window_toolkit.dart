@@ -72,6 +72,7 @@ export 'src/widgets/scrollbar_widget.dart';
 export 'src/widgets/separator.dart';
 export 'src/widgets/sized_box.dart';
 export 'src/widgets/stateful_checkbox.dart';
+export 'src/widgets/stateful_switch.dart';
 export 'src/widgets/slider.dart';
 export 'src/widgets/range_slider.dart';
 export 'src/widgets/spinner.dart';
