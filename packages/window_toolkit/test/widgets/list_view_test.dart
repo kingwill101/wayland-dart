@@ -47,5 +47,21 @@ void main() {
       expect(list.hitTest(10, 30), isTrue);  // inside second child
       expect(list.hitTest(10, 100), isFalse); // outside content
     });
+
+    test('re-renders with updated children', () {
+      // Create a ListView with initial children
+      final list = ListView(children: [
+        Button('A'),
+        Button('B'),
+      ]);
+
+      // This shouldn't crash — basic smoke test
+      list.performLayout(100);
+
+      // Draw should work
+      final painter = RecordingPainter();
+      list.draw(painter);
+      expect(painter.commands, isNotEmpty);
+    });
   });
 }

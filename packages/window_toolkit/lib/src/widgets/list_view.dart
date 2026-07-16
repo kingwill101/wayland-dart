@@ -1,25 +1,24 @@
+/// A vertical scrolling list with key-based reconciliation.
+///
+/// When children have [WidgetKey]s, [ListView] preserves the state of
+/// existing items across insert, remove, and reorder operations.
+///
+/// ```dart
+/// ListView(
+///   spacing: 4,
+///   children: [
+///     Button('Item 1', key: const WidgetKey('a')),
+///     Button('Item 2', key: const WidgetKey('b')),
+///     Button('Item 3', key: const WidgetKey('c')),
+///   ],
+/// )
+/// ```
 import 'package:layout_engine/layout_engine.dart' as le;
 
 import '../painter/painter.dart';
 import '../widget.dart';
 import 'scroll_area.dart';
 
-/// A vertical scrolling list of children.
-///
-/// Wraps [ScrollArea] + a vertical list layout backed by [le.RenderList].
-/// Items are laid out sequentially and the viewport scrolls when content
-/// overflows.
-///
-/// ```dart
-/// ListView(
-///   spacing: 4,
-///   children: [
-///     Button('Item 1'),
-///     Button('Item 2'),
-///     Button('Item 3'),
-///   ],
-/// )
-/// ```
 class ListView extends Widget {
   final List<Widget> listChildren;
   final int spacing;
@@ -45,11 +44,7 @@ class ListView extends Widget {
 
   @override
   void draw(Painter canvas) {
-    _scrollArea
-      ..x = x
-      ..y = y
-      ..width = width
-      ..height = height;
+    _scrollArea..x = x..y = y..width = width..height = height;
     _scrollArea.draw(canvas);
   }
 
@@ -58,24 +53,17 @@ class ListView extends Widget {
     width = containerWidth;
     _content.performLayout(containerWidth);
     height = _content.height;
-    _scrollArea.x = x;
-    _scrollArea.y = y;
-    _scrollArea.width = width;
-    _scrollArea.height = height;
+    _scrollArea..x = x..y = y..width = width..height = height;
     _scrollArea.performLayout(width);
   }
 
   @override
   bool hitTest(int px, int py) {
-    _scrollArea.x = x;
-    _scrollArea.y = y;
-    _scrollArea.width = width;
-    _scrollArea.height = height;
+    _scrollArea..x = x..y = y..width = width..height = height;
     return _scrollArea.hitTest(px, py);
   }
 }
 
-/// Internal content widget that lays out children vertically.
 class _ListViewContent extends Widget {
   final List<Widget> children;
   final int spacing;
@@ -86,12 +74,59 @@ class _ListViewContent extends Widget {
 
   void _ensureRenderTree() {
     _renderList.children.clear();
-    _renderChildren.clear();
-    for (final child in children) {
-      final r = _ListChildBox(child);
-      _renderChildren.add(r);
-      _renderList.attach(r);
+    if (_renderChildren.isEmpty) {
+      for (final child in children) {
+        _renderChildren.add(_ListChildBox(child));
+        _renderList.attach(_renderChildren.last);
+      }
+    } else {
+      _reconcile();
+      for (final r in _renderChildren) _renderList.attach(r);
     }
+  }
+
+  void _reconcile() {
+    final old = _renderChildren.toList();
+    _renderChildren.clear();
+
+    // Phase 1: walk from front matching by runtimeType + key.
+    var i = 0;
+    while (i < old.length && i < children.length && _canUpdate(old[i].widget, children[i])) {
+      old[i].widget = children[i];
+      _renderChildren.add(old[i]);
+      i++;
+    }
+    if (i == old.length && i == children.length) return;
+
+    // Phase 2: key remaining old items.
+    final keyed = <Object, _ListChildBox>{};
+    for (var j = old.length - 1; j >= i; j--) {
+      if (old[j].widget.key != null) {
+        keyed[old[j].widget.key!] = old[j];
+      }
+    }
+
+    // Phase 3: match remaining new items by key.
+    for (var j = i; j < children.length; j++) {
+      final child = children[j];
+      _ListChildBox? match;
+      if (child.key != null && keyed.containsKey(child.key)) {
+        match = keyed.remove(child.key!)!;
+      }
+      if (match != null) {
+        match.widget = child;
+        _renderChildren.add(match);
+      } else {
+        _renderChildren.add(_ListChildBox(child));
+      }
+    }
+  }
+
+  bool _canUpdate(Widget a, Widget b) {
+    if (a.runtimeType != b.runtimeType) return false;
+    if (a.key == null && b.key == null) return true;
+    if (a.key == null || b.key == null) return false;
+    return a.key == b.key;
   }
 
   @override
@@ -136,7 +171,7 @@ class _ListViewContent extends Widget {
 }
 
 class _ListChildBox extends le.RenderBox {
-  final Widget widget;
+  Widget widget;
   _ListChildBox(this.widget);
 
   @override
