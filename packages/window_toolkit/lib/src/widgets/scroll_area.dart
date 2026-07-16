@@ -233,12 +233,10 @@ class ScrollArea extends Widget {
   @override
   bool hitTest(int px, int py) {
     if (!super.hitTest(px, py)) return false;
-    final childPx = px;
-    final childPy = py + _controller.offset;
-    child
-      ..x = x
-      ..y = y;
-    return child.hitTest(childPx, childPy);
+    // Always accept hits within bounds — needed for scroll wheel routing
+    // to reach this ScrollArea even when cursor is in empty space between
+    // children. Child hit-test is handled separately for click dispatch.
+    return true;
   }
 }
 
