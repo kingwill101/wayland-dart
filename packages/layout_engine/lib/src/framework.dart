@@ -7,22 +7,34 @@ import 'element_tree.dart' show BuildContext;
 
 /// Base class for widgets in the Element tree.
 ///
-/// Framework-agnostic — no rendering dependencies.
-/// Extend this for widgets that participate in the element lifecycle.
+/// Framework-agnostic. Extend this for widgets that participate in the
+/// element lifecycle. The [key] identifies widget instances across rebuilds.
+/// Non-null keys with the same [runtimeType] preserve state across position
+/// changes. Keys can be any object — strings, ints, or custom identifiers.
 abstract class ElementWidget {
-  const ElementWidget();
+  final Object? key;
+  const ElementWidget({this.key});
+
+  /// Whether [newWidget] can be used to update an element created with
+  /// [oldWidget]. Same runtimeType and matching keys = can update.
+  static bool canUpdate(ElementWidget oldWidget, ElementWidget newWidget) {
+    if (oldWidget.runtimeType != newWidget.runtimeType) return false;
+    if (oldWidget.key == null && newWidget.key == null) return true;
+    if (oldWidget.key == null || newWidget.key == null) return false;
+    return oldWidget.key == newWidget.key;
+  }
 }
 
 /// A widget that builds from configuration with no mutable state.
 abstract class StatelessWidget extends ElementWidget {
   ElementWidget build(BuildContext context);
-  const StatelessWidget();
+  const StatelessWidget({super.key});
 }
 
 /// A widget that has mutable state managed by a [State] object.
 abstract class StatefulWidget extends ElementWidget {
   State createState();
-  const StatefulWidget();
+  const StatefulWidget({super.key});
 }
 
 /// Mutable state for a [StatefulWidget].
@@ -67,7 +79,7 @@ abstract class State<T extends StatefulWidget> {
 /// An inherited widget that propagates data down the tree.
 abstract class InheritedWidget extends ElementWidget {
   final ElementWidget child;
-  InheritedWidget({required this.child});
+  InheritedWidget({required this.child, super.key});
 
   bool updateShouldNotify(covariant InheritedWidget oldWidget);
 }

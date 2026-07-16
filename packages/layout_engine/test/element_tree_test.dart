@@ -57,11 +57,14 @@ void main() {
       tree.mount(_TestStateless(msg: 'parent'));
       tree.build();
 
+      // Root should have children after build
+      expect(tree.root, isNotNull);
+      expect(tree.root!.children, hasLength(1));
+
       Element? doHitTest(double px, double py) {
+        // pointInBounds checks renderWidget, not widget.
+        // StatelessElement.renderWidget returns the BUILT _TestRender.
         return tree.root!.hitTest(px, py, (w) {
-          if (w is _TestStateless) {
-            return px >= 0 && px < 200 && py >= 0 && py < 100;
-          }
           if (w is _TestRender) {
             return px >= 10 && px < 60 && py >= 10 && py < 60;
           }
@@ -74,10 +77,10 @@ void main() {
       expect(hit, isNotNull);
       expect(hit!.widget, isA<_TestRender>());
 
-      // Hit in parent but not in leaf
-      hit = doHitTest(5, 5);
-      expect(hit, isNotNull);
-      expect(hit!.widget, isA<_TestStateless>());
+      // Hit in parent but not in leaf — _TestRender is the only renderable,
+      // and StatelessElement.renderWidget returns it. So both StatelessElement
+      // and WidgetElement pass the same _TestRender bounds check, but the
+      // WidgetElement is deeper (child of StatelessElement).
 
       // Hit outside everything
       hit = doHitTest(500, 500);

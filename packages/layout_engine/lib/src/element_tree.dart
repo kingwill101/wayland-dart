@@ -231,7 +231,7 @@ class StatelessElement extends Element {
       child.mount(this);
     } else {
       final child = children[index];
-      if (child.widget.runtimeType == newWidget.runtimeType) {
+      if (ElementWidget.canUpdate(child.widget, newWidget)) {
         child.update(newWidget);
         child.markNeedsBuild();
       } else {
@@ -297,7 +297,7 @@ class StatefulElement extends Element {
       child.mount(this);
     } else {
       final child = children[index];
-      if (child.widget.runtimeType == newWidget.runtimeType) {
+      if (ElementWidget.canUpdate(child.widget, newWidget)) {
         child.update(newWidget);
         child.markNeedsBuild();
       } else {
@@ -371,7 +371,7 @@ class InheritedElement extends Element {
       child.mount(this);
     } else {
       final child = children[index];
-      if (child.widget.runtimeType == newWidget.runtimeType) {
+      if (ElementWidget.canUpdate(child.widget, newWidget)) {
         child.update(newWidget);
         child.markNeedsBuild();
       } else {
