@@ -1,4 +1,5 @@
 import 'package:layout_engine/layout_engine.dart' as le;
+import 'package:layout_engine/layout_engine.dart' show Key;
 
 import 'layer_window.dart';
 import 'backend/layer.dart';
@@ -17,6 +18,7 @@ export 'package:layout_engine/layout_engine.dart'
         BuildOwner,
         Element,
         ElementTree,
+        Key,
         ElementWidget,
         InheritedElement,
         InheritedWidget,
@@ -35,7 +37,7 @@ abstract class Widget extends le.ElementWidget {
   static VoidCallback? onNeedsRepaint;
 
   /// Creates a widget with an optional [key] for reconciliation.
-  Widget({Object? key}) : super(key: key);
+  Widget({Key? key}) : super(key: key);
 
   /// Whether this widget is mounted in a widget tree.
   bool mounted = false;

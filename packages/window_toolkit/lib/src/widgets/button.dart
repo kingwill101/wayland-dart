@@ -21,7 +21,7 @@ class Button extends Widget {
     this.padding = 4,
     this.charWidth = 8,
     this.charHeight = 16,
-    Object? key,
+    Key? key,
   })  : assert(text.isNotEmpty, 'Button text must not be empty'),
         assert(padding >= 0, 'Button padding must be >= 0'),
         assert(charWidth > 0 && charHeight > 0, 'Button charWidth/charHeight must be > 0'),

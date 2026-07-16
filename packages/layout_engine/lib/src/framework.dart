@@ -5,14 +5,29 @@ library;
 
 import 'element_tree.dart' show BuildContext;
 
+/// A key identifies a widget instance across rebuilds.
+///
+/// Two widgets with the same [runtimeType] and matching keys preserve
+/// the element's state even when their position in the tree changes.
+/// Keys can be any value — strings, ints, or custom objects.
+class Key {
+  final Object? value;
+  const Key(this.value);
+
+  @override
+  bool operator ==(Object other) => other is Key && value == other.value;
+  @override
+  int get hashCode => value.hashCode;
+}
+
 /// Base class for widgets in the Element tree.
 ///
 /// Framework-agnostic. Extend this for widgets that participate in the
 /// element lifecycle. The [key] identifies widget instances across rebuilds.
 /// Non-null keys with the same [runtimeType] preserve state across position
-/// changes. Keys can be any object — strings, ints, or custom identifiers.
+/// changes.
 abstract class ElementWidget {
-  final Object? key;
+  final Key? key;
   const ElementWidget({this.key});
 
   /// Whether [newWidget] can be used to update an element created with
