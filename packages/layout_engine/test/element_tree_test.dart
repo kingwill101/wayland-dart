@@ -87,6 +87,59 @@ void main() {
       expect(hit, isNull);
     });
 
+    test('updateChildren preserves state by key', () {
+      // Create an element and call updateChildren directly.
+      final el = Element(_TestRender(msg: 'host'));
+      final owner = BuildOwner();
+      el.owner = owner;
+
+      // Phase 1: add three keyed children.
+      el.updateChildren([
+        _KeyedChild(key: const WidgetKey('a'), id: 'A'),
+        _KeyedChild(key: const WidgetKey('b'), id: 'B'),
+        _KeyedChild(key: const WidgetKey('c'), id: 'C'),
+      ]);
+      expect(el.children, hasLength(3));
+      final originalA = el.children[0];
+      final originalB = el.children[1];
+      final originalC = el.children[2];
+
+      // Reorder: C, B, A (reverse).
+      el.updateChildren([
+        _KeyedChild(key: const WidgetKey('c'), id: 'C'),
+        _KeyedChild(key: const WidgetKey('b'), id: 'B'),
+        _KeyedChild(key: const WidgetKey('a'), id: 'A'),
+      ]);
+      expect(el.children, hasLength(3));
+      // Elements should be the same instances (state preserved).
+      expect(el.children[0], same(originalC));
+      expect(el.children[1], same(originalB));
+      expect(el.children[2], same(originalA));
+
+      // Remove B.
+      el.updateChildren([
+        _KeyedChild(key: const WidgetKey('c'), id: 'C'),
+        _KeyedChild(key: const WidgetKey('a'), id: 'A'),
+      ]);
+      expect(el.children, hasLength(2));
+      expect(el.children[0], same(originalC));
+      expect(el.children[1], same(originalA));
+
+      // Insert D at position 1.
+      el.updateChildren([
+        _KeyedChild(key: const WidgetKey('c'), id: 'C'),
+        _KeyedChild(key: const WidgetKey('d'), id: 'D'),
+        _KeyedChild(key: const WidgetKey('a'), id: 'A'),
+      ]);
+      expect(el.children, hasLength(3));
+      expect(el.children[0], same(originalC));
+      expect(el.children[2], same(originalA));
+      // D should be a new element (wasn't in the previous set)
+      expect(el.children[1], isNot(same(originalA)));
+      expect(el.children[1], isNot(same(originalB)));
+      expect(el.children[1], isNot(same(originalC)));
+    });
+
     test('InheritedWidget propagates to dependents', () {
       final tree = ElementTree();
       tree.mount(_InheritedTestRoot(
@@ -159,6 +212,11 @@ class _ChildWidget extends StatelessWidget {
 }
 
 // --- InheritedWidget test widgets ---
+
+class _KeyedChild extends ElementWidget {
+  final String id;
+  _KeyedChild({super.key, required this.id});
+}
 
 class _InheritedTestRoot extends StatelessWidget {
   final int value;

@@ -233,6 +233,53 @@ class Element {
   }
 
 
+  // ── Focus navigation ──────────────────────────────────────
+
+  /// Whether this element can receive keyboard focus.
+  /// Override in elements whose widgets are focusable.
+  bool get focusable => false;
+
+  /// Called when this element receives focus.
+  void onFocus() {}
+
+  /// Called when this element loses focus.
+  void onBlur() {}
+
+  /// Find the next focusable element depth-first from [root].
+  /// Returns the first focusable element after [current], or null.
+  static Element? findNextFocus(Element root, {Element? current}) {
+    bool found = current == null;
+    return _searchFocus(root, current, found);
+  }
+
+  /// Find the previous focusable element (reverse depth-first).
+  static Element? findPreviousFocus(Element root, {Element? current}) {
+    Element? previous;
+    _searchFocusReverse(root, current, (el) {
+      previous = el;
+    });
+    return previous;
+  }
+
+  static Element? _searchFocus(Element el, Element? current, bool found) {
+    if (el.focusable && found && el != current) return el;
+    if (identical(el, current)) found = true;
+    for (final child in el.children) {
+      final result = _searchFocus(child, current, found);
+      if (result != null) return result;
+      if (identical(child, current)) found = true;
+    }
+    return null;
+  }
+
+  static void _searchFocusReverse(Element el, Element? current, void Function(Element) onFound) {
+    if (identical(el, current)) return;
+    if (el.focusable) onFound(el);
+    for (var i = el.children.length - 1; i >= 0; i--) {
+      _searchFocusReverse(el.children[i], current, onFound);
+    }
+  }
+
   /// Hit-test through the element tree.
   ///
   /// [pointInBounds] is a framework-provided callback that checks
