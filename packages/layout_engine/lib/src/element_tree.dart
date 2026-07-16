@@ -19,10 +19,14 @@ class BuildOwner {
   bool _inBuild = false;
   bool _needsPaint = false;
 
-  /// Set by the framework to schedule a repaint.
+  /// Callback invoked when any element is marked dirty.
+  /// Set by the framework (e.g., WidgetWindow) to schedule repaint.
   NeedsBuildCallback? onNeedsBuild;
 
+  /// Whether any elements are waiting to be rebuilt.
   bool get hasDirty => _dirty.isNotEmpty;
+
+  /// Whether a paint pass is needed after the last build scope.
   bool get needsPaint => _needsPaint;
 
   /// Schedule [element] for rebuild.
@@ -31,7 +35,7 @@ class BuildOwner {
     onNeedsBuild?.call();
   }
 
-  /// Remove [element] from the dirty set after rebuild.
+  /// Called by an element after it finishes rebuilding.
   void didRebuild(Element element) {
     _dirty.remove(element);
     _needsPaint = true;
@@ -149,16 +153,21 @@ class Element {
     context = BuildContext(this);
   }
 
+  /// Mount this element as a child of [parent].
+  /// Marks the element dirty so it participates in the next build scope.
   void mount(Element? parent) {
     this.parent = parent;
     _depth = parent != null ? parent._depth + 1 : 0;
     markNeedsBuild();
   }
 
+  /// Update this element with a new widget configuration.
   void update(ElementWidget newWidget) {
     widget = newWidget;
   }
 
+  /// Rebuild this element if it is currently dirty.
+  /// Calls [performRebuild] after clearing the dirty flag.
   void rebuild() {
     if (!_dirty) return;
     _dirty = false;
@@ -166,8 +175,12 @@ class Element {
     performRebuild();
   }
 
+  /// Called during rebuild to update child elements.
+  /// Override in subclasses that manage children.
   void performRebuild() {}
 
+  /// Mark this element as needing rebuild.
+  /// The element will be rebuilt in the next [BuildOwner.buildScope].
   void markNeedsBuild() {
     if (_dirty) return;
     _dirty = true;
@@ -538,8 +551,12 @@ class ElementTree {
 
 // ---------------------------------------------------------------------------
 // Element factory
-// ---------------------------------------------------------------------------
-
+/// Create the appropriate [Element] subclass for [widget].
+///
+/// - [StatefulWidget] → [StatefulElement]
+/// - [StatelessWidget] → [StatelessElement]
+/// - [InheritedWidget] → [InheritedElement]
+/// - Other → [WidgetElement]
 Element createElement(ElementWidget widget) {
   if (widget is StatefulWidget) return StatefulElement(widget);
   if (widget is StatelessWidget) return StatelessElement(widget);

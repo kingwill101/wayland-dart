@@ -1,5 +1,7 @@
 import '../drawing/color.dart';
 import '../painter/painter.dart';
+import 'package:layout_engine/layout_engine.dart' show WidgetKey;
+
 import '../widget.dart';
 
 class Checkbox extends Widget {
@@ -17,6 +19,7 @@ class Checkbox extends Widget {
     Color? checkColor,
     this.boxSize = 18,
     this.onChanged,
+    WidgetKey? key,
   })  : assert(boxSize > 0, 'Checkbox boxSize must be > 0'),
         _boxColor = boxColor,
         _borderColor = borderColor,

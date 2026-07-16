@@ -1,5 +1,7 @@
 import '../drawing/color.dart';
 import '../painter/painter.dart';
+import 'package:layout_engine/layout_engine.dart' show WidgetKey;
+
 import '../widget.dart';
 
 class Slider extends Widget {
@@ -26,6 +28,7 @@ class Slider extends Widget {
     Color? thumbColor,
     this.showValue = true,
     this.onChanged,
+    WidgetKey? key,
   })  : assert(max > min, 'Slider max must be > min'),
         assert(trackHeight > 0, 'Slider trackHeight must be > 0'),
         assert(thumbRadius > 0, 'Slider thumbRadius must be > 0'),

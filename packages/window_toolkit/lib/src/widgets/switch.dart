@@ -1,5 +1,7 @@
 import '../drawing/color.dart';
 import '../painter/painter.dart';
+import 'package:layout_engine/layout_engine.dart' show WidgetKey;
+
 import '../widget.dart';
 
 class Switch extends Widget {
@@ -23,6 +25,7 @@ class Switch extends Widget {
     this.trackWidth = 42,
     this.trackHeight = 22,
     this.onChanged,
+    WidgetKey? key,
   })  : assert(trackWidth > 0, 'Switch trackWidth must be > 0'),
         assert(trackHeight > 0, 'Switch trackHeight must be > 0'),
         _trackOnColor = trackOnColor,
