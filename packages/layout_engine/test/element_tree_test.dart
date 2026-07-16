@@ -52,6 +52,38 @@ void main() {
 
     });
 
+    test('hitTest traverses element tree with pointInBounds', () {
+      final tree = ElementTree();
+      tree.mount(_TestStateless(msg: 'parent'));
+      tree.build();
+
+      Element? doHitTest(double px, double py) {
+        return tree.root!.hitTest(px, py, (w) {
+          if (w is _TestStateless) {
+            return px >= 0 && px < 200 && py >= 0 && py < 100;
+          }
+          if (w is _TestRender) {
+            return px >= 10 && px < 60 && py >= 10 && py < 60;
+          }
+          return false;
+        });
+      }
+
+      // Hit at center of leaf
+      var hit = doHitTest(35, 35);
+      expect(hit, isNotNull);
+      expect(hit!.widget, isA<_TestRender>());
+
+      // Hit in parent but not in leaf
+      hit = doHitTest(5, 5);
+      expect(hit, isNotNull);
+      expect(hit!.widget, isA<_TestStateless>());
+
+      // Hit outside everything
+      hit = doHitTest(500, 500);
+      expect(hit, isNull);
+    });
+
     test('InheritedWidget propagates to dependents', () {
       final tree = ElementTree();
       tree.mount(_InheritedTestRoot(

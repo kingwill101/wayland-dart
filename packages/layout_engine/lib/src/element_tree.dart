@@ -174,6 +174,24 @@ class Element {
     owner?.scheduleBuildFor(this);
   }
 
+  /// Hit-test through the element tree.
+  ///
+  /// [pointInBounds] is a framework-provided callback that checks
+  /// whether (x, y) is within a widget's bounds. This keeps the
+  /// element tree framework-agnostic — the rendering framework
+  /// (e.g., window_toolkit) provides bounds from Widget x/y/w/h.
+  ///
+  /// Returns the deepest matching element, or null.
+  Element? hitTest(double x, double y, bool Function(ElementWidget w) pointInBounds) {
+    if (!pointInBounds(widget)) return null;
+    for (var i = children.length - 1; i >= 0; i--) {
+      final result = children[i].hitTest(x, y, pointInBounds);
+      if (result != null) return result;
+    }
+    return this;
+  }
+
+  /// Unmount and dispose this element.
   void unmount() {
     for (final child in children) {
       child.unmount();
