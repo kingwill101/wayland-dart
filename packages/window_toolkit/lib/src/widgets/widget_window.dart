@@ -110,17 +110,16 @@ class WidgetWindow extends Window {
     // Rebuild dirty elements in the element tree.
     elementTree?.build();
 
-    // Resolve the renderable widget (element tree → built, or direct).
-    final renderRoot = elementTree?.root?.renderWidget;
-    final activeRoot = (renderRoot is Widget ? renderRoot : root) as Widget;
-
-    activeRoot
+    // Always position [root] — it's the widget hit-testing traverses.
+    // If root is an ElementHost, it delegates draw/layout to the element
+    // tree's built widget internally.
+    root
       ..x = 0
       ..y = 0
       ..width = w
       ..height = h;
-    activeRoot.performLayout(w);
-    activeRoot.draw(painter);
+    root.performLayout(w);
+    root.draw(painter);
 
     if (contextMenu != null && contextMenu!.visible) {
       contextMenu!.draw(painter);
