@@ -8,6 +8,7 @@ import '../window.dart';
 import '../widget.dart';
 import 'align.dart';
 import 'card.dart';
+import 'element_host.dart';
 import 'context_menu.dart';
 import 'flex.dart';
 import 'frame.dart';
@@ -40,7 +41,7 @@ class WidgetWindow extends Window {
   static const int minWidth = 100;
   static const int minHeight = 60;
 
-  Widget root;
+  late Widget root;
   final FocusModel focus = FocusModel();
   Widget? _lastHovered;
   Widget? _dragTarget;
@@ -66,17 +67,20 @@ class WidgetWindow extends Window {
   /// Optional Element tree for StatefulWidget/StatelessWidget management.
   ElementTree? elementTree;
 
-  WidgetWindow(this.root) {
-    Widget.onNeedsRepaint = requestRedraw;
-    _initElementTree();
-  }
-
-  void _initElementTree() {
-    if (root is StatefulWidget || root is StatelessWidget) {
+  WidgetWindow(ElementWidget rootWidget) {
+    // Wrap non-Widget roots (StatefulWidget, StatelessWidget) in ElementHost.
+    if (rootWidget is Widget) {
+      root = rootWidget;
+    } else {
+      root = ElementHost(child: rootWidget);
+    }
+    // Create element tree for lifecycle-managed roots.
+    if (rootWidget is StatefulWidget || rootWidget is StatelessWidget) {
       elementTree = ElementTree();
       elementTree!.onNeedsBuild = requestRedraw;
-      elementTree!.mount(root as ElementWidget);
+      elementTree!.mount(rootWidget);
     }
+    Widget.onNeedsRepaint = requestRedraw;
   }
 
   @override

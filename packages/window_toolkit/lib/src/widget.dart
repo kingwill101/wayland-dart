@@ -1,4 +1,4 @@
-import 'package:layout_engine/layout_engine.dart' show ElementWidget;
+import 'package:layout_engine/layout_engine.dart' as le;
 
 import 'layer_window.dart';
 import 'backend/layer.dart';
@@ -10,13 +10,27 @@ import 'style.dart';
 // Re-export so widget implementations can type-check KeyEvent.
 export 'mixins/event.dart' show KeyEvent;
 
-// Re-export layout_engine Element types so users can build StatefulWidgets.
+// Re-export layout_engine Element types.
 export 'package:layout_engine/layout_engine.dart'
-    show BuildContext, Element, ElementTree, InheritedWidget, StatefulElement, StatelessElement;
+    show
+        BuildContext,
+        BuildOwner,
+        Element,
+        ElementTree,
+        ElementWidget,
+        InheritedElement,
+        InheritedWidget,
+        NeedsBuildCallback,
+        State,
+        StatefulElement,
+        StatefulWidget,
+        StatelessElement,
+        StatelessWidget,
+        WidgetElement;
 
 typedef VoidCallback = void Function();
 
-abstract class Widget extends ElementWidget {
+abstract class Widget extends le.ElementWidget {
   /// Set by [WidgetWindow] so animated widgets can trigger repaints.
   static VoidCallback? onNeedsRepaint;
 

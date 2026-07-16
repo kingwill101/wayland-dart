@@ -146,12 +146,11 @@ packages:
     source: hosted
     version: "2.0.0"
   native_socket:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: native_socket
-      sha256: fa01c2180d7400c39b29a80a196e66f66c516bcb057dd2debc7313b17cdaaf0f
-      url: "https://pub.dev"
-    source: hosted
+      path: "/home/kingwill101/code/dart_packages/native_socket"
+      relative: false
+    source: path
     version: "0.4.0-wip"
   native_toolchain_c:
     dependency: transitive

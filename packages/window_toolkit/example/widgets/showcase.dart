@@ -1,5 +1,5 @@
 // ignore_for_file: avoid_relative_lib_imports
-import 'package:layout_engine/layout_engine.dart';
+import 'package:layout_engine/layout_engine.dart' hide Offset;
 import 'package:window_toolkit/window_toolkit.dart';
 import '../lib/compound_examples.dart';
 import '../lib/controls_examples.dart';
@@ -61,7 +61,7 @@ class ShowcaseState extends State<ShowcaseRoot> {
         Padding(all: 8, child: buildScrollAreaExample()),
 
         Label('— StatefulWidget —'),
-        CounterWidget(label: 'Stateful Counter'),
+        ElementHost(child: CounterWidget(label: 'Stateful Counter')),
 
         Label('— Animation —'),
         AnimatedSlide(

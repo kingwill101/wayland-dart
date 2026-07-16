@@ -65,14 +65,12 @@ class BardashConfig {
     }
     FontDatabase.instance.setRoleFamily(FontRole.mono, 'monospace');
     // Emoji family is used directly by battery / volume modules.
-    // Use light Skia engine (empty font manager, no FontConfig scan)
-    // saves ~100+ MB RSS. Skia's built-in typeface provides fallback
-    // for all codepoints including emoji PUA ranges.
+    // Use Skia with default font manager + cache limits.
+    // The 8 MB font cache cap + periodic purge keep RSS bounded.
     try {
-      FontDatabase.instance.useSkiaEngineLight();
+      FontDatabase.instance.useSkiaEngine();
     } catch (_) {
-      // Fallback: bitmap engine.
-      FontDatabase.instance.useBitmapEngine();
+      // Tests / headless may only have bitmap.
     }
   }
 

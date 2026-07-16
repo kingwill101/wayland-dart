@@ -4,8 +4,23 @@
 /// layout algorithms. No dependencies on any rendering backend.
 library layout_engine;
 
-export 'src/element_tree.dart' show BuildOwner, BuildContext, Element, ElementTree, InheritedElement, StatefulElement, StatelessElement, WidgetElement, NeedsBuildCallback, createElement;
-export 'src/framework.dart';
+export 'src/element_tree.dart'
+    show
+        BuildContext,
+        BuildOwner,
+        Element,
+        ElementTree,
+        InheritedElement,
+        NeedsBuildCallback,
+        StatefulElement,
+        StatelessElement,
+        WidgetElement,
+        createElement;
+// framework.dart defines ElementWidget, StatefulWidget, StatelessWidget, State,
+// InheritedWidget — but window_toolkit re-exports its own versions that extend
+// Widget. Export only for internal use; users get them from window_toolkit.
+export 'src/framework.dart'
+    show ElementWidget, InheritedWidget, State, StatefulWidget, StatelessWidget;
 export 'src/geometry.dart';
 export 'src/render_object.dart';
 export 'src/render_flex.dart';
