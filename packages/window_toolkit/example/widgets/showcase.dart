@@ -9,32 +9,23 @@ import '../lib/layout_examples.dart';
 import '../lib/more_controls_examples.dart';
 
 /// Root stateful widget for the showcase.
-/// WidgetWindow detects StatefulWidget and wraps it in an ElementTree.
 class ShowcaseRoot extends StatefulWidget {
   @override
   State createState() => ShowcaseState();
 }
 
 class ShowcaseState extends State<ShowcaseRoot> {
-  bool _showSecond = false;
-  Color _boxColor = const Color(60, 60, 70);
-  int _boxRadius = 0;
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   ElementWidget build(BuildContext context) {
-    return _buildLayout();
+    return ScrollArea(child: _buildContent(), showVertical: true);
   }
 
-  Widget _buildLayout() {
-    final content = _buildScrollContent();
-    content.x = 10;
-    content.y = 118;
-    content.performLayout(400);
-
-    return SizedBox(width: 600, height: 800, child: content);
-  }
-
-  Widget _buildScrollContent() {
+  Widget _buildContent() {
     return VBox(
       spacing: 6,
       children: [
@@ -88,22 +79,15 @@ class ShowcaseState extends State<ShowcaseRoot> {
 class Showcase extends WidgetWindow {
   bool _darkMode = true;
   Label _statusLabel;
-  final ViewportScrollController _scrollCtrl = ViewportScrollController();
-  final Scrollbar _scrollbar;
 
   Showcase()
       : _statusLabel = Label(''),
-        _scrollbar = Scrollbar(controller: ViewportScrollController(), thickness: 6),
         super(ShowcaseRoot()) {
     contextMenu = ContextMenu(
       items: [
         MenuItem('Toggle Dark/Light Theme', onTriggered: toggleTheme),
         MenuItem('Say Hello', onTriggered: () {
           _statusLabel.text = 'Hello from window_toolkit!';
-          paint();
-        }),
-        MenuItem('Reset Scroll', onTriggered: () {
-          _scrollCtrl.jumpTo(0);
           paint();
         }),
       ],
@@ -119,28 +103,8 @@ class Showcase extends WidgetWindow {
   }
 
   @override
-  void onMouseWheel(MouseWheelEvent event) {
-    _scrollCtrl.scrollBy(event.dy.round());
-    paint();
-  }
-
-  @override
   void draw(Painter painter) {
     super.draw(painter);
-
-    // Scrollbar
-    final contentH = height - 174;
-    _scrollCtrl.updateMetrics(
-      viewportExtent: contentH,
-      contentExtent: 1200,
-    );
-    _scrollbar
-      ..controller = _scrollCtrl
-      ..viewportHeight = contentH
-      ..x = width - 16
-      ..y = 118
-      ..width = 6
-      ..draw(painter);
 
     // Status bar
     _statusLabel
@@ -148,7 +112,7 @@ class Showcase extends WidgetWindow {
       ..y = height - 24
       ..draw(painter);
 
-    // Theme
+    // Theme indicator
     final themeLabel = Label(_darkMode ? '🌙 Dark' : '☀️ Light');
     themeLabel
       ..x = width - 80

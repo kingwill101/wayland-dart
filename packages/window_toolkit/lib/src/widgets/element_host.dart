@@ -94,6 +94,14 @@ class ElementHost extends Widget {
     return render.hitTest(px, py);
   }
 
+  /// Expose the built widget tree for hit-test and event traversal.
+  @override
+  List<Widget> get children {
+    final render = _renderable;
+    if (render == null) return const [];
+    return [render];
+  }
+
   @override
   void dispose() {
     tree?.unmount();
