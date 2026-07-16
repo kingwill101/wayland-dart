@@ -76,6 +76,7 @@ export 'src/widgets/slider.dart';
 export 'src/widgets/range_slider.dart';
 export 'src/widgets/spinner.dart';
 export 'src/widgets/stack.dart';
+export 'src/widgets/stateful_animated_builder.dart';
 export 'src/widgets/tabs.dart';
 export 'src/widgets/toggle_button.dart';
 export 'src/widgets/text_editing_controller.dart';
