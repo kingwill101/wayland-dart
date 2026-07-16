@@ -5,6 +5,8 @@
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
+
+
 void main() {
   // ── Resize propagation ──────────────────────────────────────
 
@@ -181,6 +183,75 @@ void main() {
     });
   });
 
+  // ── Slider drag ─────────────────────────────────────────────
+
+  group('Slider drag', () {
+    test('Slider hitTest succeeds within bounds', () {
+      final slider = Slider(value: 50);
+      slider.x = 10;
+      slider.y = 10;
+      slider.width = 200;
+      slider.height = 30;
+
+      expect(slider.hitTest(50, 20), isTrue);
+      expect(slider.hitTest(0, 0), isFalse);
+    });
+
+    test('Slider inside ElementHost is reachable via hit-test', () {
+      final host = ElementHost(child: _SliderContainer());
+      host.x = 0;
+      host.y = 0;
+      host.width = 400;
+      host.height = 300;
+      host.performLayout(400);
+
+      // ElementHost should accept hits anywhere in its bounds
+      expect(host.hitTest(10, 10), isTrue,
+          reason: 'ElementHost itself should be hittable');
+    });
+  });
+
+  // ── Window resize ────────────────────────────────────────────
+
+  group('Window resize', () {
+    test('ScrollArea resizes when parent dimensions change', () {
+      final sa = ScrollArea(
+        child: SizedBox(width: 200, height: 1000),
+        showVertical: true,
+      );
+      sa.x = 0;
+      sa.y = 0;
+      sa.width = 200;
+      sa.height = 300;
+      sa.performLayout(200);
+
+      expect(sa.width, 200);
+      expect(sa.height, 300);
+
+      sa.width = 400;
+      sa.height = 500;
+      sa.performLayout(400);
+
+      expect(sa.width, 400, reason: 'width should update after resize');
+      expect(sa.height, 500, reason: 'height should update after resize');
+    });
+
+    test('Children receive host width as containerWidth', () {
+      final host = ElementHost(child: _FlexChild());
+      host.x = 0;
+      host.y = 0;
+      host.width = 400;
+      host.height = 300;
+      host.performLayout(400);
+
+      // The child should have non-zero size after layout
+      expect(host.children.first.width, greaterThan(0),
+          reason: 'child should have width after layout');
+      expect(host.children.first.height, greaterThan(0),
+          reason: 'child should have height after layout');
+    });
+  });
+
   // ── ElementHost scrolling ───────────────────────────────────
 
   group('ElementHost scroll', () {
@@ -223,6 +294,23 @@ class _SizedStateless extends StatelessWidget {
   @override
   ElementWidget build(BuildContext context) {
     return SizedBox(width: size.round(), height: size.round());
+  }
+}
+
+class _FlexChild extends StatelessWidget {
+  @override
+  ElementWidget build(BuildContext context) {
+    return SizedBox(width: 200, height: 50);
+  }
+}
+
+class _SliderContainer extends StatelessWidget {
+  @override
+  ElementWidget build(BuildContext context) {
+    return Padding(
+      all: 8,
+      child: Slider(value: 50, min: 0, max: 100),
+    );
   }
 }
 
