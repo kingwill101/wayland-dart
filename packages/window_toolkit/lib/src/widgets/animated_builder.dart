@@ -31,6 +31,12 @@ class AnimatedBuilder extends Widget {
     Widget.onNeedsRepaint?.call();
   }
 
+  @override
+  void dispose() {
+    animation.removeListener(_onAnimationTick);
+    super.dispose();
+  }
+
   double _currentValue() => (animation.value as num).toDouble();
 
   @override
