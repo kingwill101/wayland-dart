@@ -1,3 +1,5 @@
+import 'package:layout_engine/layout_engine.dart' show Key;
+
 import '../drawing/color.dart';
 import '../painter/painter.dart';
 import '../widget.dart';

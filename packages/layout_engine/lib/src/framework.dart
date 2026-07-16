@@ -9,7 +9,6 @@ import 'element_tree.dart' show BuildContext;
 ///
 /// Two widgets with the same [runtimeType] and matching keys preserve
 /// the element's state even when their position in the tree changes.
-/// Keys can be any value — strings, ints, or custom objects.
 class Key {
   final Object? value;
   const Key(this.value);
@@ -18,6 +17,24 @@ class Key {
   bool operator ==(Object other) => other is Key && value == other.value;
   @override
   int get hashCode => value.hashCode;
+}
+
+/// A key that uses a value of type [T] for identity.
+class ValueKey<T> extends Key {
+  final T id;
+  const ValueKey(this.id) : super(id);
+}
+
+/// A key that is unique across the program — never matches another key.
+class UniqueKey extends Key {
+  static int _counter = 0;
+  final int _uid = _counter++;
+  UniqueKey() : super(null);
+
+  @override
+  bool operator ==(Object other) => identical(this, other);
+  @override
+  int get hashCode => _uid;
 }
 
 /// Base class for widgets in the Element tree.

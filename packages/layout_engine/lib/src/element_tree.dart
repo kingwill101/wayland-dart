@@ -174,6 +174,65 @@ class Element {
     owner?.scheduleBuildFor(this);
   }
 
+  /// Reconcile children with a list of [newWidgets].
+  /// Matches by runtimeType + key, preserving element state across
+  /// position changes when keys match. Handles insert, remove, reorder.
+  void updateChildren(List<ElementWidget> newWidgets) {
+    final oldLen = children.length;
+    final newLen = newWidgets.length;
+    var i = 0;
+    while (i < oldLen && i < newLen &&
+        ElementWidget.canUpdate(children[i].widget, newWidgets[i])) {
+      if (!identical(children[i].widget, newWidgets[i])) {
+        children[i].update(newWidgets[i]);
+        children[i].markNeedsBuild();
+      }
+      i++;
+    }
+    if (i == oldLen && i == newLen) return;
+
+    // Build key map of remaining old children.
+    final keyed = <Object, Element>{};
+    for (var j = oldLen - 1; j >= i; j--) {
+      final child = children[j];
+      if (child.widget.key != null) {
+        keyed[child.widget.key!] = child;
+      } else {
+        child.unmount();
+        children.removeAt(j);
+      }
+    }
+
+    // Walk remaining new widgets, match by key or create.
+    for (var j = i; j < newLen; j++) {
+      final newW = newWidgets[j];
+      final key = newW.key;
+      Element? matched;
+      if (key != null && keyed.containsKey(key)) {
+        matched = keyed.remove(key)!;
+      }
+      if (matched != null) {
+        children.remove(matched);
+        children.insert(j, matched);
+        matched.update(newW);
+        matched.markNeedsBuild();
+      } else {
+        final child = createElement(newW);
+        final pos = j < children.length ? j : children.length;
+        children.insert(pos, child);
+        child.owner = owner;
+        child.mount(this);
+      }
+    }
+
+    // Unmount remaining unmatched keyed children.
+    for (final oldChild in keyed.values) {
+      children.remove(oldChild);
+      oldChild.unmount();
+    }
+  }
+
+
   /// Hit-test through the element tree.
   ///
   /// [pointInBounds] is a framework-provided callback that checks
