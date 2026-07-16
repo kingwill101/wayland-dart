@@ -7,29 +7,30 @@ import 'element_tree.dart' show BuildContext;
 
 /// A key identifies a widget instance across rebuilds.
 ///
-/// Two widgets with the same [runtimeType] and matching keys preserve
-/// the element's state even when their position in the tree changes.
-class Key {
+/// Two widgets with the same [runtimeType] and matching [WidgetKey]s
+/// preserve the element's state even when their position in the tree
+/// changes.
+class WidgetKey {
   final Object? value;
-  const Key(this.value);
+  const WidgetKey(this.value);
 
   @override
-  bool operator ==(Object other) => other is Key && value == other.value;
+  bool operator ==(Object other) => other is WidgetKey && value == other.value;
   @override
   int get hashCode => value.hashCode;
 }
 
 /// A key that uses a value of type [T] for identity.
-class ValueKey<T> extends Key {
+class ValueWidgetKey<T> extends WidgetKey {
   final T id;
-  const ValueKey(this.id) : super(id);
+  const ValueWidgetKey(this.id) : super(id);
 }
 
 /// A key that is unique across the program — never matches another key.
-class UniqueKey extends Key {
+class UniqueWidgetKey extends WidgetKey {
   static int _counter = 0;
   final int _uid = _counter++;
-  UniqueKey() : super(null);
+  UniqueWidgetKey() : super(null);
 
   @override
   bool operator ==(Object other) => identical(this, other);
@@ -44,7 +45,7 @@ class UniqueKey extends Key {
 /// Non-null keys with the same [runtimeType] preserve state across position
 /// changes.
 abstract class ElementWidget {
-  final Key? key;
+  final WidgetKey? key;
   const ElementWidget({this.key});
 
   /// Whether [newWidget] can be used to update an element created with

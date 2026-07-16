@@ -1,4 +1,4 @@
-import 'package:layout_engine/layout_engine.dart' show Key;
+import 'package:layout_engine/layout_engine.dart' show WidgetKey;
 
 import '../drawing/color.dart';
 import '../painter/painter.dart';
@@ -23,7 +23,7 @@ class Button extends Widget {
     this.padding = 4,
     this.charWidth = 8,
     this.charHeight = 16,
-    Key? key,
+    WidgetKey? key,
   })  : assert(text.isNotEmpty, 'Button text must not be empty'),
         assert(padding >= 0, 'Button padding must be >= 0'),
         assert(charWidth > 0 && charHeight > 0, 'Button charWidth/charHeight must be > 0'),
