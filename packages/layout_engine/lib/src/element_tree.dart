@@ -183,7 +183,10 @@ class Element {
   ///
   /// Returns the deepest matching element, or null.
   Element? hitTest(double x, double y, bool Function(ElementWidget w) pointInBounds) {
-    if (!pointInBounds(widget)) return null;
+    // Use renderWidget for bounds check — StatefulElement/StatelessElement
+    // have configuration widgets (e.g., CounterWidget) that don't have
+    // rendering bounds. renderWidget returns the built/rendered output.
+    if (!pointInBounds(renderWidget)) return null;
     for (var i = children.length - 1; i >= 0; i--) {
       final result = children[i].hitTest(x, y, pointInBounds);
       if (result != null) return result;

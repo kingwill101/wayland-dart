@@ -305,9 +305,10 @@ class WidgetWindow extends Window {
 
 
   /// Collect hit-test ancestor path at (px,py), deepest widget first.
-  /// Handles scroll offsets from ancestor ScrollAreas via [offX]/[offY].
-  /// Returns empty list for a miss, otherwise [Widget] list from deepest
-  /// to root, suitable for event bubbling.
+  /// Uses widget-tree traversal (not element tree) because ScrollArea's
+  /// scroll offset adjustments aren't reflected in element bounds.
+  /// The generic [Element.hitTest] in layout_engine provides a
+  /// framework-agnostic alternative for trees without scroll containers.
   List<Widget> _hitTestPath(Widget w, int px, int py, [int offX = 0, int offY = 0]) {
     if (w is ScrollArea) {
       final localPx = px + w.scrollX + offX;
@@ -332,13 +333,12 @@ class WidgetWindow extends Window {
   }
 
   /// Bubbles [onClick] through the ancestor path at (px,py).
-  /// Returns true if any handler consumed the event.
   bool _dispatchClick(int px, int py) {
     final path = _hitTestPath(root, px, py);
     for (final w in path) {
       final handler = w.onClick;
       if (handler != null) {
-        if (handler()) return true; // consumed, stop propagation
+        if (handler()) return true;
       }
     }
     return false;
