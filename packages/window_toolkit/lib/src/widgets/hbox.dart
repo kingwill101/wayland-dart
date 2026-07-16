@@ -14,9 +14,10 @@ class HBox extends Widget {
   final le.RenderRow _renderRow = le.RenderRow();
   final List<_RenderWidgetBox> _renderChildren = [];
 
-  HBox({this.spacing = 0, List<Widget>? children})
+  HBox({this.spacing = 0, List<Widget>? children, WidgetKey? key})
       : assert(spacing >= 0, 'HBox spacing must be >= 0'),
-        children = children ?? [];
+        children = children ?? [],
+        super(key: key);
 
   void _ensureRenderTree() {
     _renderRow.children.clear();

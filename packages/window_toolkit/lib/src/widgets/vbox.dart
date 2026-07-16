@@ -14,9 +14,10 @@ class VBox extends Widget {
   final le.RenderColumn _renderColumn = le.RenderColumn();
   final List<_RenderWidgetBox> _renderChildren = [];
 
-  VBox({this.spacing = 0, List<Widget>? children})
+  VBox({this.spacing = 0, List<Widget>? children, WidgetKey? key})
       : assert(spacing >= 0, 'VBox spacing must be >= 0'),
-        children = children ?? [];
+        children = children ?? [],
+        super(key: key);
 
   void _ensureRenderTree() {
     _renderColumn.children.clear();

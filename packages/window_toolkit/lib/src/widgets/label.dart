@@ -38,9 +38,11 @@ class Label extends Widget {
     this.maxWidth,
     this.ellipsis = true,
     this.softWrap = false,
+    WidgetKey? key,
   })  : assert(fontSize == null || fontSize > 0, 'Label fontSize must be > 0'),
         assert(maxWidth == null || maxWidth > 0, 'Label maxWidth must be > 0'),
-        fontSize = fontSize ?? ThemeMetrics.current.fontSize {
+        fontSize = fontSize ?? ThemeMetrics.current.fontSize,
+        super(key: key) {
     // Stable intrinsic size before [measure] (keeps layout tests / bars predictable).
     height = 16;
     width = (text.length * 8).clamp(1, 10000);

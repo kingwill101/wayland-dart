@@ -18,6 +18,7 @@ export 'package:layout_engine/layout_engine.dart'
         BuildOwner,
         Element,
         ElementTree,
+        WidgetKey,
         ElementWidget,
         InheritedElement,
         InheritedWidget,

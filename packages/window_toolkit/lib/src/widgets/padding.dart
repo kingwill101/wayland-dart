@@ -23,8 +23,10 @@ class Padding extends Widget {
     this.right = 0,
     this.bottom = 0,
     int? all,
+    WidgetKey? key,
   })  : assert(left >= 0 && top >= 0 && right >= 0 && bottom >= 0,
-            'Padding values must be >= 0') {
+            'Padding values must be >= 0'),
+        super(key: key) {
     if (all != null) {
       left = all;
       top = all;
