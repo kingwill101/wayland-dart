@@ -1,0 +1,11 @@
+name: layout_engine_example
+description: Runnable samples for package:layout_engine
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  layout_engine:
+    path: ../

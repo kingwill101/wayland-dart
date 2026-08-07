@@ -222,7 +222,9 @@ class LayerBackend with Size, Events implements Backend {
     switch (b) {
       case RendererBackend.gl:
         try {
-          return GlesPainter(_fd, width, height);
+          final p = GlesPainter(_fd, width, height);
+          if (!p.isHealthy) throw Exception('GlesPainter unhealthy (EGL context lost)');
+          return p;
         } catch (e) {
           stderr.writeln('[wt:layer] GlesPainter failed: $e');
           rethrow;
@@ -237,7 +239,12 @@ class LayerBackend with Size, Events implements Backend {
       case RendererBackend.auto:
         try {
           stderr.writeln('[wt:layer] trying GlesPainter...');
-          return GlesPainter(_fd, width, height);
+          final p = GlesPainter(_fd, width, height);
+          if (!p.isHealthy) {
+            p.dispose();
+            throw Exception('GlesPainter unhealthy (EGL context lost)');
+          }
+          return p;
         } catch (e) {
           stderr.writeln('[wt:layer] GlesPainter unavailable: $e');
         }

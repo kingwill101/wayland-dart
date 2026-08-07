@@ -139,6 +139,11 @@ class ModuleWidget extends Widget {
     } else {
       // y is Skia text-blob origin (line-box top), centered in the bar.
       final originY = _barTextOriginY(painter, barH);
+      // SNI tray draws images via module.draw, not text — never take the CSS text path
+      if (module.name == 'sni' || module.name == 'tray') {
+        module.draw(painter, contentX, originY);
+        return;
+      }
       final styleFg = ctx.parsedColor;
       if (styleFg != null) {
         // CSS color overrides module's hardcoded _color (waybar style.css).

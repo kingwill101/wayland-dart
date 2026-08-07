@@ -21,6 +21,8 @@ import 'painter/painter.dart';
 import 'painter/skia_painter.dart';
 import 'painter/skia_text_engine.dart';
 import 'palette.dart';
+import 'style/style_context.dart';
+import 'widget.dart';
 
 class TooltipOverlay {
   final WaylandConnection connection;
@@ -100,36 +102,31 @@ class TooltipOverlay {
   bool get isVisible => _visible;
 
   /// Size for [text]. Uses Skia metrics when available so height matches paint
-  /// (over-tall estimates pushed tips too far from the bar).
+  /// (over-tall estimates pushed tips too far from the bar). Calendar title larger.
   ///
   /// [maxWidth] caps the tip to the output width.
   Size estimateSize(String text, {int? maxWidth}) {
     final lines = text.split('\n');
     final cap = (maxWidth ?? parentWidth).clamp(48, 7680);
     final family = fontFamily == 'sans' ? 'monospace' : fontFamily;
+    final isCal = text.contains('Su Mo');
+    final titleSz = fontSize + 5;
 
     var maxW = 1.0;
     var totalH = 0.0;
-    final lineGap = fontSize * 0.25;
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i].isEmpty ? ' ' : lines[i];
-      final bounds = SkiaTextEngine.shared.measureTextBounds(
-        line,
-        size: fontSize,
-        fontFamily: family,
-      );
+      final sz = isCal && RegExp(r'^[A-Za-z]+ \d{4}$').hasMatch(line.trim()) ? titleSz : fontSize;
+      final lineGap = isCal && RegExp(r'^[A-Za-z]+ \d{4}$').hasMatch(line.trim()) ? 6 : fontSize * 0.25;
+      final bounds = SkiaTextEngine.shared.measureTextBounds(line.replaceAll('*', ' '), size: sz, fontFamily: family);
       if (bounds.width > maxW) maxW = bounds.width;
-      // Prefer advance-based width for horizontal; height from bounds/line.
-      final adv = SkiaTextEngine.shared.measureTextAdvance(
-        line,
-        size: fontSize,
-        fontFamily: family,
-      );
+      final adv = SkiaTextEngine.shared.measureTextAdvance(line.replaceAll('*', ' '), size: sz, fontFamily: family);
       if (adv > maxW) maxW = adv;
-      totalH += bounds.height > 0 ? bounds.height : fontSize;
+      totalH += bounds.height > 0 ? bounds.height : sz;
       if (i < lines.length - 1) totalH += lineGap;
     }
-
+    // Calendar should fill available tooltip: ensure airy min width
+    if (isCal && maxW < 280) maxW = 280;
     final w = (maxW + paddingHorizontal * 2).round().clamp(48, cap);
     final h = (totalH + paddingVertical * 2).round().clamp(18, 480);
     return Size(w.toDouble(), h.toDouble());
@@ -454,20 +451,40 @@ class TooltipOverlay {
   void _paint(String text) {
     if (_fd < 0 || _buffer == null) return;
 
+    // Resolve tooltip colors from CSS (tooltip / tooltip label) with palette fallback - keeps calendar cohesive with bar
+    Color bg = resolvedBackground;
+    Color fg = resolvedText;
+    Color border = resolvedBorder;
+    try {
+      final dummy = _TooltipStyleWidget();
+      final ctx = StyleContext.forWidget(dummy);
+      final bgCss = ctx.parsedBackgroundColor;
+      if (bgCss != null) bg = bgCss;
+      final fgCss = ctx.parsedColor;
+      // tooltip label color often set on descendant
+      if (fgCss != null) fg = fgCss;
+      final borderCss = ctx.parsedBorderColor;
+      if (borderCss != null) border = borderCss;
+    } catch (_) {}
+
     // Paint at exact content size (matches attached buffer).
     final painter = SkiaPainter(_fd, _w, _h);
     try {
-      painter.clear(resolvedBackground);
-      painter.drawRect(
+      painter.clear(Color(0, 0, 0, 0));
+      painter.drawRRect(
         Rect.fromLTWH(0, 0, _w.toDouble(), _h.toDouble()),
-        Paint()..color = resolvedBackground,
+        10,
+        10,
+        Paint()..color = bg,
       );
 
       if (drawBorder) {
-        painter.drawRect(
+        painter.drawRRect(
           Rect.fromLTWH(0.5, 0.5, _w - 1.0, _h - 1.0),
+          10,
+          10,
           Paint()
-            ..color = resolvedBorder
+            ..color = border
             ..style = PaintStyle.stroke
             ..strokeWidth = 1,
         );
@@ -475,41 +492,123 @@ class TooltipOverlay {
 
       final lines = text.split('\n');
       final family = fontFamily == 'sans' ? 'monospace' : fontFamily;
-      final lineGap = fontSize * 0.25;
-
-      // Pre-measure lines so we can vertically center the block in the tip.
+      final isCalendar = text.contains('Su Mo') || text.contains('Mo Tu');
+      // Distribute calendar grid to fill available width, title larger
+      final titleSize = fontSize + 5;
+      // Pre-measure so calendar can fill
       final lineBounds = <Rect>[];
+      final lineSizes = <double>[];
       var contentH = 0.0;
+      final outerW = _w.toDouble();
+      final innerW = (outerW - paddingHorizontal * 2).clamp(20, 700).toDouble();
       for (var i = 0; i < lines.length; i++) {
-        final line = lines[i].isEmpty ? ' ' : lines[i];
-        final bounds = painter.measureTextBounds(
-          line,
-          size: fontSize,
-          fontFamily: family,
-        );
+        final raw = lines[i].isEmpty ? ' ' : lines[i];
+        final bool isTitle = isCalendar && RegExp(r'^[A-Za-z]+ \d{4}$').hasMatch(raw.trim());
+        final bool isWeekday = raw.trim().startsWith('Su Mo') || raw.trim().startsWith('Mo Tu');
+        final bool isDayRow = isCalendar && !isTitle && !isWeekday && raw.trim().isNotEmpty && RegExp(r'[\d]').hasMatch(raw);
+        final sz = isTitle ? titleSize : fontSize;
+        lineSizes.add(sz);
+        final lineGap = isTitle ? 8 : (isWeekday ? 4 : fontSize * 0.2);
+        final bounds = isDayRow
+            ? Rect.fromLTWH(0, 0, innerW, sz + 4)
+            : painter.measureTextBounds(raw.replaceAll('*', ' '), size: sz, fontFamily: family);
         lineBounds.add(bounds);
-        final lh = bounds.height > 0 ? bounds.height : fontSize;
-        contentH += lh;
-        if (i < lines.length - 1) contentH += lineGap;
+        final lh = isDayRow ? sz + 6 : (bounds.height > 0 ? bounds.height : sz);
+        contentH += lh + (i < lines.length - 1 ? lineGap : 0);
       }
-      final innerH = (_h - paddingVertical * 2).clamp(0, _h).toDouble();
-      var yCursor = paddingVertical.toDouble() +
-          (innerH > contentH ? (innerH - contentH) / 2.0 : 0.0);
+      final availInnerH = (_h - paddingVertical * 2).clamp(0, _h).toDouble();
+      var yCursor = paddingVertical.toDouble() + (availInnerH > contentH ? (availInnerH - contentH) / 2.0 : 0.0);
 
       for (var i = 0; i < lines.length; i++) {
-        final line = lines[i].isEmpty ? ' ' : lines[i];
+        final rawLine = lines[i].isEmpty ? ' ' : lines[i];
         final bounds = lineBounds[i];
-        final lh = bounds.height > 0 ? bounds.height : fontSize;
-        // Center this line's glyphs in its line box (baseline-relative).
-        final originY =
-            TextLayout.baselineForBounds(yCursor, lh.toDouble(), bounds);
-        painter.drawText(
-          line,
-          Offset(paddingHorizontal.toDouble() - bounds.left, originY),
-          color: resolvedText,
-          size: fontSize,
-          fontFamily: family,
-        );
+        final sz = lineSizes[i];
+        final bool isTitleLine = isCalendar && RegExp(r'^[A-Za-z]+ \d{4}$').hasMatch(rawLine.trim());
+        final bool isWeekday = rawLine.trim().startsWith('Su Mo') || rawLine.trim().startsWith('Mo Tu');
+        final bool isDayRow = isCalendar && !isTitleLine && !isWeekday && rawLine.trim().isNotEmpty && RegExp(r'[\d ]{3,}').hasMatch(rawLine);
+        final lh = bounds.height > 0 ? bounds.height : sz;
+        final lineGap = isTitleLine ? 8 : (isWeekday ? 4 : fontSize * 0.2);
+        if (isDayRow) {
+          // Grid fill: 7 columns across innerW
+          final gap = innerW / 7;
+          final yMid = yCursor + lh / 2;
+          // Weekday header already handled separately; this is day numbers
+          // Extract 7 cells (3 chars each) from rawLine padded to 21 chars
+          final padded = rawLine.padRight(21);
+          for (int col = 0; col < 7; col++) {
+            final cellRaw = padded.substring(col * 3, (col * 3 + 3).clamp(0, padded.length)).trim();
+            if (cellRaw.isEmpty) continue;
+            final isToday = rawLine.contains('*') && rawLine.indexOf('*') ~/ 3 == col;
+            final cellX = paddingHorizontal.toDouble() + col * gap;
+            final cellCx = cellX + gap / 2;
+            final text = cellRaw.replaceAll('*', '');
+            final tb = painter.measureTextBounds(text, size: sz, fontFamily: family);
+            if (isToday) {
+              final bgW = gap - 4;
+              final bgH = lh + 2;
+              painter.drawRRect(
+                Rect.fromLTWH(cellCx - bgW / 2, yCursor - 1, bgW, bgH),
+                6,
+                6,
+                Paint()..color = Color(137, 180, 250),
+              );
+            }
+            final adv = SkiaTextEngine.shared.measureTextAdvance(text, size: sz, fontFamily: family);
+            final tx = cellCx - adv / 2 - tb.left;
+            final originY = TextLayout.baselineForBounds(yCursor, lh.toDouble(), tb);
+            painter.drawText(
+              text,
+              Offset(tx, originY),
+              color: isToday ? Color(30, 30, 46) : fg,
+              size: sz,
+              fontFamily: family,
+            );
+            // unused yMid kept for future
+          }
+        } else {
+          final originY = TextLayout.baselineForBounds(yCursor, lh.toDouble(), bounds);
+          Color lineColor = fg;
+          String drawLine = rawLine;
+          if (isCalendar) {
+            if (isWeekday) lineColor = Color(fg.r, fg.g, fg.b, 140);
+            if (isTitleLine) lineColor = fg;
+            // Today handled via grid, just draw as normal if not day row
+            if (rawLine.contains('*') && !isDayRow) {
+              drawLine = rawLine.replaceAll('*', ' ');
+              lineColor = Color(137, 180, 250);
+            }
+          }
+          final drawSize = isTitleLine ? titleSize : sz;
+          // Center title, left-align weekdays via grid already, so center others
+          double xOff = paddingHorizontal.toDouble() - bounds.left;
+          if (isTitleLine) {
+            // Center title across innerW
+            final titleW = painter.measureTextBounds(drawLine, size: drawSize, fontFamily: family).width;
+            xOff = paddingHorizontal.toDouble() + (innerW - titleW) / 2 - bounds.left;
+          } else if (isWeekday) {
+            // Weekday header also as grid
+            final gap = innerW / 7;
+            // Draw weekday as grid to fill
+            final days = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+            for (int c = 0; c < 7; c++) {
+              final cx = paddingHorizontal.toDouble() + c * gap + gap / 2;
+              final tb = painter.measureTextBounds(days[c], size: sz, fontFamily: family);
+              final adv = SkiaTextEngine.shared.measureTextAdvance(days[c], size: sz, fontFamily: family);
+              final tx = cx - adv / 2 - tb.left;
+              final oy = TextLayout.baselineForBounds(yCursor, lh.toDouble(), tb);
+              painter.drawText(days[c], Offset(tx, oy), color: Color(fg.r, fg.g, fg.b, 140), size: sz, fontFamily: family);
+            }
+            yCursor += lh + (i < lines.length - 1 ? lineGap : 0);
+            continue;
+          }
+          painter.drawText(
+            drawLine,
+            Offset(xOff, originY),
+            color: lineColor,
+            size: drawSize,
+            fontFamily: family,
+          );
+        }
         yCursor += lh + (i < lines.length - 1 ? lineGap : 0);
       }
       painter.flush();
@@ -534,4 +633,15 @@ class TooltipOverlay {
     _configured = false;
     _awaitingConfigure = false;
   }
+}
+
+class _TooltipStyleWidget extends Widget {
+  _TooltipStyleWidget() {
+    styleId = 'tooltip';
+    addClass('tooltip');
+  }
+  @override
+  void performLayout(int containerWidth) {}
+  @override
+  void draw(Painter canvas) {}
 }

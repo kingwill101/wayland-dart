@@ -1,0 +1,20 @@
+dartdoc:
+  categories:
+    "Geometry":
+      markdown: doc/geometry.md
+      name: Geometry
+    "Render objects":
+      markdown: doc/render_objects.md
+      name: Render objects
+    "Scrolling":
+      markdown: doc/scrolling.md
+      name: Scrolling
+    "Widget framework":
+      markdown: doc/widget_framework.md
+      name: Widget framework
+  categoryOrder:
+    - "Geometry"
+    - "Render objects"
+    - "Scrolling"
+    - "Widget framework"
+  showUndocumentedCategories: false

@@ -7,6 +7,7 @@ import 'package:wayland/wayland.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
 import '../metrics.dart';
+import '../native/icon_shim.dart';
 import '../png_encode.dart';
 import '../tray_menu.dart';
 import 'module.dart';
@@ -60,32 +61,44 @@ List<String> _buildThemeDirs(String themeName) {
 
 /// Search [themeDirs] to find an icon file matching [name].
 /// Tries multiple sizes (24,32,48,64,22,16, scalable), extensions (png,svg,xpm).
+/// Also falls back to hicolor and Adwaita if primary theme misses (sway does this).
 String? _findIconInDirs(List<String> themeDirs, String name) {
   if (name.isEmpty) return null;
   final sizes = [24, 32, 48, 64, 22, 16];
   final exts = ['png', 'svg', 'xpm'];
 
-  for (final dir in themeDirs) {
-    // Parse subdir name: "24x24/apps" or "scalable/apps"
-    final segments = dir.split('/');
-    final sizePart = segments.length >= 2 ? segments[segments.length - 2] : '';
-    final isScalable = sizePart == 'scalable';
-    if (isScalable) {
-      for (final ext in exts.where((e) => e != 'xpm')) {
-        final path = '$dir/$name.$ext';
-        if (File(path).existsSync()) return path;
-      }
-    } else {
-      // Check size match
-      for (final s in sizes) {
-        if (sizePart == '${s}x$s') {
-          for (final ext in exts) {
-            final path = '$dir/$name.$ext';
-            if (File(path).existsSync()) return path;
+  String? search(List<String> dirs) {
+    for (final dir in dirs) {
+      final segments = dir.split('/');
+      final sizePart = segments.length >= 2 ? segments[segments.length - 2] : '';
+      final isScalable = sizePart == 'scalable';
+      if (isScalable) {
+        for (final ext in exts.where((e) => e != 'xpm')) {
+          final path = '$dir/$name.$ext';
+          if (File(path).existsSync()) return path;
+        }
+      } else {
+        for (final s in sizes) {
+          if (sizePart == '${s}x$s') {
+            for (final ext in exts) {
+              final path = '$dir/$name.$ext';
+              if (File(path).existsSync()) return path;
+            }
           }
         }
       }
     }
+    return null;
+  }
+
+  var found = search(themeDirs);
+  if (found != null) return found;
+  // Fallback to hicolor/Adwaita/breeze/Papirus like swaybar does when theme icon missing (bluetooth often only in hicolor/papirus)
+  for (final fb in ['Papirus', 'hicolor', 'Adwaita', 'breeze', 'breeze-dark']) {
+    if (themeDirs.any((d) => d.contains('/$fb/'))) continue;
+    final fbDirs = _buildThemeDirs(fb);
+    found = search(fbDirs);
+    if (found != null) return found;
   }
   return null;
 }
@@ -417,9 +430,36 @@ class _TrayItem {
 
   /// Detect the active icon theme from the environment.
   static String _activeTheme() {
-    // GNOME/GTK stores the theme in gsettings; we fall back to reading
-    // the symlink or a config file.  For now, check common theme dirs.
-    for (final t in ['Papirus', 'Pop', 'Adwaita', 'hicolor']) {
+    // Prefer gsettings icon-theme (Papirus-Dark etc), fallback to common dirs.
+    try {
+      final r = Process.runSync('gsettings', ['get', 'org.gnome.desktop.interface', 'icon-theme'], runInShell: true);
+      if (r.exitCode == 0) {
+        var v = r.stdout.toString().trim();
+        // gsettings returns quoted 'Papirus-Dark'
+        if ((v.startsWith("'") && v.endsWith("'")) || (v.startsWith('"') && v.endsWith('"'))) {
+          v = v.substring(1, v.length - 1);
+        }
+        if (v.isNotEmpty && Directory('/usr/share/icons/$v').existsSync()) return v;
+        // Try without -Dark suffix
+        final base = v.replaceAll(RegExp(r'-Dark$'), '');
+        if (base != v && Directory('/usr/share/icons/$base').existsSync()) return base;
+      }
+    } catch (_) {}
+    // GTK settings.ini fallback
+    try {
+      for (final p in [Platform.environment['HOME']! + '/.config/gtk-3.0/settings.ini', '/etc/gtk-3.0/settings.ini']) {
+        final f = File(p);
+        if (!f.existsSync()) continue;
+        for (final line in f.readAsLinesSync()) {
+          final m = RegExp(r'gtk-icon-theme-name\s*=\s*(.+)').firstMatch(line);
+          if (m != null) {
+            var v = m.group(1)!.trim().replaceAll('"', '').replaceAll("'", '');
+            if (v.isNotEmpty && Directory('/usr/share/icons/$v').existsSync()) return v;
+          }
+        }
+      }
+    } catch (_) {}
+    for (final t in ['Papirus-Dark', 'Papirus', 'Pop', 'Adwaita', 'hicolor']) {
       if (Directory('/usr/share/icons/$t').existsSync()) return t;
     }
     return 'hicolor';
@@ -437,7 +477,8 @@ class _TrayItem {
 
   /// Find an icon file. Cached — safe to call every paint.
   ///
-  /// If the file is SVG, convert it to PNG via `rsvg-convert`.
+  /// Native GTK + librsvg via icon_shim when available; else fallback to
+  /// manual _findIconInDirs + rsvg-convert subprocess.
   String? findThemedIcon() {
     final nameForStatus = status == 'NeedsAttention' && attentionIconName.isNotEmpty
         ? attentionIconName
@@ -479,6 +520,33 @@ class _TrayItem {
 
     for (final name in candidates) {
       for (final variant in _iconNameVariants(name)) {
+        // 1) Try native GTK icon theme (handles Inherits, scalable, @2x)
+        if (IconShim.isAvailable) {
+          final native = IconShim.lookup(variant, size: 32, theme: _TrayItem._activeTheme());
+          if (native != null) {
+            if (native.endsWith('.svg')) {
+              final cached = _svgCache[native];
+              if (cached != null && File(cached).existsSync()) {
+                _themedPath = cached;
+                _themedMiss = false;
+                return cached;
+              }
+              final pngPath = '/tmp/bardash_icons/${native.hashCode}.png';
+              Directory('/tmp/bardash_icons').createSync(recursive: true);
+              if (IconShim.rasterSvg(native, pngPath, w: 32, h: 32)) {
+                _svgCache[native] = pngPath;
+                _themedPath = pngPath;
+                _themedMiss = false;
+                return pngPath;
+              }
+            } else {
+              _themedPath = native;
+              _themedMiss = false;
+              return native;
+            }
+          }
+        }
+        // 2) Fallback: manual index.theme search + rsvg-convert
         final found = _findIconInDirs(searchDirs, variant);
         if (found == null) continue;
         if (found.endsWith('.svg')) {
