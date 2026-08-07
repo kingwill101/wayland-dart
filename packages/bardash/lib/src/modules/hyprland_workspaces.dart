@@ -84,6 +84,7 @@ class HyprlandWorkspacesModule extends BarModule {
 
       final btn = Button(
         label,
+        // Let CSS override via .module / #workspaces button.active; keep fallback for no-CSS
         textColor: isActive
             ? const Color(0xff, 0xff, 0xff)
             : const Color(0xa0, 0xa0, 0xa0),
@@ -94,7 +95,14 @@ class HyprlandWorkspacesModule extends BarModule {
         padding: 3,
         charWidth: 7,
         charHeight: 14,
-      );
+      )..styleId = 'workspace-$id'
+       ..addClass('workspace')
+       ..addClass('button');
+      if (isActive) {
+        btn.addClass('active');
+        btn.addClass('focused');
+        btn.addPseudoClass('active');
+      }
 
       final capturedId = id;
       btn.onClick = () {

@@ -9,6 +9,14 @@ environment:
 
 dependencies:
   window_toolkit: any
-  lualike: ^0.3.0
+  lualike: ^0.5.2
   dbus: ^0.7.14
   ffi: ^2.2.0
+  wayland: any
+dev_dependencies:
+  skia_dart: any
+  code_assets: any
+  hooks: any
+  logging: any
+  native_toolchain_c: any
+  test: any

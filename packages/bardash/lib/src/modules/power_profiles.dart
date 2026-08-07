@@ -1,9 +1,15 @@
 import 'package:window_toolkit/window_toolkit.dart';
 
+import '../bar_text.dart';
 import '../command.dart';
-import '../metrics.dart';
 import '../native/power_profiles_client.dart';
 import 'module.dart';
+
+const _fallbackIcons = <String, String>{
+  'performance': 'P',
+  'balanced': 'B',
+  'power-saver': 'S',
+};
 
 /// power-profiles-daemon status via D-Bus (no `powerprofilesctl`).
 ///
@@ -49,9 +55,12 @@ class PowerProfilesModule extends BarModule {
     }
     final profile = _snap.active;
     final fmt = resolveFormat(config, '{icon}', profile);
+    // Use Nerd icon if Hack Nerd Font available, else fallback to text to avoid []
+    final hasNerd = FontDatabase.instance.families().any((f) => f.toLowerCase().contains('nerd') || f.toLowerCase().contains('hack'));
+    final iconMap = hasNerd ? _icons : _fallbackIcons;
     output = fmt
         .replaceAll('{profile}', profile)
-        .replaceAll('{icon}', _icons[profile] ?? '󰚥');
+        .replaceAll('{icon}', iconMap[profile] ?? (hasNerd ? '󰚥' : 'P'));
     tooltip = resolveTooltip(
       'Power profile: $profile\n${_snap.profiles.join(', ')}',
       {'profile': profile},
@@ -69,16 +78,13 @@ class PowerProfilesModule extends BarModule {
   @override
   double measure(Painter painter) {
     if (output.isEmpty) return 0;
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    return painter.measureTextFont(output, font);
+    return BarText.measure(painter, output);
   }
 
   @override
   double draw(Painter painter, double x, double y) {
     if (output.isEmpty) return 0;
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    painter.drawTextFont(output, Offset(x, y), font: font);
-    return painter.measureTextFont(output, font);
+    return BarText.draw(painter, output, x, y);
   }
 
   @override

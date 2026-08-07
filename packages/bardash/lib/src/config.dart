@@ -29,8 +29,11 @@ class BardashConfig {
   int exclusiveZone = 30;
   /// Gap between top-level modules (see [BarMetrics.spacing]).
   int spacing = 2;
-  String iconFontFamily = 'Noto Color Emoji';
+  String iconFontFamily = 'Hack Nerd Font';
   Color backgroundColor = const Color(30, 30, 30);
+  /// GTK-like CSS — mirrors waybar `style.css` (CssProvider load_from_path).
+  /// Null → check `~/.config/bardash/style.css` then `~/.config/waybar/style.css`.
+  String? stylePath;
   /// Layout density scale; drives defaults for spacing / pad / icon sizes.
   BarMetrics metrics = BarMetrics.normal;
   List<String> modulesLeft = [];
@@ -58,12 +61,11 @@ class BardashConfig {
     // window_toolkit font manager: UI + icon roles used by measure/draw.
     FontDatabase.instance.defaultPixelSize = metrics.fontSize;
     FontDatabase.instance.setRoleFamily(FontRole.ui, 'sans');
-    // Only set icon role if the user explicitly configured an icon font.
-    // Default 'sans' + Skia fallback works for most systems.
-    if (iconFontFamily != 'Noto Color Emoji') {
-      FontDatabase.instance.setRoleFamily(FontRole.icon, iconFontFamily);
-    }
+    FontDatabase.instance.setRoleFamily(FontRole.icon, iconFontFamily);
     FontDatabase.instance.setRoleFamily(FontRole.mono, 'monospace');
+    // Try to register icon font file if present on system (like waybar's
+    // FontAwesome/Nerd requirement). Mirrors waybar's Pango fallback scan.
+    _tryRegisterIconFont(iconFontFamily);
     // Emoji family is used directly by battery / volume modules.
     // Use Skia with default font manager + cache limits.
     // The 8 MB font cache cap + periodic purge keep RSS bounded.
@@ -72,6 +74,28 @@ class BardashConfig {
     } catch (_) {
       // Tests / headless may only have bitmap.
     }
+  }
+
+  static void _tryRegisterIconFont(String family) {
+    const candidates = [
+      '/usr/share/fonts/TTF/HackNerdFont-Regular.ttf',
+      '/usr/share/fonts/TTF/Hack NF.ttf',
+      '/usr/share/fonts/OTF/HackNerdFont-Regular.otf',
+      '/usr/share/fonts/TTF/Font Awesome 6 Free-Solid-900.otf',
+      '/usr/share/fonts/OTF/FontAwesome.otf',
+      '/usr/share/fonts/truetype/font-awesome/fontawesome-webfont.ttf',
+      '/usr/share/fonts/TTF/NerdFonts/Hack/HackNerdFont-Regular.ttf',
+    ];
+    for (final path in candidates) {
+      final f = File(path);
+      if (f.existsSync()) {
+        try {
+          FontDatabase.instance.addApplicationFont(path);
+          break;
+        } catch (_) {}
+      }
+    }
+    // Also try family-named lookup — if already installed, no file needed.
   }
 
   static Future<BardashConfig> fromLua(String source) async {
@@ -128,6 +152,12 @@ class BardashConfig {
       config.iconFontFamily = iconFontFamily.unwrap() as String;
     }
 
+    final styleVal = lua.getGlobal('style');
+    if (styleVal is Value && styleVal.unwrap() is String) {
+      final s = (styleVal.unwrap() as String).trim();
+      if (s.isNotEmpty) config.stylePath = s;
+    }
+
     config.modulesLeft = _readTableList(lua.getGlobal('modules_left'));
     config.modulesCenter = _readTableList(lua.getGlobal('modules_center'));
     config.modulesRight = _readTableList(lua.getGlobal('modules_right'));
@@ -164,14 +194,19 @@ class BardashConfig {
   static List<String> _readTableList(Object? value) {
     if (value is! Value || !value.isTable) return [];
     final unwrapped = value.unwrap();
-    if (unwrapped is! Map) return [];
-    final result = <String>[];
-    for (var i = 1; ; i++) {
-      final entry = unwrapped[i];
-      if (entry == null) break;
-      result.add(entry.toString());
+    if (unwrapped is List) {
+      return unwrapped.map((e) => e.toString()).toList();
     }
-    return result;
+    if (unwrapped is Map) {
+      final result = <String>[];
+      for (var i = 1; ; i++) {
+        final entry = unwrapped[i];
+        if (entry == null) break;
+        result.add(entry.toString());
+      }
+      return result;
+    }
+    return [];
   }
 
   static Future<BardashConfig> fromFile(String path) async {
