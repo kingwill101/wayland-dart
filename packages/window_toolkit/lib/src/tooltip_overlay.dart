@@ -43,6 +43,7 @@ class TooltipOverlay {
 
   WlSurface? _surface;
   LayerSurfaceV1? _layer;
+  WlSurface? parentSurface;
   WlShmPool? _pool;
   WlBuffer? _buffer;
   int _fd = -1;
@@ -71,7 +72,7 @@ class TooltipOverlay {
     this.parentWidth = 1920,
     this.parentHeight = 30,
     this.barAnchor = Anchor.top,
-    WlSurface? parentSurface,
+    this.parentSurface,
     this.palette,
     this.backgroundColor,
     this.textColor,
@@ -81,7 +82,7 @@ class TooltipOverlay {
     this.fontFamily = 'sans',
     this.paddingHorizontal = 10,
     this.paddingVertical = 6,
-    this.gap = 4,
+    this.gap = 0,
   });
 
   ColorGroup get _colors =>
@@ -327,18 +328,21 @@ class TooltipOverlay {
     final maxX = (parentWidth - _w).clamp(0, parentWidth);
     x = x.clamp(0, maxX);
 
-    _ensureContentBuffer();
-    _applyPlacement(x, y);
-    _layer!.setSize(_w, _h);
-    _layer!.setExclusiveZone(0);
-
+    // Paint first so buffer is ready before placement commits - positions on top without flicker
     final needPaint = text != _shownText || !_visible;
     if (needPaint) {
+      _ensureContentBuffer();
       _paint(text);
       if (_buffer == null || _fd < 0) return;
       _surface!.attach(_buffer!, 0, 0);
       _surface!.damage(0, 0, _w, _h);
+    } else {
+      _ensureContentBuffer();
     }
+    _applyPlacement(x, y);
+    _layer!.setSize(_w, _h);
+    _layer!.setExclusiveZone(0);
+
     _surface!.commit();
 
     _shownText = text;
@@ -347,12 +351,9 @@ class TooltipOverlay {
     _visible = true;
   }
 
-  /// Place the tip next to the bar.
-  ///
-  /// For top/bottom bars, [parentX] is the tip's left edge in bar coordinates;
-  /// vertical placement is always [parentHeight] + [gap] from that edge of the
-  /// output (not `parentY - height`, which double-counted tip height and sat
-  /// tips too far from the bar).
+  /// Place the tip next to the bar. Flush on top via layer margins.
+  /// Bottom bar: tooltip on top (above bar) via bottomEdge = ph + gap (gap 0 flush).
+  /// Top bar: tooltip on top (below bar top edge but still on top layer) via topEdge = ph + gap.
   void _applyPlacement(int parentX, int parentY) {
     if (_layer == null) return;
 
@@ -361,15 +362,16 @@ class TooltipOverlay {
     final maxLeft = (pw - _w).clamp(0, pw);
     final left = parentX.clamp(0, maxLeft);
     final right = (pw - left - _w).clamp(0, pw);
+    stderr.writeln('[tooltip] _applyPlacement on-top anchor=$barAnchor ph=$ph gap=$gap left=$left right=$right w=$_w h=$_h parentX=$parentX');
 
     switch (barAnchor) {
       case Anchor.bottom:
-        // Tip bottom sits [gap] px above the bar top (= ph from screen bottom).
-        final bottom = ph + gap;
+        // On-top: tooltip sits flush on bar top, overlay bottom=gap (exclusiveZone already reserves ph)
+        final bottom = gap;
         _placeHorizontal(left, right, bottomEdge: bottom);
       case Anchor.top:
-        // Tip top sits [gap] px below the bar bottom.
-        final top = ph + gap;
+        // On-top: tooltip sits flush below bar, overlay top=gap (exclusiveZone already reserves ph)
+        final top = gap;
         _placeHorizontal(left, right, topEdge: top);
       case Anchor.left:
         final maxTop = (ph - _h).clamp(0, ph);

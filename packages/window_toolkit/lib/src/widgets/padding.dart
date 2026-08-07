@@ -23,10 +23,9 @@ class Padding extends Widget {
     this.right = 0,
     this.bottom = 0,
     int? all,
-    WidgetKey? key,
+    super.key,
   })  : assert(left >= 0 && top >= 0 && right >= 0 && bottom >= 0,
-            'Padding values must be >= 0'),
-        super(key: key) {
+            'Padding values must be >= 0') {
     if (all != null) {
       left = all;
       top = all;
@@ -41,6 +40,7 @@ class Padding extends Widget {
     _renderPadding.top = top.toDouble();
     _renderPadding.right = right.toDouble();
     _renderPadding.bottom = bottom.toDouble();
+    child.parent = this;
 
     _renderChild.widget = child;
     if (_renderPadding.children.isEmpty) {
@@ -60,11 +60,12 @@ class Padding extends Widget {
       maxHeight: double.infinity,
     ));
 
-    width = _renderPadding.size.width.round();
+    width = containerWidth > 0 ? containerWidth : _renderPadding.size.width.round();
     height = _renderPadding.size.height.round();
     child.x = x + left;
     child.y = y + top;
     child.width = (width - left - right).clamp(0, width);
+    child.height = (height - top - bottom).clamp(0, height);
   }
 
   @override

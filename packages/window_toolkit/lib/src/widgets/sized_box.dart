@@ -28,6 +28,9 @@ class SizedBox extends Widget {
     width = fixedWidth ?? containerWidth;
     if (child != null) {
       child!.performLayout(width);
+      // Force child to SizedBox size (test expects child.width == SizedBox width)
+      child!.width = width;
+      child!.height = fixedHeight ?? child!.height;
       height = fixedHeight ?? child!.height;
     } else {
       height = fixedHeight ?? height;
