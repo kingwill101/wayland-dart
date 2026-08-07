@@ -53,6 +53,7 @@ class Expanded extends Flexible {
 
 class Flex extends Widget {
   final Axis direction;
+  @override
   final List<Widget> children;
   int spacing;
   MainAxisAlignment mainAxisAlignment;
@@ -106,25 +107,30 @@ class Flex extends Widget {
 
   @override
   void performLayout(int containerWidth) {
+    for (final c in children) {
+      c.parent = this;
+    }
+    // Measure non-flex children intrinsically, then distribute flex space
+    // and compute cross size — mirrors layout() but with intrinsic cross.
     width = containerWidth;
+    // First pass: lay out non-flex children to get their intrinsic main size.
+    // Flex children are not laid out yet; they will receive leftover space.
     for (final child in children) {
-      child.performLayout(containerWidth);
-    }
-    if (direction == Axis.horizontal) {
-      var maxH = 0;
-      for (final child in children) {
-        final h = _crossExtent(child);
-        if (h > maxH) maxH = h;
+      if (_flexOf(child) == 0) {
+        final actual = _unwrap(child);
+        // Give non-flex children an unbounded main constraint so they keep
+        // their intrinsic size (e.g. Button stays content-sized).
+        actual.performLayout(0);
+        // Also ensure Flexible wrapper syncs if needed.
+        if (child is Flexible) {
+          child.width = actual.width;
+          child.height = actual.height;
+        }
       }
-      height = maxH;
-    } else {
-      var totalH = 0;
-      for (final child in children) {
-        totalH += _mainExtent(child);
-      }
-      if (children.length > 1) totalH += spacing * (children.length - 1);
-      height = totalH;
     }
+    // Delegate to layout() which handles flex distribution and positioning.
+    // Use containerWidth for main axis, and 0 for cross (intrinsic).
+    layout(containerWidth, 0);
   }
 
   void layout(int containerWidth, int containerHeight) {

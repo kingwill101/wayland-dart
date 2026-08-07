@@ -1,5 +1,4 @@
 // ignore_for_file: avoid_relative_lib_imports
-import 'package:layout_engine/layout_engine.dart' hide Offset;
 import 'package:window_toolkit/window_toolkit.dart';
 import '../lib/compound_examples.dart';
 import '../lib/controls_examples.dart';
@@ -15,10 +14,6 @@ class ShowcaseRoot extends StatefulWidget {
 }
 
 class ShowcaseState extends State<ShowcaseRoot> {
-  @override
-  void initState() {
-    super.initState();
-  }
 
   @override
   ElementWidget build(BuildContext context) {
@@ -78,7 +73,7 @@ class ShowcaseState extends State<ShowcaseRoot> {
 
 class Showcase extends WidgetWindow {
   bool _darkMode = true;
-  Label _statusLabel;
+  final Label _statusLabel;
 
   Showcase()
       : _statusLabel = Label(''),

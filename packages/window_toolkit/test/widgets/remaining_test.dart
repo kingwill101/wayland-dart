@@ -1,7 +1,6 @@
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
-import '../support/widget_test_harness.dart';
 
 void main() {
   group('ToggleButton', () {
@@ -94,7 +93,9 @@ void main() {
       expect(spinner.frame, 0);
       spinner.tick();
       expect(spinner.frame, 1);
-      for (var i = 0; i < 7; i++) spinner.tick();
+      for (var i = 0; i < 7; i++) {
+        spinner.tick();
+      }
       expect(spinner.frame, 0); // wraps at dotCount
     });
   });

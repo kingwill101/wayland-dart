@@ -1,14 +1,13 @@
 import '../drawing/color.dart';
 import '../painter/painter.dart';
-import 'package:layout_engine/layout_engine.dart' show WidgetKey;
 
 import '../widget.dart';
 
 class Checkbox extends Widget {
   bool checked;
-  Color? _boxColor;
-  Color? _borderColor;
-  Color? _checkColor;
+  final Color? _boxColor;
+  final Color? _borderColor;
+  final Color? _checkColor;
   int boxSize;
   VoidCallback? onChanged;
 

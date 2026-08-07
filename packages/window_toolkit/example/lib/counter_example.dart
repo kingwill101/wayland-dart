@@ -2,8 +2,7 @@
 ///
 /// CounterWidget extends StatefulWidget (from layout_engine) for Element
 /// tree lifecycle. Wrap it in ElementHost to use inside rendering containers.
-import 'package:layout_engine/layout_engine.dart'
-    show BuildContext, ElementWidget, State, StatefulWidget, StatelessWidget;
+library;
 import 'package:window_toolkit/window_toolkit.dart';
 
 /// Stateful counter with increment/decrement/reset.

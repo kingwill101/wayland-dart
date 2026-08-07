@@ -15,8 +15,8 @@ class RangeSlider extends Widget {
   Color activeThumbColor;
   VoidCallback? onChanged;
 
-  bool _draggingLower = false;
-  bool _draggingUpper = false;
+  final bool _draggingLower = false;
+  final bool _draggingUpper = false;
 
   RangeSlider({
     this.min = 0,

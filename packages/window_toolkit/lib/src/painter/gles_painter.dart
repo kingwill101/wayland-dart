@@ -319,7 +319,9 @@ class GlesPainter implements Painter {
 
   /// Clear the text cache (call when font configuration changes).
   void clearTextCache() {
-    for (final e in _textCache.values) e.tex.dispose();
+    for (final e in _textCache.values) {
+      e.tex.dispose();
+    }
     _textCache.clear();
     _textCacheOrder.clear();
   }
@@ -645,7 +647,9 @@ class GlesPainter implements Painter {
       final ok = surface.readPixels(info, nativePixels.cast(), dstW * 4, srcX: 0, srcY: 0);
       surface.dispose();
       if (ok) {
-        for (var i = 0; i < pixels.length; i++) pixels[i] = nativePixels[i];
+        for (var i = 0; i < pixels.length; i++) {
+          pixels[i] = nativePixels[i];
+        }
       }
       calloc.free(nativePixels);
       if (!ok) { _drawImgPlaceholder(x, y, width, height); return; }

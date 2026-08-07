@@ -13,6 +13,7 @@
 ///   ],
 /// )
 /// ```
+library;
 import 'package:layout_engine/layout_engine.dart' as le;
 
 import '../painter/painter.dart';
@@ -65,6 +66,7 @@ class ListView extends Widget {
 }
 
 class _ListViewContent extends Widget {
+  @override
   final List<Widget> children;
   final int spacing;
   final le.RenderList _renderList = le.RenderList();
@@ -81,7 +83,9 @@ class _ListViewContent extends Widget {
       }
     } else {
       _reconcile();
-      for (final r in _renderChildren) _renderList.attach(r);
+      for (final r in _renderChildren) {
+        _renderList.attach(r);
+      }
     }
   }
 

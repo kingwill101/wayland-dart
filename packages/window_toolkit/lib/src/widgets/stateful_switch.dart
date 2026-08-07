@@ -7,7 +7,7 @@
 /// ```dart
 /// ElementHost(child: StatefulSwitch(value: true))
 /// ```
-import 'package:layout_engine/layout_engine.dart' show ElementWidget, State, StatefulWidget;
+library;
 
 import '../drawing/color.dart';
 import '../painter/painter.dart';
@@ -110,6 +110,4 @@ class _SwitchRender extends Widget {
     height = 22;
   }
 
-  @override
-  bool hitTest(int px, int py) => super.hitTest(px, py);
 }

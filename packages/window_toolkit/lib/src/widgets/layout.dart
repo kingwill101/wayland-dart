@@ -13,6 +13,9 @@ class VBoxLayout extends Widget {
   @override
   void performLayout(int containerWidth) {
     width = containerWidth;
+    for (final c in children) {
+      c.parent = this;
+    }
     var totalH = 0;
     for (final child in children) {
       child.performLayout(width);

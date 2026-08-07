@@ -2,8 +2,6 @@ import 'package:layout_engine/layout_engine.dart' as le;
 
 import '../painter/painter.dart';
 import '../widget.dart';
-import '../font/font_database.dart';
-import '../font/font.dart';
 
 /// Vertical stack of children, backed by [le.RenderColumn] for layout.
 class VBox extends Widget {
@@ -14,10 +12,9 @@ class VBox extends Widget {
   final le.RenderColumn _renderColumn = le.RenderColumn();
   final List<_RenderWidgetBox> _renderChildren = [];
 
-  VBox({this.spacing = 0, List<Widget>? children, WidgetKey? key})
+  VBox({this.spacing = 0, List<Widget>? children, super.key})
       : assert(spacing >= 0, 'VBox spacing must be >= 0'),
-        children = children ?? [],
-        super(key: key);
+        children = children ?? [];
 
   void _ensureRenderTree() {
     _renderColumn.children.clear();
@@ -34,6 +31,9 @@ class VBox extends Widget {
     assert(containerWidth >= 0, 'VBox.performLayout: containerWidth=$containerWidth must be >= 0');
     _ensureRenderTree();
     _renderColumn.gap = spacing.toDouble();
+    for (final c in children) {
+      c.parent = this;
+    }
 
     // Measure children and set their sizes.
     for (final r in _renderChildren) {

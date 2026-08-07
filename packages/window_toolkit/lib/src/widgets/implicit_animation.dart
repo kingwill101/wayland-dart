@@ -6,7 +6,6 @@ library;
 
 import 'dart:math' as math;
 
-import '../animation/animation.dart';
 import '../animation/animation_controller.dart';
 import '../animation/curves.dart';
 import '../drawing/color.dart';

@@ -1,6 +1,5 @@
 import '../drawing/color.dart';
 import '../painter/painter.dart';
-import 'package:layout_engine/layout_engine.dart' show WidgetKey;
 
 import '../widget.dart';
 
@@ -10,9 +9,9 @@ class Slider extends Widget {
   double value;
   int trackHeight;
   int thumbRadius;
-  Color? _trackColor;
-  Color? _fillColor;
-  Color? _thumbColor;
+  final Color? _trackColor;
+  final Color? _fillColor;
+  final Color? _thumbColor;
   bool showValue;
   VoidCallback? onChanged;
   bool _dragging = false;

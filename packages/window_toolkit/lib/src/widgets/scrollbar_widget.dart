@@ -6,10 +6,7 @@ library;
 
 import 'package:layout_engine/layout_engine.dart' as le;
 
-import '../animation/animation_controller.dart';
-import '../animation/curves.dart';
 import '../drawing/color.dart';
-import '../event_loop.dart';
 import '../mixins/event.dart';
 import '../painter/painter.dart';
 import '../widget.dart';
@@ -38,13 +35,11 @@ class Scrollbar extends Widget {
   Scrollbar({
     required this.controller,
     this.thickness = 6,
-    int viewportHeight = 0,
+    this.viewportHeight = 0,
     this.trackColor,
     this.thumbColor,
     this.hoverColor,
-  }) {
-    this.viewportHeight = viewportHeight;
-  }
+  });
 
   Color get _trackColor => trackColor ?? palette.mid;
   Color get _thumbColor => _dragging

@@ -14,7 +14,7 @@ class ListBox extends Widget {
   bool multiSelect;
   VoidCallback? onChanged;
 
-  int _hoverIndex = -1;
+  final int _hoverIndex = -1;
   int _scrollOffset = 0;
 
   ListBox({

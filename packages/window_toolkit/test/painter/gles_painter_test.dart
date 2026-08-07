@@ -5,11 +5,11 @@
 /// rendering is tested at integration level.
 ///
 /// Also covers: drawLinearGradient, PaintStyle.stroke, clipRect, transform.
+library;
 
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
-import '../support/widget_test_harness.dart';
 
 void main() {
   group('drawLinearGradient', () {

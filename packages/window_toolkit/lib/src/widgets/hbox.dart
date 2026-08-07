@@ -2,8 +2,6 @@ import 'package:layout_engine/layout_engine.dart' as le;
 
 import '../painter/painter.dart';
 import '../widget.dart';
-import '../font/font_database.dart';
-import '../font/font.dart';
 
 /// Horizontal row of children, backed by [le.RenderRow] for layout.
 class HBox extends Widget {
@@ -14,10 +12,9 @@ class HBox extends Widget {
   final le.RenderRow _renderRow = le.RenderRow();
   final List<_RenderWidgetBox> _renderChildren = [];
 
-  HBox({this.spacing = 0, List<Widget>? children, WidgetKey? key})
+  HBox({this.spacing = 0, List<Widget>? children, super.key})
       : assert(spacing >= 0, 'HBox spacing must be >= 0'),
-        children = children ?? [],
-        super(key: key);
+        children = children ?? [];
 
   void _ensureRenderTree() {
     _renderRow.children.clear();
@@ -33,6 +30,9 @@ class HBox extends Widget {
   void performLayout(int containerWidth) {
     _ensureRenderTree();
     _renderRow.gap = spacing.toDouble();
+    for (final c in children) {
+      c.parent = this;
+    }
 
     for (final r in _renderChildren) {
       r.widget.performLayout(r.widget.width > 0 ? r.widget.width : containerWidth);
@@ -43,7 +43,9 @@ class HBox extends Widget {
       maxHeight: double.infinity,
     ));
 
-    width = _renderRow.size.width.round();
+    width = containerWidth > 0
+        ? containerWidth
+        : _renderRow.size.width.round();
     height = _renderRow.size.height.round();
 
     for (var i = 0; i < _renderChildren.length; i++) {

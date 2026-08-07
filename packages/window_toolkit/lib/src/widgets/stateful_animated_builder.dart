@@ -12,7 +12,7 @@
 /// );
 /// controller.forward();
 /// ```
-import 'package:layout_engine/layout_engine.dart' show BuildContext, State, StatefulWidget;
+library;
 
 import '../animation/animation.dart';
 import '../painter/painter.dart';

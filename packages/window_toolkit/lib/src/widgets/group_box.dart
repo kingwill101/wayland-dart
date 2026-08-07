@@ -6,6 +6,7 @@ class GroupBox extends Widget {
   @override
 
   String? title;
+  @override
   List<Widget> children;
   Color backgroundColor;
   Color borderColor;

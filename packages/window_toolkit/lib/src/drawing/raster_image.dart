@@ -105,7 +105,9 @@ class RasterImage {
     // Use rasterDirect (same as SkiaPainter). Allocate native buffer,
     // render text, then copy back to our pixel list.
     final nativePixels = calloc<Uint8>(pixels.length);
-    for (var i = 0; i < pixels.length; i++) nativePixels[i] = 0;
+    for (var i = 0; i < pixels.length; i++) {
+      nativePixels[i] = 0;
+    }
 
     final info = SkImageInfo(
       width: width, height: height,
@@ -121,7 +123,9 @@ class RasterImage {
         fontFamily: resolved.family,
       );
       surface.dispose();
-      for (var i = 0; i < pixels.length; i++) pixels[i] = nativePixels[i];
+      for (var i = 0; i < pixels.length; i++) {
+        pixels[i] = nativePixels[i];
+      }
     }
     calloc.free(nativePixels);
   }
@@ -129,7 +133,9 @@ class RasterImage {
   /// Extract alpha channel for GL texture. GL_NEAREST filtering.
   Texture toTexture() {
     final alpha = Uint8List(width * height);
-    for (var i = 0; i < width * height; i++) alpha[i] = pixels[i * 4 + 3];
+    for (var i = 0; i < width * height; i++) {
+      alpha[i] = pixels[i * 4 + 3];
+    }
     return Texture.fromAlpha(alpha, width, height, smooth: false);
   }
 }

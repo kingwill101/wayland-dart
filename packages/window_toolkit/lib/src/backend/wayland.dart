@@ -39,7 +39,9 @@ class WaylandBackend with Size, Events implements Backend {
   bool _needsPaint = false;
 
   Function()? onReady;
+  @override
   void Function(int width, int height)? onConfigure;
+  @override
   Function()? onClose;
 
   @override
@@ -48,6 +50,7 @@ class WaylandBackend with Size, Events implements Backend {
   @override
   bool get canPaint => !_bufferBusy;
 
+  @override
   Future<void> init() async {
     await connection.connect();
 
@@ -181,6 +184,7 @@ class WaylandBackend with Size, Events implements Backend {
     return true;
   }
 
+  @override
   void requestPaint() {
     if (_bufferBusy) {
       _needsPaint = true;

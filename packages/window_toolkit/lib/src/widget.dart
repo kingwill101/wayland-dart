@@ -1,5 +1,4 @@
 import 'package:layout_engine/layout_engine.dart' as le;
-import 'package:layout_engine/layout_engine.dart' show WidgetKey;
 
 import 'layer_window.dart';
 import 'backend/layer.dart';
@@ -36,8 +35,29 @@ abstract class Widget extends le.ElementWidget {
   /// Set by [WidgetWindow] so animated widgets can trigger repaints.
   static VoidCallback? onNeedsRepaint;
 
+  /// Parent pointer — set by containers when they lay out children.
+  Widget? parent;
+
+  /// Optional CSS id — mirrors `widget.set_name()` / `get_style_context()->add_class(id)` in GTK.
+  /// Waybar uses e.g. `window#waybar`, `#pulseaudio`, `#workspaces`.
+  String? styleId;
+
+  /// CSS classes — mirrors `get_style_context()->add_class()`. Waybar adds
+  /// `"module"` to every module, plus `"modules-left"` etc.
+  final Set<String> styleClasses = {};
+
+  /// Pseudo-classes — mirrors `add_class("hidden")`, `:hover`, etc.
+  final Set<String> pseudoClasses = {};
+
+  bool hasClass(String name) => styleClasses.contains(name);
+  bool hasPseudoClass(String name) => pseudoClasses.contains(name) || styleClasses.contains(name);
+  void addClass(String name) => styleClasses.add(name);
+  void removeClass(String name) { styleClasses.remove(name); pseudoClasses.remove(name); }
+  void addPseudoClass(String name) => pseudoClasses.add(name);
+  void removePseudoClass(String name) => pseudoClasses.remove(name);
+
   /// Creates a widget with an optional [key] for reconciliation.
-  Widget({WidgetKey? key}) : super(key: key);
+  Widget({super.key, this.styleId});
 
   /// Whether this widget is mounted in a widget tree.
   bool mounted = false;
@@ -117,6 +137,36 @@ abstract class Widget extends le.ElementWidget {
         'Widget $runtimeType hit-tested before layout (width=$width height=$height). '
         'Call performLayout() or pump() before hit-testing.');
     return px >= x && px < x + width && py >= y && py < y + height;
+  }
+
+  String _widgetLabel() => '$runtimeType ($x,$y) $width×$height';
+
+  String formatTree() {
+    final buf = StringBuffer();
+    buf.writeln(_widgetLabel());
+    for (var i = 0; i < children.length; i++) {
+      final child = children[i];
+      final isLast = i == children.length - 1;
+      _writeTree(child, buf, '', isLast);
+    }
+    return buf.toString();
+  }
+
+  void _writeTree(Widget node, StringBuffer buf, String indent, bool isLast) {
+    final conn = isLast ? '└── ' : '├── ';
+    buf.writeln('$indent$conn${node._widgetLabel()}');
+    final childIndent = indent + (isLast ? '    ' : '│   ');
+    for (var i = 0; i < node.children.length; i++) {
+      _writeTree(node.children[i], buf, childIndent, i == node.children.length - 1);
+    }
+  }
+
+  void dumpTree({void Function(String line)? writeln}) {
+    final text = formatTree();
+    final out = writeln ?? (String s) => print(s);
+    for (final line in text.split('\n')) {
+      if (line.isNotEmpty) out(line);
+    }
   }
 }
 

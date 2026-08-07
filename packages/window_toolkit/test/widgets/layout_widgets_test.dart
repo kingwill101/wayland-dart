@@ -1,7 +1,6 @@
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
-import '../support/widget_test_harness.dart';
 
 void main() {
   test('HBox lays out children horizontally and forwards hit tests', () {

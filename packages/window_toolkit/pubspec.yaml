@@ -16,6 +16,8 @@ dependencies:
       url: https://github.com/knopp/skia_dart.git
       path: packages/skia_dart
   ffi: ^2.2.0
+  csslib: ^1.0.2
+  sass: ^1.102.0
 
 dev_dependencies:
   lints: ^4.0.0

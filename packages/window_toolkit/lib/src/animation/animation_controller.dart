@@ -157,12 +157,11 @@ class TweenAnimation<T extends num> extends Tween<T> {
   final AnimationController controller;
 
   TweenAnimation({
-    required T begin,
-    required T end,
+    required super.begin,
+    required super.end,
     Duration duration = const Duration(milliseconds: 200),
     Curve curve = linear,
-  })  : controller = AnimationController(duration: duration, curve: curve),
-        super(begin: begin, end: end) {
+  })  : controller = AnimationController(duration: duration, curve: curve) {
     animate(controller);
   }
 

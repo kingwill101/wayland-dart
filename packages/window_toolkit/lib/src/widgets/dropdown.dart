@@ -1,6 +1,5 @@
 import '../drawing/color.dart';
 import '../painter/painter.dart';
-import 'package:layout_engine/layout_engine.dart' show WidgetKey;
 
 import '../widget.dart';
 

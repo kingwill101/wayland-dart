@@ -12,7 +12,6 @@
 /// ```
 library;
 
-import 'package:layout_engine/layout_engine.dart' show BuildContext, ElementTree, ElementWidget, State, StatefulWidget, StatelessWidget;
 
 import '../painter/painter.dart';
 import '../widget.dart';

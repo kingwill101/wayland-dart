@@ -67,7 +67,7 @@ class Tooltip extends Widget {
       final tipW = bounds.width + padding * 2;
       final tipH = bounds.height + padding * 2;
       final tipX = x + (width - tipW) / 2;
-      final tipY = y - tipH - 4;
+      final tipY = y - tipH; // was -4 gap; should sit on bar (gap 0)
 
       canvas.drawRect(
         Rect.fromLTWH(tipX, tipY, tipW, tipH),

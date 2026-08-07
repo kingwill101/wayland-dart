@@ -15,9 +15,9 @@ class ScrollArea extends Widget {
 
   final Widget child;
   int scrollbarWidth;
-  Color? _scrollbarColor;
-  Color? _scrollbarBg;
-  Color? _scrollbarHoverColor;
+  final Color? _scrollbarColor;
+  final Color? _scrollbarBg;
+  final Color? _scrollbarHoverColor;
   bool showHorizontal;
   bool showVertical;
   int? _dragAxis;
@@ -162,6 +162,9 @@ class ScrollArea extends Widget {
   void performLayout(int containerWidth) {
     width = containerWidth;
     _childBox.widget = child;
+    child.parent = this;
+    // Ensure the child fills the full viewport width (fixes sticky 100px).
+    child.performLayout(containerWidth);
 
     _viewport.layout(le.BoxConstraints(
       maxWidth: width.toDouble(),
@@ -247,10 +250,10 @@ class _ChildBox extends le.RenderBox {
   @override
   void layout(le.BoxConstraints constraints) {
     if (widget == null) return;
-    final childWidth = widget!.width > 0
-        ? widget!.width
-        : (constraints.hasBoundedWidth ? constraints.maxWidth.round() : widget!.width);
-    widget!.performLayout(childWidth);
+    final cw = constraints.hasBoundedWidth ? constraints.maxWidth.round() : 0;
+    // Always lay out the child against the viewport width, not the stale
+    // widget.width, so resizing the viewport actually grows the content.
+    widget!.performLayout(cw);
     size = le.Size(widget!.width.toDouble(), widget!.height.toDouble());
   }
 }

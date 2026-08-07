@@ -1,7 +1,6 @@
 /// Easing curves for animations.
 library;
 
-import 'dart:math' as math;
 
 /// A mapping of the unit interval to the unit interval.
 ///

@@ -9,9 +9,8 @@
 ///   ElementHost(child: StatefulCheckbox(label: 'Option')),
 /// ])
 /// ```
-import 'package:layout_engine/layout_engine.dart' show ElementWidget, State, StatefulWidget;
+library;
 
-import '../drawing/color.dart';
 import '../painter/painter.dart';
 import '../widget.dart';
 import 'label.dart';
@@ -111,8 +110,4 @@ class _CheckboxRender extends Widget {
     height = boxSize;
   }
 
-  @override
-  bool hitTest(int px, int py) {
-    return super.hitTest(px, py);
-  }
 }

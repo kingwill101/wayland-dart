@@ -34,9 +34,12 @@ class WrapLayout extends Widget {
     _ensureRenderTree();
     _renderWrap.spacing = spacing.toDouble();
     _renderWrap.runSpacing = runSpacing.toDouble();
+    for (final c in children) {
+      c.parent = this;
+    }
 
     for (final r in _renderChildren) {
-      r.widget.performLayout(r.widget.width > 0 ? r.widget.width : containerWidth);
+      r.widget.performLayout(containerWidth);
       r.size = le.Size(r.widget.width.toDouble(), r.widget.height.toDouble());
     }
 
@@ -90,8 +93,8 @@ class _WrapChildBox extends le.RenderBox {
 
   @override
   void layout(le.BoxConstraints constraints) {
-    final childW = widget.width > 0 ? widget.width : (constraints.hasBoundedWidth ? constraints.maxWidth.round() : widget.width);
-    widget.performLayout(childW);
+    final w = constraints.hasBoundedWidth ? constraints.maxWidth.round() : 0;
+    widget.performLayout(w);
     size = le.Size(widget.width.toDouble(), widget.height.toDouble());
   }
 }

@@ -5,11 +5,11 @@ import 'text_editing_controller.dart';
 
 class TextField extends Widget {
   TextEditingController controller;
-  Color? _textColor;
-  Color? _bgColor;
-  Color? _cursorColor;
-  Color? _borderColor;
-  Color? _placeholderColor;
+  final Color? _textColor;
+  final Color? _bgColor;
+  final Color? _cursorColor;
+  final Color? _borderColor;
+  final Color? _placeholderColor;
   String? placeholder;
   bool obscured;
   bool _focused = false;

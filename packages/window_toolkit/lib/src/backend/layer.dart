@@ -72,6 +72,7 @@ class LayerBackend with Size, Events implements Backend {
     this.namespace = 'wayland-toolkit',
   });
 
+  @override
   Future<void> init() async {
     await connection.connect();
 
@@ -311,6 +312,7 @@ class LayerBackend with Size, Events implements Backend {
     return true;
   }
 
+  @override
   void requestPaint() {
     stderr.writeln('[wt:layer] requestPaint bufferBusy=$_bufferBusy');
     if (_bufferBusy) {
@@ -320,6 +322,7 @@ class LayerBackend with Size, Events implements Backend {
     _present();
   }
 
+  @override
   void start() {
     _running = true;
   }

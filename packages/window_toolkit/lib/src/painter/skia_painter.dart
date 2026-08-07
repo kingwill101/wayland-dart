@@ -230,10 +230,12 @@ class SkiaPainter implements Painter {
     _canvas.scale(sx, sy);
   }
 
+  @override
   void flush() {
     _surface.makeImageSnapshot()?.dispose();
   }
 
+  @override
   void dispose() {
     // Do not dispose the shared text engine.
     _surface.dispose();

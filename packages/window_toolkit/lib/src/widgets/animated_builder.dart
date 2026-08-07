@@ -1,4 +1,5 @@
 /// AnimatedBuilder: rebuild on every animation tick.
+library;
 import '../animation/animation.dart';
 import '../painter/painter.dart';
 import '../widget.dart';

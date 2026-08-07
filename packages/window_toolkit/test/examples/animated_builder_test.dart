@@ -1,4 +1,3 @@
-import 'dart:async' as async;
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
@@ -46,7 +45,7 @@ void main() {
     final builder = AnimatedBuilder(
       animation: controller,
       builder: (v) {
-        builtValue = '${v.toStringAsFixed(2)}';
+        builtValue = v.toStringAsFixed(2);
         return SizedBox(width: 50, height: 20);
       },
     );

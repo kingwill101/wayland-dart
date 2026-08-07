@@ -14,8 +14,7 @@ class Align extends Widget {
     required this.child,
     this.horizontalAlignment = HorizontalAlignment.center,
     this.verticalAlignment = VerticalAlignment.center,
-  }) : assert(horizontalAlignment != null,
-            'Align horizontalAlignment must not be null');
+  });
 
   @override
   void performLayout(int containerWidth) {

@@ -2,6 +2,7 @@
 ///
 /// These test the conditions the user reported: resize propagation,
 /// hover state changes, scrollbar visibility, and wheel scrolling.
+library;
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 

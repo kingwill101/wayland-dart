@@ -1,15 +1,14 @@
 import '../drawing/color.dart';
 import '../painter/painter.dart';
-import 'package:layout_engine/layout_engine.dart' show WidgetKey;
 
 import '../widget.dart';
 
 class Switch extends Widget {
   bool value;
-  Color? _trackOnColor;
-  Color? _trackOffColor;
-  Color? _thumbColor;
-  Color? _borderColor;
+  final Color? _trackOnColor;
+  final Color? _trackOffColor;
+  final Color? _thumbColor;
+  final Color? _borderColor;
   int trackWidth;
   int trackHeight;
   VoidCallback? onChanged;

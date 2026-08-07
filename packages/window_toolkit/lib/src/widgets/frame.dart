@@ -8,6 +8,7 @@ class Frame extends Widget {
   Color color;
   int borderWidth;
   Color? borderColor;
+  @override
   List<Widget> children;
 
   Frame({

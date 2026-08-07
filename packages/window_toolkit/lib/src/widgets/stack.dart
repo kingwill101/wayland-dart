@@ -48,6 +48,7 @@ class Positioned extends Widget {
 
 /// Layers children. Backed by [le.RenderStack] for layout.
 class Stack extends Widget {
+  @override
   final List<Widget> children;
   final le.RenderStack _renderStack = le.RenderStack();
   final List<_StackChildBox> _renderChildren = [];
