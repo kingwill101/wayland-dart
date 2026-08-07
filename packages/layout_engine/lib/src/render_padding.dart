@@ -11,6 +11,14 @@ class RenderPadding extends RenderBox {
   double right;
   double bottom;
 
+  EdgeInsets get padding => EdgeInsets.fromLTRB(left, top, right, bottom);
+  set padding(EdgeInsets insets) {
+    left = insets.left;
+    top = insets.top;
+    right = insets.right;
+    bottom = insets.bottom;
+  }
+
   RenderBox? get paddedChild => children.isNotEmpty ? children.first as RenderBox? : null;
 
   RenderPadding({
@@ -18,8 +26,24 @@ class RenderPadding extends RenderBox {
     this.top = 0,
     this.right = 0,
     this.bottom = 0,
-  })  : assert(left >= 0 && top >= 0 && right >= 0 && bottom >= 0,
-            'RenderPadding values must be >= 0');
+    EdgeInsets? padding,
+  })  : assert(padding == null || left == 0 && top == 0 && right == 0 && bottom == 0,
+            'Provide either padding or left/top/right/bottom, not both'),
+        assert(left >= 0 && top >= 0 && right >= 0 && bottom >= 0,
+            'RenderPadding values must be >= 0') {
+    if (padding != null) {
+      left = padding.left;
+      top = padding.top;
+      right = padding.right;
+      bottom = padding.bottom;
+    }
+  }
+
+  RenderPadding.withPadding(EdgeInsets insets)
+      : left = insets.left,
+        top = insets.top,
+        right = insets.right,
+        bottom = insets.bottom;
 
   @override
   void layout(BoxConstraints constraints) {

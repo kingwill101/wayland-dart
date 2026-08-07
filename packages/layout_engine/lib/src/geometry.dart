@@ -116,6 +116,18 @@ class BoxConstraints {
     this.maxHeight = double.infinity,
   });
 
+  const BoxConstraints.tightFor({double? width, double? height})
+      : minWidth = width ?? 0,
+        maxWidth = width ?? double.infinity,
+        minHeight = height ?? 0,
+        maxHeight = height ?? double.infinity;
+
+  BoxConstraints.tightForSize(Size size)
+      : minWidth = size.width,
+        maxWidth = size.width,
+        minHeight = size.height,
+        maxHeight = size.height;
+
   static const tight = BoxConstraints();
 
   @pragma('vm:prefer-inline')
@@ -126,6 +138,15 @@ class BoxConstraints {
 
   @pragma('vm:prefer-inline')
   bool get isTight => minWidth == maxWidth && minHeight == maxHeight;
+
+  @pragma('vm:prefer-inline')
+  bool get isNormalized =>
+      minWidth <= maxWidth &&
+      minHeight <= maxHeight &&
+      minWidth >= 0 &&
+      minHeight >= 0 &&
+      maxWidth >= 0 &&
+      maxHeight >= 0;
 
   /// Constrain [size] to fit within these constraints.
   @pragma('vm:prefer-inline')
@@ -162,6 +183,36 @@ class BoxConstraints {
     );
   }
 
+  /// Intersect this with [constraints] (like Flutter's `enforce`).
+  @pragma('vm:prefer-inline')
+  BoxConstraints enforce(BoxConstraints constraints) {
+    return BoxConstraints(
+      minWidth: minWidth.clamp(constraints.minWidth, constraints.maxWidth),
+      maxWidth: maxWidth.clamp(constraints.minWidth, constraints.maxWidth),
+      minHeight: minHeight.clamp(constraints.minHeight, constraints.maxHeight),
+      maxHeight: maxHeight.clamp(constraints.minHeight, constraints.maxHeight),
+    );
+  }
+
+  /// Deflate by [insets] (subtract padding from constraints).
+  @pragma('vm:prefer-inline')
+  BoxConstraints deflate(EdgeInsets insets) {
+    final h = insets.horizontal;
+    final v = insets.vertical;
+    return BoxConstraints(
+      minWidth: math.max(0, minWidth - h),
+      maxWidth: maxWidth.isFinite ? math.max(0, maxWidth - h) : double.infinity,
+      minHeight: math.max(0, minHeight - v),
+      maxHeight: maxHeight.isFinite ? math.max(0, maxHeight - v) : double.infinity,
+    );
+  }
+
+  @pragma('vm:prefer-inline')
+  double constrainWidth(double w) => w.clamp(minWidth, maxWidth).toDouble();
+
+  @pragma('vm:prefer-inline')
+  double constrainHeight(double h) => h.clamp(minHeight, maxHeight).toDouble();
+
   @override
   String toString() =>
       'BoxConstraints($minWidth ≤ w ≤ $maxWidth, $minHeight ≤ h ≤ $maxHeight)';
@@ -181,4 +232,28 @@ class HitTestEntry {
   final double localX;
   final double localY;
   HitTestEntry(this.target, this.localX, this.localY);
+}
+
+/// Edge insets — like Flutter's [EdgeInsets] / CSS padding.
+class EdgeInsets {
+  final double left;
+  final double top;
+  final double right;
+  final double bottom;
+  const EdgeInsets.fromLTRB(this.left, this.top, this.right, this.bottom);
+  const EdgeInsets.all(double v) : left = v, top = v, right = v, bottom = v;
+  const EdgeInsets.only({this.left = 0, this.top = 0, this.right = 0, this.bottom = 0});
+  const EdgeInsets.symmetric({double horizontal = 0, double vertical = 0})
+      : left = horizontal,
+        right = horizontal,
+        top = vertical,
+        bottom = vertical;
+  static const zero = EdgeInsets.only();
+  double get horizontal => left + right;
+  double get vertical => top + bottom;
+  Size inflateSize(Size s) => Size(s.width + left + right, s.height + top + bottom);
+  Size deflateSize(Size s) => Size(
+        math.max(0, s.width - horizontal),
+        math.max(0, s.height - vertical),
+      );
 }

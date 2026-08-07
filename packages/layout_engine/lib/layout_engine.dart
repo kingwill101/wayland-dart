@@ -22,6 +22,7 @@ export 'src/element_tree.dart'
 export 'src/framework.dart'
     show ElementWidget, InheritedWidget, State, StatefulWidget, StatelessWidget, UniqueWidgetKey, ValueWidgetKey, WidgetKey;
 export 'src/geometry.dart';
+export 'src/render_basic.dart';
 export 'src/render_object.dart';
 export 'src/render_flex.dart';
 export 'src/render_padding.dart';

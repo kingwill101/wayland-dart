@@ -56,16 +56,30 @@ abstract class RenderFlex extends RenderBox {
   void _layoutRow(BoxConstraints constraints, TextMeasure measure) {
     // Phase 1: measure non-flexible children.
     var totalFixed = gap * (children.length - 1).clamp(0, children.length);
-    var flexCount = 0;
+    var flexSum = 0;
     final childData = <_ChildData>[];
+
+    BoxConstraints childConstraintsForFlex({required bool isFlex}) {
+      if (crossAxisAlignment == CrossAxisAlignment.stretch &&
+          constraints.hasBoundedHeight) {
+        final base = isFlex ? constraints : constraints.loosen();
+        return BoxConstraints(
+          minWidth: base.minWidth,
+          maxWidth: base.maxWidth,
+          minHeight: constraints.maxHeight,
+          maxHeight: constraints.maxHeight,
+        );
+      }
+      return isFlex ? constraints : constraints.loosen();
+    }
 
     for (final child in children) {
       final flex = _flexOf(child);
       if (flex > 0) {
-        flexCount++;
+        flexSum += flex;
         childData.add(_ChildData(child: child, flex: flex, width: null));
       } else {
-        child.layout(constraints.loosen());
+        child.layout(childConstraintsForFlex(isFlex: false));
         totalFixed += child.size.width;
         childData.add(_ChildData(child: child, flex: 0, width: child.size.width));
       }
@@ -73,13 +87,22 @@ abstract class RenderFlex extends RenderBox {
 
     // Phase 2: distribute remaining space to flex children.
     final availableWidth = constraints.maxWidth - totalFixed;
-    if (flexCount > 0 && availableWidth > 0) {
-      final flexUnit = availableWidth / flexCount;
+    if (flexSum > 0 && availableWidth > 0 && constraints.hasBoundedWidth) {
       for (final data in childData) {
         if (data.flex > 0) {
-          final w = flexUnit * data.flex;
-          data.child.layout(constraints.tighten(width: w));
+          final w = availableWidth * data.flex / flexSum;
+          final c = childConstraintsForFlex(isFlex: true).tighten(width: w);
+          data.child.layout(c);
           data.width = data.child.size.width;
+        }
+      }
+    } else if (flexSum > 0 && availableWidth > 0) {
+      // Unbounded width: give each flex child its intrinsic size.
+      for (final data in childData) {
+        if (data.flex > 0) {
+          data.child.layout(childConstraintsForFlex(isFlex: true));
+          data.width = data.child.size.width;
+          totalFixed += data.width!;
         }
       }
     }
@@ -110,29 +133,51 @@ abstract class RenderFlex extends RenderBox {
 
   void _layoutColumn(BoxConstraints constraints, TextMeasure measure) {
     var totalFixed = gap * (children.length - 1).clamp(0, children.length);
-    var flexCount = 0;
+    var flexSum = 0;
     final childData = <_ChildData>[];
+
+    BoxConstraints childConstraintsForFlex({required bool isFlex}) {
+      if (crossAxisAlignment == CrossAxisAlignment.stretch &&
+          constraints.hasBoundedWidth) {
+        final base = isFlex ? constraints : constraints.loosen();
+        return BoxConstraints(
+          minWidth: constraints.maxWidth,
+          maxWidth: constraints.maxWidth,
+          minHeight: base.minHeight,
+          maxHeight: base.maxHeight,
+        );
+      }
+      return isFlex ? constraints : constraints.loosen();
+    }
 
     for (final child in children) {
       final flex = _flexOf(child);
       if (flex > 0) {
-        flexCount++;
+        flexSum += flex;
         childData.add(_ChildData(child: child, flex: flex, height: null));
       } else {
-        child.layout(constraints.loosen());
+        child.layout(childConstraintsForFlex(isFlex: false));
         totalFixed += child.size.height;
         childData.add(_ChildData(child: child, flex: 0, height: child.size.height));
       }
     }
 
     final availableHeight = constraints.maxHeight - totalFixed;
-    if (flexCount > 0 && availableHeight > 0) {
-      final flexUnit = availableHeight / flexCount;
+    if (flexSum > 0 && availableHeight > 0 && constraints.hasBoundedHeight) {
       for (final data in childData) {
         if (data.flex > 0) {
-          final h = flexUnit * data.flex;
-          data.child.layout(constraints.tighten(height: h));
+          final h = availableHeight * data.flex / flexSum;
+          final c = childConstraintsForFlex(isFlex: true).tighten(height: h);
+          data.child.layout(c);
           data.height = data.child.size.height;
+        }
+      }
+    } else if (flexSum > 0 && availableHeight > 0) {
+      for (final data in childData) {
+        if (data.flex > 0) {
+          data.child.layout(childConstraintsForFlex(isFlex: true));
+          data.height = data.child.size.height;
+          totalFixed += data.height!;
         }
       }
     }
