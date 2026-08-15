@@ -5,7 +5,6 @@ import 'package:window_toolkit/window_toolkit.dart';
 
 import 'metrics.dart';
 
-
 /// A reference to a Lua function defined in the config file.
 ///
 /// Keeps the Lua runtime alive so the function can be called on every poll
@@ -27,13 +26,16 @@ class BardashConfig {
   Anchor anchor = Anchor.top;
   int height = 30;
   int exclusiveZone = 30;
+
   /// Gap between top-level modules (see [BarMetrics.spacing]).
   int spacing = 2;
   String iconFontFamily = 'Hack Nerd Font';
   Color backgroundColor = const Color(30, 30, 30);
+
   /// GTK-like CSS — mirrors waybar `style.css` (CssProvider load_from_path).
   /// Null → check `~/.config/bardash/style.css` then `~/.config/waybar/style.css`.
   String? stylePath;
+
   /// Layout density scale; drives defaults for spacing / pad / icon sizes.
   BarMetrics metrics = BarMetrics.normal;
   List<String> modulesLeft = [];
@@ -63,14 +65,16 @@ class BardashConfig {
     FontDatabase.instance.setRoleFamily(FontRole.ui, 'sans');
     FontDatabase.instance.setRoleFamily(FontRole.icon, iconFontFamily);
     FontDatabase.instance.setRoleFamily(FontRole.mono, 'monospace');
-    // Try to register icon font file if present on system (like waybar's
-    // FontAwesome/Nerd requirement). Mirrors waybar's Pango fallback scan.
-    _tryRegisterIconFont(iconFontFamily);
     // Emoji family is used directly by battery / volume modules.
-    // Use Skia with default font manager + cache limits.
+    // Use Skia with default font manager + cache limits before registering
+    // the icon face. Registering first would attach the font to the engine
+    // that is immediately discarded by useSkiaEngine().
     // The 8 MB font cache cap + periodic purge keep RSS bounded.
     try {
       FontDatabase.instance.useSkiaEngine();
+      // Try to register icon font file if present on system (like Waybar's
+      // FontAwesome/Nerd requirement). Mirrors Waybar's Pango fallback scan.
+      _tryRegisterIconFont(iconFontFamily);
     } catch (_) {
       // Tests / headless may only have bitmap.
     }

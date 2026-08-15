@@ -2,14 +2,17 @@ import 'package:layout_engine/layout_engine.dart' as le;
 
 import '../animation/animation_controller.dart';
 import '../animation/curves.dart';
+import '../animation/simulation.dart';
 import '../drawing/color.dart';
 import '../mixins/event.dart';
 import '../painter/painter.dart';
 import '../widget.dart';
 
 /// Scrollable area backed by [le.RenderViewport] and [le.ViewportScrollController].
+///
+/// Supports smooth animated scrolling and fling physics via [FrictionSimulation]
+/// for mouse wheel events.
 class ScrollArea extends Widget {
-  @override
   @override
   List<Widget> get children => [child];
 
@@ -24,10 +27,14 @@ class ScrollArea extends Widget {
   int _dragStartScroll = 0;
   int _dragStartCoord = 0;
 
+  /// Enable fling physics on mouse wheel events.
+  bool enableFling;
+
   final le.ViewportScrollController _controller = le.ViewportScrollController();
   final le.RenderViewport _viewport = le.RenderViewport();
   final _ChildBox _childBox = _ChildBox(null);
   AnimationController? _animCtrl;
+  SimulationController? _flingCtrl;
 
   ScrollArea({
     required this.child,
@@ -37,6 +44,7 @@ class ScrollArea extends Widget {
     Color? scrollbarHoverColor,
     this.showHorizontal = false,
     this.showVertical = true,
+    this.enableFling = true,
     int initialScrollY = 0,
   })  : _scrollbarColor = scrollbarColor,
         _scrollbarBg = scrollbarBg,
@@ -93,16 +101,55 @@ class ScrollArea extends Widget {
   bool onMouseWheel(MouseWheelEvent event) {
     final dy = event.dy.round();
     if (dy != 0) {
-      final step = dy > 0 ? 40 : -40;
-      // Apply scroll immediately (for testing without animation loop).
-      _controller.scrollBy(step);
-      _animatedScroll(_controller.offset + (step > 0 ? step * 2 : step * 2));
+      if (enableFling && maxScrollY > 0) {
+        _flingScroll(dy);
+      } else {
+        final step = dy > 0 ? 40 : -40;
+        _controller.scrollBy(step);
+        _animatedSmoothScroll(_controller.offset + (step > 0 ? step * 2 : step * 2));
+      }
     }
     return true;
   }
 
-  void _animatedScroll(int target) {
+  /// Start a fling scroll from the current wheel event.
+  void _flingScroll(int delta) {
+    _flingCtrl?.dispose();
     _animCtrl?.dispose();
+
+    // Apply immediate scroll for instant feedback.
+    final step = delta > 0 ? 40 : -40;
+    _controller.scrollBy(step);
+    final currentOffset = _controller.offset.toDouble();
+
+    // Map wheel delta to an initial velocity (pixels/second).
+    final velocity = delta * 500.0; // scale for feel, sign = direction
+    final sim = FrictionSimulation(
+      initialPosition: currentOffset,
+      initialVelocity: velocity,
+      friction: 3.0, // higher = faster deceleration
+    );
+
+    _flingCtrl = SimulationController(simulation: sim);
+    _flingCtrl!.addListener(_onFlingTick);
+    _flingCtrl!.start();
+  }
+
+  void _onFlingTick() {
+    final pos = _flingCtrl!.value.round();
+    final clamped = pos.clamp(0, maxScrollY);
+    _controller.jumpTo(clamped);
+    Widget.onNeedsRepaint?.call();
+
+    // Stop fling when we hit a boundary.
+    if (clamped != pos) {
+      _flingCtrl?.stop();
+    }
+  }
+
+  void _animatedSmoothScroll(int target) {
+    _animCtrl?.dispose();
+    _flingCtrl?.dispose();
     final startY = _controller.offset;
     final distance = (target - startY).abs();
     if (distance == 0) return;
@@ -111,7 +158,7 @@ class ScrollArea extends Widget {
     _animCtrl = AnimationController(duration: duration, curve: easeOut);
     _animCtrl!.addListener(() {
       final t = _animCtrl!.value;
-      final pos = (startY + (target - startY) * t).round();
+      final pos = (startY + (target - startY) * t).round().clamp(0, maxScrollY);
       _controller.jumpTo(pos);
       Widget.onNeedsRepaint?.call();
     });
@@ -131,7 +178,7 @@ class ScrollArea extends Widget {
           _dragStartScroll = _controller.offset;
           _dragStartCoord = y;
         } else {
-          _animatedScroll(y < thumbY ? _controller.offset - height : _controller.offset + height);
+          _animatedSmoothScroll(y < thumbY ? _controller.offset - height : _controller.offset + height);
         }
         return;
       }

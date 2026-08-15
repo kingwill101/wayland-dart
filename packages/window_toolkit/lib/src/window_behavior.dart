@@ -8,7 +8,8 @@ import 'palette.dart';
 import 'renderer.dart';
 
 mixin WindowBehavior on Backend, EventReceiver {
-  /// Select which render backend to use.  `null` (default) = auto.
+  /// Select which render backend to use. `null` reads the process environment
+  /// and defaults to auto. See [RendererBackend.fromEnvironment].
   RendererBackend? rendererBackend;
 
   void initWindow() {
@@ -26,7 +27,9 @@ mixin WindowBehavior on Backend, EventReceiver {
   }
 
   void paint() {
-    stderr.writeln('[wt] paint() called width=$width height=$height canPaint=$canPaint');
+    stderr.writeln(
+      '[wt] paint() called width=$width height=$height canPaint=$canPaint',
+    );
     if (!canPaint) {
       stderr.writeln('[wt] paint: canPaint=false, requesting deferred paint');
       requestPaint();

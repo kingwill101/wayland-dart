@@ -17,7 +17,7 @@ simple desktop windows without Flutter — pure Dart over Wayland protocols
 
 ## Render Backend
 
-Three backends via `RendererBackend` enum on `WindowBehavior`:
+Four backends via `RendererBackend` enum on `WindowBehavior`:
 
 ```dart
 final bar = MyBar();
@@ -30,6 +30,17 @@ await bar.show();
 | `auto`  | Try GLES2 first, then Skia, then software (default) |
 | `gl`    | GPU-accelerated GLES2. Throws if unavailable. |
 | `skia`  | Skia raster via SHM. Falls back to software. |
+| `dawn`  | Skia Graphite via Dawn/WebGPU Vulkan. |
+
+The toolkit-wide backend can be selected at launch without changing code:
+
+```sh
+WAYLAND_RENDERER_BACKEND=dawn my-wayland-app
+```
+
+Supported values are `auto`, `gl`, `skia`, and `dawn`. The existing
+`BARDASH_BACKEND` variable is accepted as a compatibility alias. An explicit
+`rendererBackend` assignment takes precedence over the environment.
 
 ## GLES2 Backend (GlesPainter)
 

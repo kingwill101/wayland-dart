@@ -20,5 +20,26 @@ void main() {
       harness.draw();
       expect(harness.painter.commands, isNotEmpty);
     });
+test('draws overlay when visible', () {
+      final tip = Tooltip(
+        text: 'Help',
+        child: Button('?'),
+      );
+      tip.x = 10;
+      tip.y = 10;
+
+      final painter = RecordingPainter();
+      tip.draw(painter);
+
+      // Initially not visible — no overlay rect
+      final before = painter.commands.ofType<DrawRectCommand>().length;
+
+      tip.visible = true;
+      painter.clearCommands();
+      tip.draw(painter);
+
+      final after = painter.commands.ofType<DrawRectCommand>().length;
+      expect(after, greaterThan(before));
+    });
   });
 }

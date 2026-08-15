@@ -13,14 +13,21 @@ workspace:
   - packages/layout_engine
 
 dependency_overrides:
+  dawn_dart:
+    git:
+      url: https://github.com/knopp/skia_dart.git
+      path: packages/dawn_dart
+      ref: d87ca7eece3cb1d434a8a146d7c923d5d4e67bd1
   dawn_dart_api:
     git:
       url: https://github.com/knopp/skia_dart.git
       path: packages/dawn_dart_api
+      ref: d87ca7eece3cb1d434a8a146d7c923d5d4e67bd1
   skia_dart:
     git:
       url: https://github.com/knopp/skia_dart.git
       path: packages/skia_dart
+      ref: d87ca7eece3cb1d434a8a146d7c923d5d4e67bd1
   hooks: ^2.0.0
   ffigen: ^20.1.1
   xml: ^7.0.1

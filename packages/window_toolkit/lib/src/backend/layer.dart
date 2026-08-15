@@ -8,6 +8,7 @@ import '../drawing/skia_renderer.dart';
 import '../mixins/event.dart';
 import '../mixins/size.dart';
 import '../painter/painter.dart' hide Size;
+import '../painter/dawn_graphite_painter.dart';
 import '../painter/gles_painter.dart';
 import '../painter/raw_painter.dart';
 import '../painter/skia_painter.dart';
@@ -59,8 +60,10 @@ class LayerBackend with Size, Events implements Backend {
   final String namespace;
 
   Function()? onReady;
-  @override void Function(int width, int height)? onConfigure;
-  @override Function()? onClose;
+  @override
+  void Function(int width, int height)? onConfigure;
+  @override
+  Function()? onClose;
 
   @override
   bool get isRunning => _running;
@@ -165,13 +168,17 @@ class LayerBackend with Size, Events implements Backend {
     final size = stride * height;
 
     if (_pool != null && size <= _poolSize) {
-      stderr.writeln('[wt:layer] _ensureBuffer: pool already sufficient (${_poolSize}B)');
+      stderr.writeln(
+        '[wt:layer] _ensureBuffer: pool already sufficient (${_poolSize}B)',
+      );
       return;
     }
 
     // Guard against zero-size buffers (not-yet-configured dimensions).
     if (size <= 0) {
-      stderr.writeln('[wt:layer] _ensureBuffer: size=$size (not configured yet), destroying pool');
+      stderr.writeln(
+        '[wt:layer] _ensureBuffer: size=$size (not configured yet), destroying pool',
+      );
       _pool?.destroy();
       _pool = null;
       _poolSize = 0;
@@ -223,13 +230,17 @@ class LayerBackend with Size, Events implements Backend {
     _ensureBuffer();
     // Backend selection from WindowBehavior mixin, or auto by default.
     final wb = (this is WindowBehavior) ? this as WindowBehavior : null;
-    final b = wb?.rendererBackend ?? RendererBackend.auto;
-    stderr.writeln('[wt:layer] createPainter($width, $height) backend=$b fd=$_fd');
+    final b = wb?.rendererBackend ?? RendererBackend.fromEnvironment();
+    stderr.writeln(
+      '[wt:layer] createPainter($width, $height) backend=$b fd=$_fd',
+    );
     switch (b) {
       case RendererBackend.gl:
         try {
           final p = GlesPainter(_fd, width, height);
-          if (!p.isHealthy) throw Exception('GlesPainter unhealthy (EGL context lost)');
+          if (!p.isHealthy) {
+            throw Exception('GlesPainter unhealthy (EGL context lost)');
+          }
           return p;
         } catch (e) {
           stderr.writeln('[wt:layer] GlesPainter failed: $e');
@@ -240,6 +251,14 @@ class LayerBackend with Size, Events implements Backend {
           return SkiaPainter(_fd, width, height);
         } catch (e) {
           stderr.writeln('[wt:layer] SkiaPainter failed: $e');
+          rethrow;
+        }
+      case RendererBackend.dawn:
+        try {
+          stderr.writeln('[wt:layer] using Dawn Graphite/Vulkan...');
+          return DawnGraphitePainter(_fd, width, height);
+        } catch (e) {
+          stderr.writeln('[wt:layer] Dawn Graphite unavailable: $e');
           rethrow;
         }
       case RendererBackend.auto:
@@ -306,7 +325,9 @@ class LayerBackend with Size, Events implements Backend {
       }
     }
 
-    stderr.writeln('[wt:layer] presenting buffer $_buffer size=${width}x$height');
+    stderr.writeln(
+      '[wt:layer] presenting buffer $_buffer size=${width}x$height',
+    );
     _bufferBusy = true;
     surface.attach(_buffer!, 0, 0);
     surface.damageBuffer(0, 0, width, height);

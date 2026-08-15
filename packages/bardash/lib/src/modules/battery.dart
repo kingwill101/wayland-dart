@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:window_toolkit/window_toolkit.dart';
 
+import '../bar_text.dart';
 import '../metrics.dart';
 import '../native/upower_client.dart';
 import 'module.dart';
@@ -132,9 +133,11 @@ class BatteryModule extends BarModule {
 
   String get _icon {
     if (_capacity == null) return '?';
-    if (_isCharging) return '⚡';
-    if (_capacity! <= 15) return '🪫';
-    return '🔋';
+    // Use the configured Nerd Font icon face instead of color emoji. Skia's
+    // Graphite path does not reliably render color emoji and can show tofu.
+    if (_isCharging) return '\u{f0e7}';
+    if (_capacity! <= 15) return '\u{f244}';
+    return '\u{f240}';
   }
 
   @override
@@ -143,10 +146,10 @@ class BatteryModule extends BarModule {
     final m = BarMetrics.current;
     final ui = Font.ui(pixelSize: m.fontSize);
     if (_capacity == null) return painter.measureTextFont(output, ui);
-    final emoji = Font(family: m.emojiFamily, pixelSize: m.fontSize);
+    final icon = BarText.iconFont(m.iconFontSize);
     final gap = m.iconTextGap.toDouble();
     final capW = painter.measureTextFont('$_capacity%', ui);
-    final iconW = m.emojiLayoutWidth(painter.measureTextFont(_icon, emoji));
+    final iconW = m.emojiLayoutWidth(painter.measureTextFont(_icon, icon));
     return capW + gap + iconW;
   }
 
@@ -155,7 +158,7 @@ class BatteryModule extends BarModule {
     if (output.isEmpty) return 0;
     final m = BarMetrics.current;
     final ui = Font.ui(pixelSize: m.fontSize);
-    final emoji = Font(family: m.emojiFamily, pixelSize: m.fontSize);
+    final icon = BarText.iconFont(m.iconFontSize);
     final gap = m.iconTextGap.toDouble();
     const color = Color(180, 180, 180);
     if (_capacity == null) {
@@ -164,12 +167,12 @@ class BatteryModule extends BarModule {
     }
     final cap = '$_capacity%';
     final capW = painter.measureTextFont(cap, ui);
-    final iconW = m.emojiLayoutWidth(painter.measureTextFont(_icon, emoji));
+    final iconW = m.emojiLayoutWidth(painter.measureTextFont(_icon, icon));
     painter.drawTextFont(cap, Offset(x, y), font: ui, color: color);
     painter.drawTextFont(
       _icon,
       Offset(x + capW + gap, y),
-      font: emoji,
+      font: icon,
       color: color,
     );
     return capW + gap + iconW;

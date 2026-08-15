@@ -18,6 +18,26 @@ void main() {
       harness.draw();
       expect(harness.painter.commands, isNotEmpty);
     });
+
+    test('draws tabs and indicator at active index', () {
+      final tabs = TabBar(
+        labels: ['One', 'Two'],
+        activeIndex: 0,
+      );
+      tabs.x = 5;
+      tabs.y = 6;
+      tabs.width = 120;
+      tabs.height = 28;
+
+      final painter = RecordingPainter();
+      tabs.draw(painter);
+
+      final rects = painter.commands.ofType<DrawRectCommand>().toList();
+      expect(rects, hasLength(3));
+      expect(tabs.tabAt(10, 15), 0);
+      expect(tabs.tabAt(70, 15), 1);
+      expect(tabs.tabAt(200, 15), -1);
+    });
   });
 
   group('TabView', () {

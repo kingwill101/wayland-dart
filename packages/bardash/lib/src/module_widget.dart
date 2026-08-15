@@ -62,7 +62,11 @@ class ModuleWidget extends Widget {
       _measuredPadL = _padL;
       _measuredPadR = _padR;
       // Ensure PUA icons (power) get icon font width even if module forgot.
-      if (BarText.hasIconGlyphs(module.output)) {
+      // Skip the shortcut for graphics modules — they draw bars/graphs
+      // beyond the text and their own [BarModule.measure] knows the full
+      // extent (e.g. audio level bar, sliders). A text-only measure made
+      // the bar bleed into the next module.
+      if (!module.showsGraphics && BarText.hasIconGlyphs(module.output)) {
         _measuredContentW = BarText.measure(painter, module.output);
       } else {
         _measuredContentW = module.measure(painter);
@@ -101,66 +105,100 @@ class ModuleWidget extends Widget {
 
   @override
   void draw(Painter painter) {
-    final contentX = (x + _padL).toDouble();
-    final barH = painter.height.round().clamp(1, 4096).toDouble();
-    height = barH.round();
-    y = 0;
-    // GTK-like background from CSS (waybar #clock, .module)
-    final ctx = StyleContext.forWidget(this);
-    final bg = ctx.parsedBackgroundColor;
-    if (bg != null && bg.a != 0) {
-      painter.drawRect(
-        Rect.fromLTWH(x.toDouble(), 0, width.toDouble(), barH),
-        Paint()..color = bg,
-      );
-    }
-    final border = ctx.parsedBorderColor;
-    if (border != null) {
-      painter.drawRect(
-        Rect.fromLTWH(x.toDouble(), 0, width.toDouble(), barH),
-        Paint()
-          ..color = border
-          ..style = PaintStyle.stroke
-          ..strokeWidth = 1,
-      );
-    }
+    // Waybar's Gtk::Label is clipped by its allocated module width.  Keep
+    // custom module painters inside the same box so long media/window text,
+    // tray icons, and graphics cannot bleed into adjacent modules.
+    painter.save();
+    painter.clipRect(
+      Rect.fromLTWH(x.toDouble(), 0, width.toDouble(), barHeight(painter)),
+    );
+    try {
+      final contentX = (x + _padL).toDouble();
+      final barH = painter.height.round().clamp(1, 4096).toDouble();
+      height = barH.round();
+      y = 0;
+      // GTK-like background from CSS (waybar #clock, .module)
+      final ctx = StyleContext.forWidget(this);
+      final bg = ctx.parsedBackgroundColor;
+      if (bg != null && bg.a != 0) {
+        painter.drawRect(
+          Rect.fromLTWH(x.toDouble(), 0, width.toDouble(), barH),
+          Paint()..color = bg,
+        );
+      }
+      final border = ctx.parsedBorderColor;
+      if (border != null) {
+        painter.drawRect(
+          Rect.fromLTWH(x.toDouble(), 0, width.toDouble(), barH),
+          Paint()
+            ..color = border
+            ..style = PaintStyle.stroke
+            ..strokeWidth = 1,
+        );
+      }
 
-    if (module.widget != null) {
-      final w = module.widget!;
-      w.measure(painter);
-      w.x = x + _padL;
-      // Center widget tree in the bar (groups, window title, workspaces).
-      final wh = w.height > 0 ? w.height : barH.round();
-      w.y = ((barH - wh) / 2).round().clamp(0, barH.round());
-      if (wh >= barH - 1) {
-        w.y = 0;
-      }
-      w.draw(painter);
-    } else {
-      // y is Skia text-blob origin (line-box top), centered in the bar.
-      final originY = _barTextOriginY(painter, barH);
-      // SNI tray draws images via module.draw, not text — never take the CSS text path
-      if (module.name == 'sni' || module.name == 'tray') {
-        module.draw(painter, contentX, originY);
-        return;
-      }
-      final styleFg = ctx.parsedColor;
-      if (styleFg != null) {
-        // CSS color overrides module's hardcoded _color (waybar style.css).
-        // Use BarText.fontFor so PUA icons (power) get Hack Nerd Font, not sans.
-        final font = BarText.fontFor(module.output);
-        painter.drawTextFont(module.output, Offset(contentX, originY), font: font, color: styleFg);
+      if (module.widget != null) {
+        final w = module.widget!;
+        w.measure(painter);
+        w.x = x + _padL;
+        // Center widget tree in the bar (groups, window title, workspaces).
+        final wh = w.height > 0 ? w.height : barH.round();
+        w.y = ((barH - wh) / 2).round().clamp(0, barH.round());
+        if (wh >= barH - 1) {
+          w.y = 0;
+        }
+        w.draw(painter);
       } else {
-        // Even without CSS, ensure PUA gets icon font for measure/draw consistency.
-        if (BarText.hasIconGlyphs(module.output)) {
-          final f = BarText.iconFont();
-          painter.drawTextFont(module.output, Offset(contentX, originY), font: f);
+        // y is Skia text-blob origin (line-box top), centered in the bar.
+        final originY = _barTextOriginY(painter, barH);
+        final styleFg = ctx.parsedColor;
+        // SNI tray draws images via module.draw, not text — never take the CSS text path
+        if (module.name == 'sni' || module.name == 'tray') {
+          module.cssForeground = null;
+          module.draw(painter, contentX, originY);
           return;
         }
-        module.draw(painter, contentX, originY);
+        if (module.showsGraphics) {
+          // Modules that draw graphs / level bars / images do so in
+          // [BarModule.draw]. A CSS foreground must only tint their text —
+          // never short-circuit and hide the graph/bar/image.
+          module.cssForeground = styleFg;
+          module.draw(painter, contentX, originY);
+          return;
+        }
+        if (styleFg != null) {
+          // CSS color overrides module's hardcoded _color (waybar style.css).
+          // Use BarText.fontFor so PUA icons (power) get Hack Nerd Font, not sans.
+          final font = BarText.fontFor(module.output);
+          painter.drawTextFont(
+            module.output,
+            Offset(contentX, originY),
+            font: font,
+            color: styleFg,
+          );
+        } else {
+          // Even without CSS, ensure PUA gets icon font for measure/draw consistency.
+          if (BarText.hasIconGlyphs(module.output)) {
+            final f = BarText.iconFont();
+            module.cssForeground = null;
+            painter.drawTextFont(
+              module.output,
+              Offset(contentX, originY),
+              font: f,
+            );
+            return;
+          }
+          module.cssForeground = null;
+          module.draw(painter, contentX, originY);
+        }
       }
+    } finally {
+      painter.restore();
     }
   }
+
+  double barHeight(Painter painter) =>
+      painter.height.round().clamp(1, 4096).toDouble();
 
   @override
   bool hitTest(int px, int py) {

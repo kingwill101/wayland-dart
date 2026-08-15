@@ -3,13 +3,13 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dbus/dbus.dart';
-import 'package:wayland/wayland.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
 import '../metrics.dart';
 import '../native/icon_shim.dart';
 import '../png_encode.dart';
 import '../tray_menu.dart';
+import '../native/status_notifier_watcher.dart';
 import 'module.dart';
 
 // ── Icon theme (GTK-aligned) ──────────────────────────────────────
@@ -23,9 +23,17 @@ Map<String, List<String>> _parseIndexTheme(String path) {
       final trimmed = line.trim();
       if (trimmed.startsWith('[') && trimmed.endsWith(']')) continue;
       if (trimmed.startsWith('Inherits=')) {
-        result['Inherits'] = trimmed.substring(9).split(',').map((s) => s.trim()).toList();
+        result['Inherits'] = trimmed
+            .substring(9)
+            .split(',')
+            .map((s) => s.trim())
+            .toList();
       } else if (trimmed.startsWith('Directories=')) {
-        result['Directories'] = trimmed.substring(12).split(',').map((s) => s.trim()).toList();
+        result['Directories'] = trimmed
+            .substring(12)
+            .split(',')
+            .map((s) => s.trim())
+            .toList();
       }
     }
   } catch (_) {}
@@ -70,7 +78,9 @@ String? _findIconInDirs(List<String> themeDirs, String name) {
   String? search(List<String> dirs) {
     for (final dir in dirs) {
       final segments = dir.split('/');
-      final sizePart = segments.length >= 2 ? segments[segments.length - 2] : '';
+      final sizePart = segments.length >= 2
+          ? segments[segments.length - 2]
+          : '';
       final isScalable = sizePart == 'scalable';
       if (isScalable) {
         for (final ext in exts.where((e) => e != 'xpm')) {
@@ -138,8 +148,10 @@ class _TrayItem {
 
   /// Scaled icon size (content of [pixmapPath] / [pixmapData]).
   int pixmapW = 0, pixmapH = 0;
+
   /// Optional raw RGBA kept only as fallback if PNG write fails.
   Uint8List? pixmapData;
+
   /// Cached PNG on disk for [Painter.drawImage] (fast path).
   String? pixmapPath;
 
@@ -161,8 +173,11 @@ class _TrayItem {
       id.startsWith('electron_') ||
       iconName.isEmpty;
 
-  Future<void> _getProp(DBusRemoteObject obj, String prop,
-      void Function(DBusValue) onValue) async {
+  Future<void> _getProp(
+    DBusRemoteObject obj,
+    String prop,
+    void Function(DBusValue) onValue,
+  ) async {
     try {
       final val = await obj.getProperty('org.kde.StatusNotifierItem', prop);
       onValue(val);
@@ -174,8 +189,11 @@ class _TrayItem {
   bool itemIsMenu = false;
 
   Future<void> loadProperties(DBusClient bus) async {
-    final obj = DBusRemoteObject(bus,
-        name: busName, path: DBusObjectPath(objectPath));
+    final obj = DBusRemoteObject(
+      bus,
+      name: busName,
+      path: DBusObjectPath(objectPath),
+    );
 
     await _getProp(obj, 'IconName', (v) {
       if (v is DBusString) iconName = v.value;
@@ -225,8 +243,11 @@ class _TrayItem {
   /// RGBA, downscale, write a PNG for [drawImage], and drop large D-Bus
   /// arrays so they can be GC'd.
   Future<void> loadPixmap(DBusClient bus, {int targetSize = 32}) async {
-    final obj = DBusRemoteObject(bus,
-        name: busName, path: DBusObjectPath(objectPath));
+    final obj = DBusRemoteObject(
+      bus,
+      name: busName,
+      path: DBusObjectPath(objectPath),
+    );
 
     final preferAttention = status == 'NeedsAttention';
     final props = preferAttention
@@ -235,8 +256,10 @@ class _TrayItem {
 
     for (final prop in props) {
       try {
-        final result =
-            await obj.getProperty('org.kde.StatusNotifierItem', prop);
+        final result = await obj.getProperty(
+          'org.kde.StatusNotifierItem',
+          prop,
+        );
         final decoded = _decodePixmapArray(result, targetSize);
         // Drop DBus tree ASAP (can be 256k DBusByte objects).
         if (decoded != null) {
@@ -374,11 +397,13 @@ class _TrayItem {
         name: name,
         path: path,
       );
-      _subs.add(stream.listen((_) {
-        handler().catchError((e) {
-          stderr.writeln('[sni] $name on $busName: $e');
-        });
-      }));
+      _subs.add(
+        stream.listen((_) {
+          handler().catchError((e) {
+            stderr.writeln('[sni] $name on $busName: $e');
+          });
+        }),
+      );
     }
 
     sub('NewIcon', refreshIcon);
@@ -394,31 +419,39 @@ class _TrayItem {
     // Only reload icons when icon-related properties change.
     async.Timer? propDebounce;
     final obj = DBusRemoteObject(bus, name: busName, path: path);
-    _subs.add(obj.propertiesChanged.listen((sig) {
-      if (sig.propertiesInterface.isNotEmpty &&
-          sig.propertiesInterface != iface) {
-        return;
-      }
-      final keys = sig.changedProperties.keys;
-      final iconRelated = keys.any((k) =>
-          k.contains('Icon') ||
-          k.contains('Status') ||
-          k.contains('Title') ||
-          k.contains('ToolTip'));
-      // Empty changed set + invalidated list still means "reload".
-      final invalidated = sig.invalidatedProperties;
-      final invIcon = invalidated.any((k) =>
-          k.contains('Icon') || k.contains('Status') || k.contains('ToolTip'));
-      if (!iconRelated && !invIcon && keys.isNotEmpty) {
-        return;
-      }
-      propDebounce?.cancel();
-      propDebounce = async.Timer(const Duration(milliseconds: 120), () {
-        refreshIcon().catchError((e) {
-          stderr.writeln('[sni] PropertiesChanged on $busName: $e');
+    _subs.add(
+      obj.propertiesChanged.listen((sig) {
+        if (sig.propertiesInterface.isNotEmpty &&
+            sig.propertiesInterface != iface) {
+          return;
+        }
+        final keys = sig.changedProperties.keys;
+        final iconRelated = keys.any(
+          (k) =>
+              k.contains('Icon') ||
+              k.contains('Status') ||
+              k.contains('Title') ||
+              k.contains('ToolTip'),
+        );
+        // Empty changed set + invalidated list still means "reload".
+        final invalidated = sig.invalidatedProperties;
+        final invIcon = invalidated.any(
+          (k) =>
+              k.contains('Icon') ||
+              k.contains('Status') ||
+              k.contains('ToolTip'),
+        );
+        if (!iconRelated && !invIcon && keys.isNotEmpty) {
+          return;
+        }
+        propDebounce?.cancel();
+        propDebounce = async.Timer(const Duration(milliseconds: 120), () {
+          refreshIcon().catchError((e) {
+            stderr.writeln('[sni] PropertiesChanged on $busName: $e');
+          });
         });
-      });
-    }));
+      }),
+    );
   }
 
   void cancelListeners() {
@@ -432,29 +465,40 @@ class _TrayItem {
   static String _activeTheme() {
     // Prefer gsettings icon-theme (Papirus-Dark etc), fallback to common dirs.
     try {
-      final r = Process.runSync('gsettings', ['get', 'org.gnome.desktop.interface', 'icon-theme'], runInShell: true);
+      final r = Process.runSync('gsettings', [
+        'get',
+        'org.gnome.desktop.interface',
+        'icon-theme',
+      ], runInShell: true);
       if (r.exitCode == 0) {
         var v = r.stdout.toString().trim();
         // gsettings returns quoted 'Papirus-Dark'
-        if ((v.startsWith("'") && v.endsWith("'")) || (v.startsWith('"') && v.endsWith('"'))) {
+        if ((v.startsWith("'") && v.endsWith("'")) ||
+            (v.startsWith('"') && v.endsWith('"'))) {
           v = v.substring(1, v.length - 1);
         }
-        if (v.isNotEmpty && Directory('/usr/share/icons/$v').existsSync()) return v;
+        if (v.isNotEmpty && Directory('/usr/share/icons/$v').existsSync())
+          return v;
         // Try without -Dark suffix
         final base = v.replaceAll(RegExp(r'-Dark$'), '');
-        if (base != v && Directory('/usr/share/icons/$base').existsSync()) return base;
+        if (base != v && Directory('/usr/share/icons/$base').existsSync())
+          return base;
       }
     } catch (_) {}
     // GTK settings.ini fallback
     try {
-      for (final p in [Platform.environment['HOME']! + '/.config/gtk-3.0/settings.ini', '/etc/gtk-3.0/settings.ini']) {
+      for (final p in [
+        Platform.environment['HOME']! + '/.config/gtk-3.0/settings.ini',
+        '/etc/gtk-3.0/settings.ini',
+      ]) {
         final f = File(p);
         if (!f.existsSync()) continue;
         for (final line in f.readAsLinesSync()) {
           final m = RegExp(r'gtk-icon-theme-name\s*=\s*(.+)').firstMatch(line);
           if (m != null) {
             var v = m.group(1)!.trim().replaceAll('"', '').replaceAll("'", '');
-            if (v.isNotEmpty && Directory('/usr/share/icons/$v').existsSync()) return v;
+            if (v.isNotEmpty && Directory('/usr/share/icons/$v').existsSync())
+              return v;
           }
         }
       }
@@ -480,7 +524,8 @@ class _TrayItem {
   /// Native GTK + librsvg via icon_shim when available; else fallback to
   /// manual _findIconInDirs + rsvg-convert subprocess.
   String? findThemedIcon() {
-    final nameForStatus = status == 'NeedsAttention' && attentionIconName.isNotEmpty
+    final nameForStatus =
+        status == 'NeedsAttention' && attentionIconName.isNotEmpty
         ? attentionIconName
         : iconName;
     final key = '$nameForStatus|$id|$title|$iconThemePath|$status';
@@ -522,7 +567,11 @@ class _TrayItem {
       for (final variant in _iconNameVariants(name)) {
         // 1) Try native GTK icon theme (handles Inherits, scalable, @2x)
         if (IconShim.isAvailable) {
-          final native = IconShim.lookup(variant, size: 32, theme: _TrayItem._activeTheme());
+          final native = IconShim.lookup(
+            variant,
+            size: 32,
+            theme: _TrayItem._activeTheme(),
+          );
           if (native != null) {
             if (native.endsWith('.svg')) {
               final cached = _svgCache[native];
@@ -558,11 +607,15 @@ class _TrayItem {
           }
           final pngPath = '/tmp/bardash_icons/${found.hashCode}.png';
           Directory('/tmp/bardash_icons').createSync(recursive: true);
-          Process.runSync(
-            'rsvg-convert',
-            ['-w', '32', '-h', '32', '-o', pngPath, found],
-            runInShell: true,
-          );
+          Process.runSync('rsvg-convert', [
+            '-w',
+            '32',
+            '-h',
+            '32',
+            '-o',
+            pngPath,
+            found,
+          ], runInShell: true);
           if (File(pngPath).existsSync()) {
             _svgCache[found] = pngPath;
             _themedPath = pngPath;
@@ -591,9 +644,13 @@ void testIconTheme() {
   }
   if (dirs.length > 15) print('  ... (${dirs.length - 15} more)');
 
-  for (final name in ['blueman-tray',
-      'org.cryptomator.Cryptomator.tray-symbolic',
-      'firefox', 'discord', 'telegram']) {
+  for (final name in [
+    'blueman-tray',
+    'org.cryptomator.Cryptomator.tray-symbolic',
+    'firefox',
+    'discord',
+    'telegram',
+  ]) {
     String? found;
     for (final v in _iconNameVariants(name)) {
       found = _findIconInDirs(dirs, v);
@@ -610,8 +667,12 @@ class SniModule extends BarModule {
   @override
   String get name => 'sni';
 
+  @override
+  bool get needsPopupOverlay => true;
+
   final List<_TrayItem> _items = [];
   DBusClient? _bus;
+  StatusNotifierWatcherHost? _watcherHost;
   final List<async.StreamSubscription> _watcherSubs = [];
   bool _connecting = false;
   bool _connected = false;
@@ -624,9 +685,9 @@ class SniModule extends BarModule {
   async.Timer? _paintDebounce;
 
   /// Called by the bar once the layer surface exists.
-  void attach(
-    WaylandConnection connection,
-    WlSurface parent, {
+  @override
+  void attachPopupOverlay(
+    WaylandConnection connection, {
     int parentWidth = 1920,
     int parentHeight = 30,
     bool openUpward = true,
@@ -644,6 +705,10 @@ class SniModule extends BarModule {
     // Polling is a fallback; live updates come from D-Bus signals.
     interval = parseInt(config, 'interval', 10);
     _maxIcons = parseInt(config, 'max-icons', 8);
+    // Waybar creates its SNI host while constructing the tray module. Start
+    // the same bootstrap immediately so a standalone Bardash can provide the
+    // watcher and receive items without waiting for the first poll tick.
+    _connect();
   }
 
   void _notifyChanged() {
@@ -660,6 +725,13 @@ class SniModule extends BarModule {
     async.Timer.run(() async {
       try {
         _bus = DBusClient.session();
+        // Own the watcher when the session has none. This is the same
+        // bootstrap Waybar uses, so tray applications can register before a
+        // second panel is started.
+        _watcherHost = await StatusNotifierWatcherHost.ensure(_bus!);
+        if (_watcherHost!.ownsWatcher) {
+          stderr.writeln('[sni] owning org.kde.StatusNotifierWatcher');
+        }
         await _registerHost();
         await _subscribeWatcher();
         await _discoverItems();
@@ -709,13 +781,15 @@ class SniModule extends BarModule {
         name: name,
         path: path,
       );
-      _watcherSubs.add(stream.listen((sig) {
-        if (sig.values.isEmpty) return;
-        final v = sig.values[0];
-        if (v is DBusString) {
-          handler(v.value);
-        }
-      }));
+      _watcherSubs.add(
+        stream.listen((sig) {
+          if (sig.values.isEmpty) return;
+          final v = sig.values[0];
+          if (v is DBusString) {
+            handler(v.value);
+          }
+        }),
+      );
     }
 
     listen('StatusNotifierItemRegistered', (svc) {
@@ -727,22 +801,24 @@ class SniModule extends BarModule {
     });
 
     // If the watcher itself restarts, re-discover.
-    _watcherSubs.add(DBusSignalStream(
-      _bus!,
-      interface: 'org.freedesktop.DBus',
-      name: 'NameOwnerChanged',
-    ).listen((sig) {
-      if (sig.values.length < 3) return;
-      final name = sig.values[0];
-      final newOwner = sig.values[2];
-      if (name is! DBusString) return;
-      if (name.value != 'org.kde.StatusNotifierWatcher') return;
-      if (newOwner is DBusString && newOwner.value.isNotEmpty) {
-        _registerHost().then((_) => _discoverItems()).then((_) {
-          _notifyChanged();
-        });
-      }
-    }));
+    _watcherSubs.add(
+      DBusSignalStream(
+        _bus!,
+        interface: 'org.freedesktop.DBus',
+        name: 'NameOwnerChanged',
+      ).listen((sig) {
+        if (sig.values.length < 3) return;
+        final name = sig.values[0];
+        final newOwner = sig.values[2];
+        if (name is! DBusString) return;
+        if (name.value != 'org.kde.StatusNotifierWatcher') return;
+        if (newOwner is DBusString && newOwner.value.isNotEmpty) {
+          _registerHost().then((_) => _discoverItems()).then((_) {
+            _notifyChanged();
+          });
+        }
+      }),
+    );
   }
 
   /// Parse watcher service string: "bus.name/path" or just "bus.name".
@@ -860,6 +936,7 @@ class SniModule extends BarModule {
   double get _iconSize => BarMetrics.current.iconSlot.toDouble();
   double get _iconSpacing => BarMetrics.current.trayIconGap.toDouble();
   double get _iconStride => _iconSize + _iconSpacing;
+  bool get _debugSni => Platform.environment['BARDASH_DEBUG_SNI'] == '1';
 
   int _hoveredIndex(double moduleX) {
     if (hoverX < 0 || _items.isEmpty) return -1;
@@ -878,10 +955,10 @@ class SniModule extends BarModule {
       tooltip = ti.title.isNotEmpty
           ? ti.title
           : ti.iconName.isNotEmpty
-              ? ti.iconName
-              : ti.id.isNotEmpty
-                  ? ti.id
-                  : '';
+          ? ti.iconName
+          : ti.id.isNotEmpty
+          ? ti.id
+          : '';
       tooltipAnchorX = moduleX + hovered * _iconStride + _iconSize / 2;
       tooltipAnchorY = moduleY + _iconSize / 2;
     } else {
@@ -902,14 +979,33 @@ class SniModule extends BarModule {
 
   @override
   double measure(Painter painter) {
-    if (_items.isEmpty) return 0;
+    if (_items.isEmpty) {
+      if (_debugSni) stderr.writeln('[sni] measure items=0 width=0');
+      return 0;
+    }
     final n = _items.take(_maxIcons).length;
-    return n * _iconSize + (n - 1) * _iconSpacing;
+    final width = n * _iconSize + (n - 1) * _iconSpacing;
+    if (_debugSni) {
+      stderr.writeln(
+        '[sni] measure items=${_items.length} visible=$n '
+        'iconSize=$_iconSize gap=$_iconSpacing width=$width',
+      );
+    }
+    return width;
   }
 
   @override
   double draw(Painter painter, double x, double y) {
-    if (_items.isEmpty) return 0;
+    if (_items.isEmpty) {
+      if (_debugSni) stderr.writeln('[sni] draw items=0 x=$x');
+      return 0;
+    }
+    if (_debugSni) {
+      stderr.writeln(
+        '[sni] draw items=${_items.length} x=$x y=$y '
+        'width=${_items.length * _iconStride - _iconSpacing}',
+      );
+    }
     _noteModuleOrigin(x, painter.height);
 
     final hovered = _hoveredIndex(x);
@@ -919,7 +1015,12 @@ class SniModule extends BarModule {
       final item = _items[i];
       if (i == hovered) {
         painter.drawRect(
-          Rect.fromLTWH(cx - 1, y + (_iconSize - 16) / 2 - 1, _iconSize + 2, _iconSize + 2),
+          Rect.fromLTWH(
+            cx - 1,
+            y + (_iconSize - 16) / 2 - 1,
+            _iconSize + 2,
+            _iconSize + 2,
+          ),
           Paint()..color = const Color(0x60, 0x70, 0x90),
         );
       }
@@ -928,26 +1029,36 @@ class SniModule extends BarModule {
       final themed = (item.isElectronLike && item.pixmapData != null)
           ? null
           : item.findThemedIcon();
+      if (_debugSni) {
+        stderr.writeln(
+          '[sni] icon[$i] id=${item.id} themed=${themed ?? '-'} '
+          'pixmap=${item.pixmapW}x${item.pixmapH}',
+        );
+      }
       final iy = y + (_iconSize - 16) / 2;
       if (themed != null) {
-        painter.drawImage(themed, cx, iy,
-            width: _iconSize, height: _iconSize);
+        painter.drawImage(themed, cx, iy, width: _iconSize, height: _iconSize);
       } else if (item.pixmapData != null &&
           item.pixmapW > 0 &&
           item.pixmapH > 0) {
         // Pixel draw is the reliable path; PNG is only an optimization.
         _drawPixmap(painter, item, cx, iy, _iconSize);
       } else if (item.pixmapPath != null) {
-        painter.drawImage(item.pixmapPath!, cx, iy,
-            width: _iconSize, height: _iconSize);
+        painter.drawImage(
+          item.pixmapPath!,
+          cx,
+          iy,
+          width: _iconSize,
+          height: _iconSize,
+        );
       } else {
         final label = item.iconName.isNotEmpty
             ? item.iconName[0].toUpperCase()
             : item.id.isNotEmpty
-                ? item.id[0].toUpperCase()
-                : item.title.isNotEmpty
-                    ? item.title[0].toUpperCase()
-                    : '?';
+            ? item.id[0].toUpperCase()
+            : item.title.isNotEmpty
+            ? item.title[0].toUpperCase()
+            : '?';
         painter.drawRect(
           Rect.fromLTWH(cx, y + (_iconSize - 14) / 2, 14, 14),
           Paint()..color = const Color(0x50, 0x50, 0x60),
@@ -967,7 +1078,13 @@ class SniModule extends BarModule {
     return cx - x;
   }
 
-  void _drawPixmap(Painter painter, _TrayItem item, double x, double y, double size) {
+  void _drawPixmap(
+    Painter painter,
+    _TrayItem item,
+    double x,
+    double y,
+    double size,
+  ) {
     if (item.pixmapW <= 0 || item.pixmapH <= 0 || item.pixmapData == null) {
       return;
     }
@@ -984,8 +1101,7 @@ class SniModule extends BarModule {
         if (a == 0) continue;
         painter.drawRect(
           Rect.fromLTWH(x + px * scaleX, y + py * scaleY, scaleX, scaleY),
-          Paint()
-            ..color = Color(data[off], data[off + 1], data[off + 2], a),
+          Paint()..color = Color(data[off], data[off + 1], data[off + 2], a),
         );
       }
     }
@@ -1044,11 +1160,7 @@ class SniModule extends BarModule {
 
       // 2) Classic SNI ContextMenu (optional).
       try {
-        await obj.callMethod(
-          'org.kde.StatusNotifierItem',
-          'ContextMenu',
-          args,
-        );
+        await obj.callMethod('org.kde.StatusNotifierItem', 'ContextMenu', args);
         return;
       } catch (_) {}
 
@@ -1070,11 +1182,7 @@ class SniModule extends BarModule {
       TrayMenuController.close();
     }
     try {
-      await obj.callMethod(
-        'org.kde.StatusNotifierItem',
-        'Activate',
-        args,
-      );
+      await obj.callMethod('org.kde.StatusNotifierItem', 'Activate', args);
     } catch (e) {
       if (item.menuPath.isNotEmpty) {
         await _activateTrayItem(item, right: true, localX: localX);

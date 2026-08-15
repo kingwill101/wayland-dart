@@ -35,5 +35,37 @@ void main() {
       harness.draw();
       expect(harness.painter.commands, isNotEmpty);
     });
+test('draws cursor at correct position', () {
+      final ctrl = TextEditingController(text: 'hello');
+      ctrl.cursor = 3;
+      final tf = TextField(controller: ctrl);
+      tf.x = 10;
+      tf.y = 10;
+      tf.width = 120;
+      tf.height = 24;
+      tf.onClick?.call(); // gain focus
+
+      final painter = RecordingPainter();
+      tf.draw(painter);
+
+      final lines = painter.commands.ofType<DrawLineCommand>().toList();
+      expect(lines, hasLength(1));
+      expect(lines.single.from.dx, 38);
+    });
+
+    test('insert, delete, and cursor navigation work', () {
+      final ctrl = TextEditingController(text: 'hi');
+      ctrl.cursor = 2;
+      ctrl.insert('!');
+      expect(ctrl.text, 'hi!');
+      expect(ctrl.cursor, 3);
+
+      ctrl.moveCursorLeft();
+      expect(ctrl.cursor, 2);
+
+      ctrl.deleteLeft();
+      expect(ctrl.text, 'h!');
+      expect(ctrl.cursor, 1);
+    });
   });
 }
