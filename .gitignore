@@ -20,6 +20,9 @@ Thumbs.db
 # Local reference clones for comparison
 scratch/
 
+# Generated SDK/documentation bundles kept outside the repository history
+/Auto Run Docs/Working/
+
 # Wayland protocol cache
 .wayland-protocol-cache/
 
