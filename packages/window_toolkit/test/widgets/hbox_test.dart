@@ -55,10 +55,9 @@ void main() {
     });
 
     test('draw positions children correctly', () {
-      final harness = WidgetHarness(HBox(spacing: 4, children: [
-        Button('Left'),
-        Button('Right'),
-      ]));
+      final harness = WidgetHarness(
+        HBox(spacing: 4, children: [Button('Left'), Button('Right')]),
+      );
       harness.draw();
       final commands = harness.painter.commands;
       expect(commands.length, greaterThan(0));

@@ -5,43 +5,51 @@
 /// Expanded/Flexible never receive flex space because FlexParentData was not
 /// wired into layout_engine.
 library;
+
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
 void main() {
   group('constraint growth (no sticky width)', () {
-    test('ScrollArea child expands when viewport grows after small first layout',
-        () {
-      final content = VBox(spacing: 6, children: [
-        Label('header'),
-        Padding(
-          all: 8,
-          child: HBox(spacing: 12, children: [
-            Button('One'),
-            Button('Two'),
-            Button('Three'),
-          ]),
-        ),
-      ]);
-      final scroll = ScrollArea(child: content, showVertical: true);
+    test(
+      'ScrollArea child expands when viewport grows after small first layout',
+      () {
+        final content = VBox(
+          spacing: 6,
+          children: [
+            Label('header'),
+            Padding(
+              all: 8,
+              child: HBox(
+                spacing: 12,
+                children: [Button('One'), Button('Two'), Button('Three')],
+              ),
+            ),
+          ],
+        );
+        final scroll = ScrollArea(child: content, showVertical: true);
 
-      // First paint at WidgetWindow.minWidth (common before configure).
-      scroll
-        ..width = 100
-        ..height = 60;
-      scroll.performLayout(100);
-      expect(content.width, 100);
+        // First paint at WidgetWindow.minWidth (common before configure).
+        scroll
+          ..width = 100
+          ..height = 60;
+        scroll.performLayout(100);
+        expect(content.width, 100);
 
-      // Resize to a real window size — content must grow with the viewport.
-      scroll
-        ..width = 1152
-        ..height = 648;
-      scroll.performLayout(1152);
+        // Resize to a real window size — content must grow with the viewport.
+        scroll
+          ..width = 1152
+          ..height = 648;
+        scroll.performLayout(1152);
 
-      expect(scroll.width, 1152);
-      expect(content.width, 1152,
-          reason: 'VBox under ScrollArea must not stick to prior 100px width');
-    });
+        expect(scroll.width, 1152);
+        expect(
+          content.width,
+          1152,
+          reason: 'VBox under ScrollArea must not stick to prior 100px width',
+        );
+      },
+    );
 
     test('VBox children stretch to full container width after resize', () {
       final pad = Padding(all: 8, child: HBox(children: [Button('One')]));
@@ -53,10 +61,16 @@ void main() {
 
       vbox.performLayout(800);
       expect(vbox.width, 800);
-      expect(pad.width, 800,
-          reason: 'Padding under VBox must stretch with parent');
-      expect(pad.child.width, 800 - 16,
-          reason: 'HBox inside padding gets inner width');
+      expect(
+        pad.width,
+        800,
+        reason: 'Padding under VBox must stretch with parent',
+      );
+      expect(
+        pad.child.width,
+        800 - 16,
+        reason: 'HBox inside padding gets inner width',
+      );
     });
 
     test('ElementHost + ScrollArea + VBox expands on second layout', () {
@@ -75,8 +89,11 @@ void main() {
       final scroll = host.children.first;
       expect(scroll, isA<ScrollArea>());
       expect(scroll.width, 1152);
-      expect((scroll as ScrollArea).child.width, 1152,
-          reason: 'Showcase-style tree must fill window after resize');
+      expect(
+        (scroll as ScrollArea).child.width,
+        1152,
+        reason: 'Showcase-style tree must fill window after resize',
+      );
     });
 
     test('Padding fills offered width rather than shrinking to child', () {
@@ -102,10 +119,16 @@ void main() {
       expect(row.width, 400);
       expect(a.width, greaterThan(0));
       expect(b.width, greaterThan(0));
-      expect(exp.width, 400 - a.width - b.width,
-          reason: 'Expanded must receive leftover main-axis space');
-      expect(fill.width, exp.width,
-          reason: 'Expanded must sync bounds into its child');
+      expect(
+        exp.width,
+        400 - a.width - b.width,
+        reason: 'Expanded must receive leftover main-axis space',
+      );
+      expect(
+        fill.width,
+        exp.width,
+        reason: 'Expanded must sync bounds into its child',
+      );
       expect(a.x, lessThan(exp.x));
       expect(exp.x, lessThan(b.x));
     });
@@ -139,17 +162,22 @@ void main() {
       final btn = Button('Hi');
       final before = btn.width;
       btn.performLayout(1000);
-      expect(btn.width, before,
-          reason: 'Buttons stay content-sized unless Expanded/SizedBox');
+      expect(
+        btn.width,
+        before,
+        reason: 'Buttons stay content-sized unless Expanded/SizedBox',
+      );
     });
 
-    test('Button.performLayout clamps when container is smaller than intrinsic',
-        () {
-      final btn = Button('Longer Button');
-      expect(btn.width, greaterThan(20));
-      btn.performLayout(20);
-      expect(btn.width, 20);
-    });
+    test(
+      'Button.performLayout clamps when container is smaller than intrinsic',
+      () {
+        final btn = Button('Longer Button');
+        expect(btn.width, greaterThan(20));
+        btn.performLayout(20);
+        expect(btn.width, 20);
+      },
+    );
 
     test('Wrap children recover full width after narrow then wide layout', () {
       final buttons = [
@@ -157,11 +185,7 @@ void main() {
         Button('Beta'),
         Button('Longer Button'),
       ];
-      final wrap = WrapLayout(
-        spacing: 10,
-        runSpacing: 10,
-        children: buttons,
-      );
+      final wrap = WrapLayout(spacing: 10, runSpacing: 10, children: buttons);
       final pad = Padding(all: 8, child: wrap);
       final vbox = VBox(children: [pad]);
 
@@ -169,10 +193,16 @@ void main() {
       expect(buttons[2].width, lessThan(100));
 
       vbox.performLayout(500);
-      expect(buttons[0].width, greaterThan(40),
-          reason: 'Alpha must recover intrinsic after narrow clamp');
-      expect(buttons[2].width, greaterThan(80),
-          reason: 'Longer Button must recover intrinsic after narrow clamp');
+      expect(
+        buttons[0].width,
+        greaterThan(40),
+        reason: 'Alpha must recover intrinsic after narrow clamp',
+      );
+      expect(
+        buttons[2].width,
+        greaterThan(80),
+        reason: 'Longer Button must recover intrinsic after narrow clamp',
+      );
       // On a wide row, Longer Button should sit to the right of Alpha.
       expect(buttons[2].x, greaterThan(buttons[0].x));
     });
@@ -190,25 +220,29 @@ class _ShowcaseLikeRootState extends State<_ShowcaseLikeRoot> {
   ElementWidget build(BuildContext context) {
     return ScrollArea(
       showVertical: true,
-      child: VBox(spacing: 6, children: [
-        Label('— Layouts —'),
-        Padding(
-          all: 8,
-          child: HBox(spacing: 12, children: [
-            Button('One'),
-            Button('Two'),
-            Button('Three'),
-          ]),
-        ),
-        Padding(
-          all: 8,
-          child: Row(children: [
-            Button('Left'),
-            Expanded(child: Button('c')),
-            Button('Right'),
-          ]),
-        ),
-      ]),
+      child: VBox(
+        spacing: 6,
+        children: [
+          Label('— Layouts —'),
+          Padding(
+            all: 8,
+            child: HBox(
+              spacing: 12,
+              children: [Button('One'), Button('Two'), Button('Three')],
+            ),
+          ),
+          Padding(
+            all: 8,
+            child: Row(
+              children: [
+                Button('Left'),
+                Expanded(child: Button('c')),
+                Button('Right'),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

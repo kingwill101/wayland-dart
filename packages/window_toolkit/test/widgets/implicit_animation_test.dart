@@ -4,10 +4,7 @@ import 'package:window_toolkit/window_toolkit.dart';
 void main() {
   group('AnimatedOpacity', () {
     test('draws child', () {
-      final ao = AnimatedOpacity(
-        child: Label('Test'),
-        opacity: 1.0,
-      );
+      final ao = AnimatedOpacity(child: Label('Test'), opacity: 1.0);
       ao.x = 0;
       ao.y = 0;
       ao.width = 100;

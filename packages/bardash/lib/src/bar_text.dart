@@ -14,26 +14,18 @@ class BarText {
       Font.ui(pixelSize: pixelSize ?? BarMetrics.current.fontSize);
 
   /// Icon role (Nerd Font / FA) — family from [FontDatabase] role map.
-  static Font iconFont([double? pixelSize]) => Font.icon(
-        pixelSize: pixelSize ?? BarMetrics.current.iconFontSize,
-      );
+  static Font iconFont([double? pixelSize]) =>
+      Font.icon(pixelSize: pixelSize ?? BarMetrics.current.iconFontSize);
 
   /// Color emoji family from [BarMetrics.emojiFamily].
   static Font emojiFont([double? pixelSize]) => Font(
-        family: BarMetrics.current.emojiFamily,
-        pixelSize: pixelSize ?? BarMetrics.current.fontSize,
-      );
+    family: BarMetrics.current.emojiFamily,
+    pixelSize: pixelSize ?? BarMetrics.current.fontSize,
+  );
 
   /// True if [text] contains Private Use Area codepoints (Nerd/FA icons).
   static bool hasIconGlyphs(String text) {
-    for (final r in text.runes) {
-      // BMP PUA (U+E000–U+F8FF) — most Nerd Font / FA symbols.
-      if (r >= 0xE000 && r <= 0xF8FF) return true;
-      // Supplementary PUA-A/B.
-      if (r >= 0xF0000 && r <= 0xFFFFD) return true;
-      if (r >= 0x100000 && r <= 0x10FFFD) return true;
-    }
-    return false;
+    return FontTextRun.isPrivateUse(text);
   }
 
   /// Font for a single-string module output (icon glyphs → icon role).
@@ -53,8 +45,12 @@ class BarText {
       // Short non-PUA (rare) — still use icon slot when marked icon-like.
       return m.iconContentWidth();
     }
-    final font = fontFor(text);
-    var adv = painter.measureTextFont(text, font);
+    var adv = painter.measureTextRuns(
+      text,
+      textFont: uiFont(),
+      iconFont: iconFont(),
+      runSpacing: m.iconTextGap.toDouble(),
+    );
     // After cache purge / bad match, PUA can measure as ~0 — fall back to slot.
     if (hasIconGlyphs(text) && adv < 4) {
       adv = m.iconContentWidth();
@@ -78,13 +74,24 @@ class BarText {
     Font? font,
   }) {
     if (text.isEmpty) return 0;
-    final f = font ?? fontFor(text);
-    painter.drawTextFont(text, Offset(x, y), font: f, color: color);
-    final adv = painter.measureTextFont(text, f);
-    if (hasIconGlyphs(text) && adv < 4) {
+    late final double measured;
+    if (font == null) {
+      measured = painter.drawTextRuns(
+        text,
+        Offset(x, y),
+        textFont: uiFont(),
+        iconFont: iconFont(),
+        color: color,
+        runSpacing: BarMetrics.current.iconTextGap.toDouble(),
+      );
+    } else {
+      painter.drawTextFont(text, Offset(x, y), font: font, color: color);
+      measured = painter.measureTextFont(text, font);
+    }
+    if (hasIconGlyphs(text) && measured < 4) {
       return BarMetrics.current.iconContentWidth();
     }
-    return adv;
+    return measured;
   }
 
   /// Pick the first family available on the system from [candidates].
@@ -142,7 +149,9 @@ class BarText {
       for (var i = 0; i < lower.length; i++) {
         final il = lower[i];
         if (il.length < 4) continue;
-        if (cl.contains(il) && il.length >= (cl.length - 2) && il.length > bestLen) {
+        if (cl.contains(il) &&
+            il.length >= (cl.length - 2) &&
+            il.length > bestLen) {
           best = installed[i];
           bestLen = il.length;
         }

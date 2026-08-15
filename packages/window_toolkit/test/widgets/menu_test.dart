@@ -18,11 +18,9 @@ void main() {
     });
 
     test('menu draws items', () {
-      final menu = Menu(items: [
-        MenuItem('Open'),
-        MenuItem('Save'),
-        MenuItem('Quit'),
-      ]);
+      final menu = Menu(
+        items: [MenuItem('Open'), MenuItem('Save'), MenuItem('Quit')],
+      );
       final harness = WidgetHarness(menu);
       harness.draw();
       expect(harness.painter.commands, isNotEmpty);

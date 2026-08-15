@@ -41,11 +41,13 @@ class PaddedColumnLayout {
     }
 
     padding.padding = insets;
-    padding.layout(le.BoxConstraints(
-      minWidth: containerWidth.toDouble(),
-      maxWidth: containerWidth.toDouble(),
-      maxHeight: double.infinity,
-    ));
+    padding.layout(
+      le.BoxConstraints(
+        minWidth: containerWidth.toDouble(),
+        maxWidth: containerWidth.toDouble(),
+        maxHeight: double.infinity,
+      ),
+    );
     return padding.size;
   }
 

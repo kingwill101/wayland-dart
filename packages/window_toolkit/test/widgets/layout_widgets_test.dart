@@ -1,7 +1,6 @@
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
-
 void main() {
   test('HBox lays out children horizontally and forwards hit tests', () {
     final left = Label('A');
@@ -58,29 +57,35 @@ void main() {
     expect(text.position.dy, greaterThan(align.y.toDouble()));
   });
 
-  test('Padding insets the child and keeps hit tests inside the padded area', () {
-    final child = Label('Pad');
-    final padding = Padding(child: child, all: 10);
-    padding.x = 3;
-    padding.y = 4;
-    padding.width = 80;
-    padding.height = 50;
+  test(
+    'Padding insets the child and keeps hit tests inside the padded area',
+    () {
+      final child = Label('Pad');
+      final padding = Padding(child: child, all: 10);
+      padding.x = 3;
+      padding.y = 4;
+      padding.width = 80;
+      padding.height = 50;
 
-    final painter = RecordingPainter();
-    padding.draw(painter);
+      final painter = RecordingPainter();
+      padding.draw(painter);
 
-    expect(child.x, 13);
-    // child.y = padding.y + top; child.width/height depend on font metrics
-    expect(child.y, greaterThan(padding.y));
-    expect(child.width, greaterThan(1));
-    expect(child.width, lessThanOrEqualTo(padding.width - padding.left - padding.right));
-    expect(padding.hitTest(child.x + 1, child.y + 1), isTrue);
-    expect(padding.hitTest(4, 5), isFalse);
+      expect(child.x, 13);
+      // child.y = padding.y + top; child.width/height depend on font metrics
+      expect(child.y, greaterThan(padding.y));
+      expect(child.width, greaterThan(1));
+      expect(
+        child.width,
+        lessThanOrEqualTo(padding.width - padding.left - padding.right),
+      );
+      expect(padding.hitTest(child.x + 1, child.y + 1), isTrue);
+      expect(padding.hitTest(4, 5), isFalse);
 
-    final text = painter.commands.singleOfType<DrawTextCommand>();
-    expect(text.text, 'Pad');
-    expect(text.position.dx, child.x.toDouble());
-    // text position depends on font-metric vertical centering
-    expect(text.position.dy, greaterThan(padding.y.toDouble()));
-  });
+      final text = painter.commands.singleOfType<DrawTextCommand>();
+      expect(text.text, 'Pad');
+      expect(text.position.dx, child.x.toDouble());
+      // text position depends on font-metric vertical centering
+      expect(text.position.dy, greaterThan(padding.y.toDouble()));
+    },
+  );
 }

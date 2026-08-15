@@ -283,3 +283,62 @@ int pulse_shim_toggle_mute(void) {
   pa_threaded_mainloop_unlock(g.ml);
   return 0;
 }
+
+/** Adjust default source volume by delta percent points (e.g. +5 or -5). */
+int pulse_shim_source_volume_step(int delta_pct) {
+  if (!g.ml || g.ready != 1 || !g.ctx || !g.default_source[0]) return -1;
+
+  pa_threaded_mainloop_lock(g.ml);
+
+  int cur = g.source_pct;
+  int next = cur + delta_pct;
+  if (next < 0) next = 0;
+  if (next > 150) next = 150;
+
+  pa_cvolume vol;
+  pa_cvolume_init(&vol);
+  pa_cvolume_set(&vol, 2, (pa_volume_t)lround((next / 100.0) * PA_VOLUME_NORM));
+
+  pa_operation *op =
+      pa_context_set_source_volume_by_name(g.ctx, g.default_source, &vol, on_success, NULL);
+  if (op) {
+    while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) {
+      pa_threaded_mainloop_wait(g.ml);
+    }
+    pa_operation_unref(op);
+  }
+  /* Unmute when changing volume (desktop convention). */
+  if (g.source_muted) {
+    op = pa_context_set_source_mute_by_name(g.ctx, g.default_source, 0, on_success, NULL);
+    if (op) {
+      while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) {
+        pa_threaded_mainloop_wait(g.ml);
+      }
+      pa_operation_unref(op);
+    }
+  }
+  g.source_pct = next;
+  g.source_muted = 0;
+  g.dirty = 1;
+  pa_threaded_mainloop_unlock(g.ml);
+  return 0;
+}
+
+/** Toggle mute on the default source (microphone). */
+int pulse_shim_toggle_source_mute(void) {
+  if (!g.ml || g.ready != 1 || !g.ctx || !g.default_source[0]) return -1;
+  pa_threaded_mainloop_lock(g.ml);
+  int new_mute = g.source_muted ? 0 : 1;
+  pa_operation *op =
+      pa_context_set_source_mute_by_name(g.ctx, g.default_source, new_mute, on_success, NULL);
+  if (op) {
+    while (pa_operation_get_state(op) == PA_OPERATION_RUNNING) {
+      pa_threaded_mainloop_wait(g.ml);
+    }
+    pa_operation_unref(op);
+  }
+  g.source_muted = new_mute;
+  g.dirty = 1;
+  pa_threaded_mainloop_unlock(g.ml);
+  return 0;
+}

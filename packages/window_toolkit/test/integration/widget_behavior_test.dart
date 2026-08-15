@@ -3,10 +3,9 @@
 /// These test the conditions the user reported: resize propagation,
 /// hover state changes, scrollbar visibility, and wheel scrolling.
 library;
+
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
-
-
 
 void main() {
   // ── Resize propagation ──────────────────────────────────────
@@ -106,8 +105,11 @@ void main() {
       sa.height = 100;
       sa.performLayout(200);
 
-      expect(sa.maxScrollY, greaterThan(0),
-          reason: 'content taller than viewport should enable scrolling');
+      expect(
+        sa.maxScrollY,
+        greaterThan(0),
+        reason: 'content taller than viewport should enable scrolling',
+      );
     });
 
     test('ScrollArea hides scrollbar when content fits', () {
@@ -121,8 +123,11 @@ void main() {
       sa.height = 100;
       sa.performLayout(200);
 
-      expect(sa.maxScrollY, 0,
-          reason: 'content shorter than viewport should not scroll');
+      expect(
+        sa.maxScrollY,
+        0,
+        reason: 'content shorter than viewport should not scroll',
+      );
     });
 
     test('ScrollArea scrollY changes after scrollBy', () {
@@ -138,8 +143,11 @@ void main() {
 
       final before = sa.scrollY;
       sa.scrollBy(0, 50);
-      expect(sa.scrollY, greaterThan(before),
-          reason: 'scrollBy should increase scroll offset');
+      expect(
+        sa.scrollY,
+        greaterThan(before),
+        reason: 'scrollBy should increase scroll offset',
+      );
     });
 
     test('ScrollArea clips content during draw', () {
@@ -157,8 +165,11 @@ void main() {
       sa.draw(painter);
 
       final clips = painter.commands.ofType<ClipRectCommand>().toList();
-      expect(clips, hasLength(greaterThanOrEqualTo(1)),
-          reason: 'draw should record a clip rect');
+      expect(
+        clips,
+        hasLength(greaterThanOrEqualTo(1)),
+        reason: 'draw should record a clip rect',
+      );
     });
 
     test('ScrollArea responds to mouse wheel', () {
@@ -179,8 +190,11 @@ void main() {
 
       // The scroll should have changed (the animated scroll also applies
       // immediately via scrollBy in onMouseWheel)
-      expect(sa.scrollY, greaterThanOrEqualTo(before),
-          reason: 'wheel down should scroll down');
+      expect(
+        sa.scrollY,
+        greaterThanOrEqualTo(before),
+        reason: 'wheel down should scroll down',
+      );
     });
   });
 
@@ -207,8 +221,11 @@ void main() {
       host.performLayout(400);
 
       // ElementHost should accept hits anywhere in its bounds
-      expect(host.hitTest(10, 10), isTrue,
-          reason: 'ElementHost itself should be hittable');
+      expect(
+        host.hitTest(10, 10),
+        isTrue,
+        reason: 'ElementHost itself should be hittable',
+      );
     });
   });
 
@@ -246,10 +263,16 @@ void main() {
       host.performLayout(400);
 
       // The child should have non-zero size after layout
-      expect(host.children.first.width, greaterThan(0),
-          reason: 'child should have width after layout');
-      expect(host.children.first.height, greaterThan(0),
-          reason: 'child should have height after layout');
+      expect(
+        host.children.first.width,
+        greaterThan(0),
+        reason: 'child should have width after layout',
+      );
+      expect(
+        host.children.first.height,
+        greaterThan(0),
+        reason: 'child should have height after layout',
+      );
     });
   });
 
@@ -265,10 +288,16 @@ void main() {
       host.performLayout(400);
 
       final scrollArea = host.children.first;
-      expect(scrollArea, isA<ScrollArea>(),
-          reason: 'renderable should be ScrollArea');
-      expect(scrollArea.height, greaterThan(0),
-          reason: 'ScrollArea should get height from ElementHost');
+      expect(
+        scrollArea,
+        isA<ScrollArea>(),
+        reason: 'renderable should be ScrollArea',
+      );
+      expect(
+        scrollArea.height,
+        greaterThan(0),
+        reason: 'ScrollArea should get height from ElementHost',
+      );
     });
 
     test('ScrollArea inside ElementHost scrolls content', () {
@@ -280,8 +309,11 @@ void main() {
       host.performLayout(400);
 
       final scrollArea = host.children.first as ScrollArea;
-      expect(scrollArea.maxScrollY, greaterThan(0),
-          reason: 'tall content inside ElementHost should scroll');
+      expect(
+        scrollArea.maxScrollY,
+        greaterThan(0),
+        reason: 'tall content inside ElementHost should scroll',
+      );
     });
   });
 }
@@ -308,10 +340,7 @@ class _FlexChild extends StatelessWidget {
 class _SliderContainer extends StatelessWidget {
   @override
   ElementWidget build(BuildContext context) {
-    return Padding(
-      all: 8,
-      child: Slider(value: 50, min: 0, max: 100),
-    );
+    return Padding(all: 8, child: Slider(value: 50, min: 0, max: 100));
   }
 }
 

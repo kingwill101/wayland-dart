@@ -20,10 +20,12 @@ void main() {
     });
 
     test('draw records commands', () {
-      final harness = WidgetHarness(Flex(direction: Axis.horizontal, children: [
-        Button('Left'),
-        Button('Right'),
-      ]));
+      final harness = WidgetHarness(
+        Flex(
+          direction: Axis.horizontal,
+          children: [Button('Left'), Button('Right')],
+        ),
+      );
       harness.draw();
       expect(harness.painter.commands, isNotEmpty);
     });

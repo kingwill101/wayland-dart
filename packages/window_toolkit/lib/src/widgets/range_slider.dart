@@ -1,8 +1,11 @@
 import '../drawing/color.dart';
+import '../interaction.dart';
+import '../mixins/hoverable.dart';
+import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
 import '../widget.dart';
 
-class RangeSlider extends Widget {
+class RangeSlider extends Widget with Hoverable, HoverAnimated {
   double min;
   double max;
   double lower;
@@ -15,8 +18,8 @@ class RangeSlider extends Widget {
   Color activeThumbColor;
   VoidCallback? onChanged;
 
-  final bool _draggingLower = false;
-  final bool _draggingUpper = false;
+  bool _draggingLower = false;
+  bool _draggingUpper = false;
 
   RangeSlider({
     this.min = 0,
@@ -30,18 +33,58 @@ class RangeSlider extends Widget {
     this.thumbColor = const Color(240, 240, 240),
     this.activeThumbColor = const Color(255, 255, 255),
     this.onChanged,
-  })  : assert(max > min, 'RangeSlider max must be > min'),
-        lower = lower.clamp(min, max),
-        upper = upper.clamp(min, max) {
+  }) : assert(max > min, 'RangeSlider max must be > min'),
+       lower = lower.clamp(min, max),
+       upper = upper.clamp(min, max) {
     width = 160;
     height = thumbRadius * 2 > trackHeight ? thumbRadius * 2 : trackHeight;
   }
 
   double get _range => max - min;
-  double get _lowerFraction => _range <= 0 ? 0 : ((lower - min) / _range).clamp(0.0, 1.0);
-  double get _upperFraction => _range <= 0 ? 1 : ((upper - min) / _range).clamp(0.0, 1.0);
+  double get _lowerFraction =>
+      _range <= 0 ? 0 : ((lower - min) / _range).clamp(0.0, 1.0);
+  double get _upperFraction =>
+      _range <= 0 ? 1 : ((upper - min) / _range).clamp(0.0, 1.0);
 
+  @override
+  bool get acceptsFocus => true;
 
+  @override
+  void onMouseDown(int x, int y, int button) {
+    if (button != 272 || width <= 0) return;
+    final fraction = ((x - this.x) / width).clamp(0.0, 1.0);
+    final valueAtPointer = min + _range * fraction;
+    if ((valueAtPointer - lower).abs() <= (valueAtPointer - upper).abs()) {
+      _draggingLower = true;
+    } else {
+      _draggingUpper = true;
+    }
+    setInteractionState(WidgetState.dragging, true);
+    _updateFromPointer(x);
+  }
+
+  @override
+  void onMouseDrag(int x, int y) {
+    if (_draggingLower || _draggingUpper) _updateFromPointer(x);
+  }
+
+  @override
+  void onMouseUp(int x, int y, int button) {
+    _draggingLower = false;
+    _draggingUpper = false;
+    setInteractionState(WidgetState.dragging, false);
+  }
+
+  void _updateFromPointer(int px) {
+    final value = min + _range * ((px - x) / width).clamp(0.0, 1.0);
+    if (_draggingLower) {
+      lower = value.clamp(min, upper);
+    } else if (_draggingUpper) {
+      upper = value.clamp(lower, max);
+    }
+    onChanged?.call();
+    requestRepaint();
+  }
 
   @override
   void draw(Painter canvas) {
@@ -51,17 +94,37 @@ class RangeSlider extends Widget {
     final ux = (x + (width * _upperFraction).round()).toDouble();
 
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), trackY.toDouble(), width.toDouble(), trackHeight.toDouble()),
+      Rect.fromLTWH(
+        x.toDouble(),
+        trackY.toDouble(),
+        width.toDouble(),
+        trackHeight.toDouble(),
+      ),
       Paint()..color = trackColor,
     );
     canvas.drawRect(
-      Rect.fromLTWH(lx, trackY.toDouble(), (ux - lx).toDouble(), trackHeight.toDouble()),
+      Rect.fromLTWH(
+        lx,
+        trackY.toDouble(),
+        (ux - lx).toDouble(),
+        trackHeight.toDouble(),
+      ),
       Paint()..color = fillColor,
     );
 
-    canvas.drawCircle(Offset(lx, cy.toDouble()), thumbRadius.toDouble(),
-      Paint()..color = _draggingLower ? activeThumbColor : thumbColor);
-    canvas.drawCircle(Offset(ux, cy.toDouble()), thumbRadius.toDouble(),
-      Paint()..color = _draggingUpper ? activeThumbColor : thumbColor);
+    final hoveredThumb = transitionHover(
+      thumbColor,
+      Color.blend(thumbColor, const Color(255, 255, 255, 28)),
+    );
+    canvas.drawCircle(
+      Offset(lx, cy.toDouble()),
+      thumbRadius.toDouble(),
+      Paint()..color = _draggingLower ? activeThumbColor : hoveredThumb,
+    );
+    canvas.drawCircle(
+      Offset(ux, cy.toDouble()),
+      thumbRadius.toDouble(),
+      Paint()..color = _draggingUpper ? activeThumbColor : hoveredThumb,
+    );
   }
 }

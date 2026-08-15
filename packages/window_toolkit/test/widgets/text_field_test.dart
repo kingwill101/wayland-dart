@@ -11,21 +11,24 @@ void main() {
     });
 
     test('controller.text updates displayed text', () {
-      final tf = TextField()
-        ..controller.text = 'Hello';
+      final tf = TextField()..controller.text = 'Hello';
       expect(tf.controller.text, 'Hello');
     });
 
     test('backspace removes last character', () {
       final tf = TextField()..controller.text = 'Hi';
-      final mods = ModifierState(modsDepressed: 0, modsLatched: 0, modsLocked: 0, group: 0);
+      final mods = ModifierState(
+        modsDepressed: 0,
+        modsLatched: 0,
+        modsLocked: 0,
+        group: 0,
+      );
       tf.onKeyPressed(KeyEvent(42, true, mods));
       expect(tf.controller.text, 'H');
     });
 
     test('clear empties text', () {
-      final tf = TextField()
-        ..controller.text = 'Text';
+      final tf = TextField()..controller.text = 'Text';
       tf.controller.text = '';
       expect(tf.controller.text, isEmpty);
     });
@@ -35,7 +38,7 @@ void main() {
       harness.draw();
       expect(harness.painter.commands, isNotEmpty);
     });
-test('draws cursor at correct position', () {
+    test('draws cursor at correct position', () {
       final ctrl = TextEditingController(text: 'hello');
       ctrl.cursor = 3;
       final tf = TextField(controller: ctrl);

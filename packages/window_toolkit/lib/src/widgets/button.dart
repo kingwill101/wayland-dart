@@ -1,15 +1,18 @@
-
 import '../drawing/color.dart';
+import '../metrics.dart';
+import '../interaction.dart';
+import '../mixins/hoverable.dart';
+import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
-import '../style/style_context.dart';
+import '../style.dart';
+import '../style/style_patch.dart';
 import '../widget.dart';
 
-class Button extends Widget {
+class Button extends Widget with Hoverable, HoverAnimated {
   String text;
   final Color? _textColor;
   final Color? _backgroundColor;
   final Color? _hoverColor;
-  bool _hovered = false;
   final int padding;
   final int charWidth;
   final int charHeight;
@@ -24,23 +27,21 @@ class Button extends Widget {
     this.charWidth = 8,
     this.charHeight = 16,
     super.key,
-  })  : assert(text.isNotEmpty, 'Button text must not be empty'),
-        assert(padding >= 0, 'Button padding must be >= 0'),
-        assert(charWidth > 0 && charHeight > 0, 'Button charWidth/charHeight must be > 0'),
-        _textColor = textColor,
-        _backgroundColor = backgroundColor,
-        _hoverColor = hoverColor {
+  }) : assert(text.isNotEmpty, 'Button text must not be empty'),
+       assert(padding >= 0, 'Button padding must be >= 0'),
+       assert(
+         charWidth > 0 && charHeight > 0,
+         'Button charWidth/charHeight must be > 0',
+       ),
+       _textColor = textColor,
+       _backgroundColor = backgroundColor,
+       _hoverColor = hoverColor {
     width = text.length * charWidth + padding * 2;
     height = charHeight + padding * 2;
     tabIndex = 1;
-    onClick = () { onPressed?.call(); return true; };
-    onMouseEnter = () {
-      addPseudoClass('hover');
-      setState(() => _hovered = true);
-    };
-    onMouseLeave = () {
-      removePseudoClass('hover');
-      setState(() => _hovered = false);
+    onClick = () {
+      onPressed?.call();
+      return true;
     };
   }
 
@@ -49,7 +50,7 @@ class Button extends Widget {
 
   @override
   void onFocusChanged(bool focused) {
-    setState(() => _hovered = focused);
+    setInteractionState(WidgetState.focused, focused);
   }
 
   Color get textColor => _textColor ?? palette.buttonText;
@@ -74,40 +75,49 @@ class Button extends Widget {
     height = charHeight + padding * 2;
   }
 
+  /// Button roles: button-text / button face / no default border (only CSS or
+  /// an explicit border via `localOverrides` enables one).
+  @override
+  Style styleRole() => Style(
+    color: palette.buttonText,
+    backgroundColor: palette.button,
+    borderColor: palette.mid,
+    borderWidth: 0,
+    borderRadius: ThemeMetrics.current.borderRadiusSm.toDouble(),
+    fontSize: ThemeMetrics.current.fontSize,
+  );
+
+  /// The button's own constructor colors; the hover face flows through
+  /// [`resolvedStyleOn`('hover')`] instead.
+  @override
+  StylePatch localOverrides() =>
+      StylePatch(color: _textColor, backgroundColor: _backgroundColor);
+
   @override
   void draw(Painter canvas) {
-    // GTK-like: let CSS override hardcoded colors (waybar #workspaces button.active)
-    final ctx = StyleContext.forWidget(this);
-    final styleBg = ctx.parsedBackgroundColor;
-    final styleHoverBg = StyleContext.forWidget(this..addPseudoClass('hover')).parsedBackgroundColor;
-    // Reset temporary hover addition if not actually hovered
-    if (!_hovered) removePseudoClass('hover');
-    final c = _hovered
-        ? (styleHoverBg ?? hoverColor)
-        : (styleBg ?? backgroundColor);
-    final styleFg = ctx.parsedColor;
-    final fg = styleFg ?? textColor;
-    // Background via CSS or fallback
-    if (styleBg != null || _backgroundColor != null) {
-      canvas.drawRect(
-        Rect.fromLTWH(
-          x.toDouble(),
-          y.toDouble(),
-          width.toDouble(),
-          height.toDouble(),
-        ),
+    // Single cascade point (StyleContext.resolveStyle) → concrete values.
+    final base = resolvedStyle();
+    final hover = resolvedStyleOn(const [
+      'hover',
+    ], local: StylePatch(backgroundColor: _hoverColor ?? palette.midlight));
+    final c = transitionHover(base.backgroundColor!, hover.backgroundColor!);
+    final fg = base.color;
+
+    final rect = Rect.fromLTWH(
+      x.toDouble(),
+      y.toDouble(),
+      width.toDouble(),
+      height.toDouble(),
+    );
+    if (base.borderRadius > 0) {
+      canvas.drawRRect(
+        rect,
+        base.borderRadius,
+        base.borderRadius,
         Paint()..color = c,
       );
     } else {
-      canvas.drawRect(
-        Rect.fromLTWH(
-          x.toDouble(),
-          y.toDouble(),
-          width.toDouble(),
-          height.toDouble(),
-        ),
-        Paint()..color = c,
-      );
+      canvas.drawRect(rect, Paint()..color = c);
     }
     final tw = canvas.measureText(text, size: charHeight.toDouble()).width;
     final tx = x + (width - tw) / 2;
@@ -118,16 +128,27 @@ class Button extends Widget {
       size: charHeight.toDouble(),
       color: fg,
     );
-    // Border from CSS if present
-    final border = ctx.parsedBorderColor;
-    if (border != null) {
-      canvas.drawRect(
-        Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
-        Paint()
-          ..color = border
-          ..style = PaintStyle.stroke
-          ..strokeWidth = 1,
-      );
+    // Border when a width is in effect (CSS-provided or explicit).
+    if (base.borderWidth > 0) {
+      final borderPaint = Paint()
+        ..color = base.borderColor
+        ..style = PaintStyle.stroke
+        ..strokeWidth = base.borderWidth;
+      if (base.borderRadius > 0) {
+        canvas.drawRRect(
+          Rect.fromLTWH(
+            x + base.borderWidth / 2,
+            y + base.borderWidth / 2,
+            width - base.borderWidth,
+            height - base.borderWidth,
+          ),
+          base.borderRadius,
+          base.borderRadius,
+          borderPaint,
+        );
+      } else {
+        canvas.drawRect(rect, borderPaint);
+      }
     }
   }
 }

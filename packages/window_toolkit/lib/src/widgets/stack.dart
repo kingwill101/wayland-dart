@@ -6,7 +6,6 @@ import '../widget.dart';
 /// How a [Positioned] child is placed inside a [Stack].
 class Positioned extends Widget {
   @override
-
   final Widget child;
   final int? left;
   final int? top;
@@ -23,8 +22,11 @@ class Positioned extends Widget {
     this.bottom,
     int? width,
     int? height,
-  })  : fixedWidth = width,
-        fixedHeight = height;
+  }) : fixedWidth = width,
+       fixedHeight = height;
+
+  @override
+  List<Widget> get children => [child];
 
   @override
   void measure(Painter painter) {
@@ -34,14 +36,35 @@ class Positioned extends Widget {
   }
 
   @override
+  void performLayout(int containerWidth) {
+    final stretchesHorizontally = left != null && right != null;
+    final availableWidth = stretchesHorizontally
+        ? (containerWidth - left! - right!).clamp(0, containerWidth)
+        : (child.width > 0 ? child.width : 0);
+    child.performLayout(availableWidth);
+    width =
+        fixedWidth ?? (stretchesHorizontally ? availableWidth : child.width);
+    height = fixedHeight ?? child.height;
+    child.parent = this;
+  }
+
+  @override
   void draw(Painter canvas) {
-    child..x = x..y = y..width = width..height = height;
+    child
+      ..x = x
+      ..y = y
+      ..width = width
+      ..height = height;
     child.draw(canvas);
   }
 
   @override
   bool hitTest(int px, int py) {
-    child..x = x..y = y..width = width..height = height;
+    child
+      ..x = x
+      ..y = y
+      ..width = width
+      ..height = height;
     return child.hitTest(px, py);
   }
 }
@@ -54,7 +77,7 @@ class Stack extends Widget {
   final List<_StackChildBox> _renderChildren = [];
 
   Stack({List<Widget>? children, bool fitExpand = true})
-      : children = children ?? [] {
+    : children = children ?? [] {
     _renderStack.fit = fitExpand ? le.StackFit.expand : le.StackFit.loose;
   }
 
@@ -85,13 +108,17 @@ class Stack extends Widget {
   void performLayout(int containerWidth) {
     _ensureRenderTree();
     for (final r in _renderChildren) {
-      r.widget.performLayout(r.widget.width > 0 ? r.widget.width : containerWidth);
+      r.widget.performLayout(
+        r.widget.width > 0 ? r.widget.width : containerWidth,
+      );
       r.size = le.Size(r.widget.width.toDouble(), r.widget.height.toDouble());
     }
-    _renderStack.layout(le.BoxConstraints(
-      maxWidth: containerWidth.toDouble(),
-      maxHeight: double.infinity,
-    ));
+    _renderStack.layout(
+      le.BoxConstraints(
+        maxWidth: containerWidth.toDouble(),
+        maxHeight: double.infinity,
+      ),
+    );
     width = _renderStack.size.width.round();
     height = _renderStack.size.height.round();
 
@@ -143,7 +170,16 @@ class _StackChildBox extends le.RenderBox {
 
   @override
   void layout(le.BoxConstraints constraints) {
-    final childW = widget.width > 0 ? widget.width : (constraints.hasBoundedWidth ? constraints.maxWidth.round() : widget.width);
+    final positioned = widget is Positioned ? widget as Positioned : null;
+    final stretchesHorizontally =
+        positioned?.left != null && positioned?.right != null;
+    final childW = stretchesHorizontally && constraints.hasBoundedWidth
+        ? constraints.maxWidth.round()
+        : (widget.width > 0
+              ? widget.width
+              : (constraints.hasBoundedWidth
+                    ? constraints.maxWidth.round()
+                    : widget.width));
     widget.performLayout(childW);
     size = le.Size(widget.width.toDouble(), widget.height.toDouble());
   }

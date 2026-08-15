@@ -11,18 +11,17 @@ void main() {
     });
 
     test('title is displayed', () {
-      final harness = WidgetHarness(GroupBox(title: 'Settings', children: [
-        Button('Option'),
-      ]));
+      final harness = WidgetHarness(
+        GroupBox(title: 'Settings', children: [Button('Option')]),
+      );
       harness.draw();
       expect(harness.painter.commands, isNotEmpty);
     });
 
     test('draws children inside box', () {
-      final harness = WidgetHarness(GroupBox(title: 'Group', children: [
-        Button('A'),
-        Button('B'),
-      ]));
+      final harness = WidgetHarness(
+        GroupBox(title: 'Group', children: [Button('A'), Button('B')]),
+      );
       harness.draw();
       expect(harness.painter.commands, isNotEmpty);
     });

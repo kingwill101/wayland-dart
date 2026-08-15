@@ -9,7 +9,9 @@
 /// final bg = Theme.of(context)?.window ?? defaultColor;
 /// ```
 library;
-import 'package:layout_engine/layout_engine.dart' show BuildContext, ElementWidget, InheritedWidget;
+
+import 'package:layout_engine/layout_engine.dart'
+    show BuildContext, ElementWidget, InheritedWidget;
 
 import '../palette.dart';
 
@@ -18,10 +20,7 @@ import '../palette.dart';
 class Theme extends InheritedWidget {
   final ColorGroup data;
 
-  Theme({
-    required this.data,
-    required super.child,
-  });
+  Theme({required this.data, required super.child});
 
   /// Look up the nearest Theme from a build context.
   static ColorGroup? of(BuildContext context) {

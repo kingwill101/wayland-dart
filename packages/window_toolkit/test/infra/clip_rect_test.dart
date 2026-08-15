@@ -1,7 +1,6 @@
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
-
 void main() {
   test('RecordingPainter records ClipRectCommand', () {
     final painter = RecordingPainter(width: 400, height: 300);

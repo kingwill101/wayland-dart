@@ -1,9 +1,14 @@
 import '../drawing/color.dart';
+import '../interaction.dart';
+import '../mixins/hoverable.dart';
+import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
+import '../style.dart';
+import '../style/style_patch.dart';
 
 import '../widget.dart';
 
-class RadioButton extends Widget {
+class RadioButton extends Widget with Hoverable, HoverAnimated {
   String label;
   bool selected;
   Color borderColor;
@@ -25,39 +30,74 @@ class RadioButton extends Widget {
   }) {
     width = diameter + 8 + label.length * 8;
     height = diameter > 16 ? diameter : 16;
-    onClick = () { select(); return true; };
+    setInteractionState(WidgetState.selected, selected);
+    onClick = () {
+      select();
+      return true;
+    };
+    tabIndex = 1;
   }
+
+  @override
+  bool get acceptsFocus => true;
+
+  @override
+  Style styleRole() => Style(
+    color: textColor,
+    backgroundColor: backgroundColor,
+    borderColor: borderColor,
+  );
 
   void select() {
     if (!selected) {
-      setState(() => selected = true);
+      setState(() {
+        selected = true;
+        setInteractionState(WidgetState.selected, true);
+      });
       onChanged?.call();
     }
   }
 
   void setSelected(bool value) {
     if (selected != value) {
-      setState(() => selected = value);
+      setState(() {
+        selected = value;
+        setInteractionState(WidgetState.selected, value);
+      });
       onChanged?.call();
     }
   }
 
   @override
   void draw(Painter canvas) {
+    final base = resolvedStyle();
+    final hover = resolvedStyleOn(
+      const ['hover'],
+      local: StylePatch(
+        backgroundColor: Color.blend(
+          backgroundColor,
+          const Color(255, 255, 255, 18),
+        ),
+      ),
+    );
     final cy = y + height ~/ 2;
     final cx = x + diameter ~/ 2;
 
     canvas.drawCircle(
       Offset(cx.toDouble(), cy.toDouble()),
       (diameter / 2).toDouble(),
-      Paint()..color = backgroundColor,
+      Paint()
+        ..color = transitionHover(
+          base.backgroundColor!,
+          hover.backgroundColor!,
+        ),
     );
 
     canvas.drawCircle(
       Offset(cx.toDouble(), cy.toDouble()),
       (diameter / 2).toDouble(),
       Paint()
-        ..color = borderColor
+        ..color = base.borderColor
         ..style = PaintStyle.stroke,
     );
 
@@ -65,14 +105,17 @@ class RadioButton extends Widget {
       canvas.drawCircle(
         Offset(cx.toDouble(), cy.toDouble()),
         (diameter / 3).toDouble(),
-        Paint()..color = selectedColor,
+        Paint()..color = base.color,
       );
     }
 
     canvas.drawText(
       label,
-      Offset((x + diameter + 8).toDouble(), (y + (height - 16) ~/ 2).toDouble()),
-      color: textColor,
+      Offset(
+        (x + diameter + 8).toDouble(),
+        (y + (height - 16) ~/ 2).toDouble(),
+      ),
+      color: base.color,
       size: 16,
     );
   }

@@ -1,9 +1,14 @@
 import '../drawing/color.dart';
+import '../interaction.dart';
+import '../mixins/hoverable.dart';
+import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
+import '../style.dart';
+import '../style/style_patch.dart';
 
 import '../widget.dart';
 
-class Dropdown extends Widget {
+class Dropdown extends Widget with Hoverable, HoverAnimated {
   List<String> items;
   int selectedIndex;
   bool opened;
@@ -15,8 +20,6 @@ class Dropdown extends Widget {
   int itemHeight;
   int maxVisibleItems;
   VoidCallback? onChanged;
-
-  bool _hovered = false;
 
   Dropdown({
     this.items = const [],
@@ -31,38 +34,68 @@ class Dropdown extends Widget {
     this.maxVisibleItems = 8,
     this.onChanged,
     WidgetKey? key,
-  })  : assert(itemHeight > 0, 'Dropdown itemHeight must be > 0'),
-        assert(maxVisibleItems > 0, 'Dropdown maxVisibleItems must be > 0') {
+  }) : assert(itemHeight > 0, 'Dropdown itemHeight must be > 0'),
+       assert(maxVisibleItems > 0, 'Dropdown maxVisibleItems must be > 0') {
     width = 160;
     height = itemHeight;
-    onClick = () { opened = !opened; return true; };
-    onMouseEnter = () => setState(() => _hovered = true);
-    onMouseLeave = () => setState(() => _hovered = false);
+    setInteractionState(WidgetState.expanded, opened);
+    onClick = () {
+      setState(() {
+        opened = !opened;
+        setInteractionState(WidgetState.expanded, opened);
+      });
+      return true;
+    };
+    tabIndex = 1;
   }
 
   String? get selectedLabel =>
       selectedIndex >= 0 && selectedIndex < items.length
-          ? items[selectedIndex]
-          : null;
+      ? items[selectedIndex]
+      : null;
+
+  @override
+  bool get acceptsFocus => true;
+
+  @override
+  Style styleRole() => Style(
+    color: textColor,
+    backgroundColor: backgroundColor,
+    borderColor: borderColor,
+  );
 
   @override
   void draw(Painter canvas) {
-    final fill = _hovered ? hoverColor : backgroundColor;
+    final base = resolvedStyle();
+    final hover = resolvedStyleOn(const [
+      'hover',
+    ], local: StylePatch(backgroundColor: hoverColor));
+    final fill = transitionHover(base.backgroundColor!, hover.backgroundColor!);
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
       Paint()..color = fill,
     );
 
     // Bottom border
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), (y + height - 1).toDouble(), width.toDouble(), 1),
-      Paint()..color = borderColor,
+      Rect.fromLTWH(
+        x.toDouble(),
+        (y + height - 1).toDouble(),
+        width.toDouble(),
+        1,
+      ),
+      Paint()..color = base.borderColor,
     );
 
     // Arrow
     final arrowX = x + width - 14;
     final arrowY = y + height ~/ 2;
-    final arrowPaint = Paint()..color = arrowColor;
+    final arrowPaint = Paint()..color = base.color;
     canvas.drawLine(
       Offset(arrowX.toDouble(), (arrowY - 2).toDouble()),
       Offset((arrowX + 6).toDouble(), (arrowY - 2).toDouble()),
@@ -79,19 +112,26 @@ class Dropdown extends Widget {
       canvas.drawText(
         selectedLabel!,
         Offset((x + 6).toDouble(), (y + 3).toDouble()),
-        color: textColor,
+        color: base.color,
         size: 16,
       );
     }
 
     // Dropdown list
     if (opened && items.isNotEmpty) {
-      final listH = (items.length < maxVisibleItems ? items.length : maxVisibleItems) * itemHeight;
+      final listH =
+          (items.length < maxVisibleItems ? items.length : maxVisibleItems) *
+          itemHeight;
       final listY = y + height;
 
       canvas.drawRect(
-        Rect.fromLTWH(x.toDouble(), listY.toDouble(), width.toDouble(), listH.toDouble()),
-        Paint()..color = const Color(40, 40, 40),
+        Rect.fromLTWH(
+          x.toDouble(),
+          listY.toDouble(),
+          width.toDouble(),
+          listH.toDouble(),
+        ),
+        Paint()..color = base.backgroundColor!,
       );
 
       final visible = items.length < maxVisibleItems
@@ -102,7 +142,7 @@ class Dropdown extends Widget {
         canvas.drawText(
           visible[i],
           Offset((x + 6).toDouble(), (iy + 3).toDouble()),
-          color: i == selectedIndex ? const Color(255, 255, 255) : textColor,
+          color: i == selectedIndex ? base.color : base.color,
           size: 16,
         );
       }
@@ -112,16 +152,23 @@ class Dropdown extends Widget {
   int itemAt(int px, int py) {
     if (!opened) return -1;
     final listY = y + height;
-    final visible = items.length < maxVisibleItems ? items.length : maxVisibleItems;
+    final visible = items.length < maxVisibleItems
+        ? items.length
+        : maxVisibleItems;
     final listH = visible * itemHeight;
-    if (px < x || px >= x + width || py < listY || py >= listY + listH) return -1;
+    if (px < x || px >= x + width || py < listY || py >= listY + listH)
+      return -1;
     return (py - listY) ~/ itemHeight;
   }
 
   void select(int index) {
     if (index >= 0 && index < items.length) {
-      selectedIndex = index;
-      opened = false;
+      setState(() {
+        selectedIndex = index;
+        opened = false;
+        setInteractionState(WidgetState.selected, true);
+        setInteractionState(WidgetState.expanded, false);
+      });
       onChanged?.call();
     }
   }

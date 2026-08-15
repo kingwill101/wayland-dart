@@ -1,39 +1,25 @@
-
 import '../app.dart';
 import '../painter/painter.dart';
 import '../mixins/event.dart';
+import '../interaction.dart';
 import '../surface_manager.dart';
 import '../window.dart';
 import '../widget.dart';
-import 'element_host.dart';
+import '../widget_children.dart';
+import '../widget_host.dart';
 import 'context_menu.dart';
 import 'popup_host.dart';
 import 'scroll_area.dart';
-
-class FocusModel {
-  Widget? focusedWidget;
-
-  void requestFocus(Widget widget) {
-    focusedWidget = widget;
-  }
-
-  void blur() {
-    focusedWidget = null;
-  }
-
-  bool get hasFocus => focusedWidget != null;
-}
 
 class WidgetWindow extends Window {
   /// Minimum window dimensions to prevent layout corruption.
   static const int minWidth = 100;
   static const int minHeight = 60;
 
-  late Widget root;
-  final FocusModel focus = FocusModel();
-  Widget? _lastHovered;
+  late final WidgetHostController widgetHost;
   Widget? _dragTarget;
   bool _dragging = false;
+  int? _pressedButton;
   bool _redrawPending = false;
   ContextMenu? contextMenu;
 
@@ -53,22 +39,12 @@ class WidgetWindow extends Window {
   }
 
   /// Optional Element tree for StatefulWidget/StatelessWidget management.
-  ElementTree? elementTree;
+  ElementTree? get elementTree => widgetHost.elementTree;
+  Widget get root => widgetHost.root;
+  FocusModel get focus => widgetHost.focus;
 
   WidgetWindow(ElementWidget rootWidget) {
-    // Wrap non-Widget roots (StatefulWidget, StatelessWidget) in ElementHost.
-    if (rootWidget is Widget) {
-      root = rootWidget;
-    } else {
-      root = ElementHost(child: rootWidget);
-    }
-    // Create element tree for lifecycle-managed roots.
-    if (rootWidget is StatefulWidget || rootWidget is StatelessWidget) {
-      elementTree = ElementTree();
-      elementTree!.onNeedsBuild = requestRedraw;
-      elementTree!.mount(rootWidget);
-    }
-    Widget.onNeedsRepaint = requestRedraw;
+    widgetHost = WidgetHostController(rootWidget, onRepaint: requestRedraw);
   }
 
   @override
@@ -79,7 +55,9 @@ class WidgetWindow extends Window {
     SurfaceManager.init(connection, xdgSurface);
   }
 
-  void requestRedraw() { _redrawPending = true; }
+  void requestRedraw() {
+    _redrawPending = true;
+  }
 
   void flushRedraw() {
     if (_redrawPending) {
@@ -95,19 +73,7 @@ class WidgetWindow extends Window {
     final w = width < minWidth ? minWidth : width;
     final h = height < minHeight ? minHeight : height;
 
-    // Rebuild dirty elements in the element tree.
-    elementTree?.build();
-
-    // Always position [root] — it's the widget hit-testing traverses.
-    // If root is an ElementHost, it delegates draw/layout to the element
-    // tree's built widget internally.
-    root
-      ..x = 0
-      ..y = 0
-      ..width = w
-      ..height = h;
-    root.performLayout(w);
-    root.draw(painter);
+    widgetHost.draw(painter, width: w, height: h);
 
     if (contextMenu != null && contextMenu!.visible) {
       contextMenu!.draw(painter);
@@ -125,11 +91,17 @@ class WidgetWindow extends Window {
       return;
     }
 
-    final hit = _hitTestRoot(x, y);
-    if (hit != _lastHovered) {
-      _lastHovered?.onMouseLeave?.call();
-      _lastHovered = hit;
-      hit?.onMouseEnter?.call();
+    if (_updateHoverPath(x, y)) {
+      if (_canPaint) paint();
+    }
+    final motionTarget = _hitTestRoot(x, y);
+    motionTarget?.onMouseMove(x, y);
+    if (motionTarget != null && _canPaint) paint();
+  }
+
+  @override
+  void onMouseLeave(MouseLeaveEvent event) {
+    if (_setHoverPath(const [])) {
       if (_canPaint) paint();
     }
   }
@@ -138,24 +110,29 @@ class WidgetWindow extends Window {
   void onMouseButtonPressed(MouseButtonEvent event) {
     final x = event.x.toInt();
     final y = event.y.toInt();
+    _updateHoverPath(x, y);
     final hit = _hitTestRoot(x, y);
 
     final oldFocus = focus.focusedWidget;
-    if (hit != oldFocus) {
-      oldFocus?.onMouseLeave?.call();
-      focus.focusedWidget = hit;
-      hit?.onMouseEnter?.call();
+    final nextFocus = hit?.enabled == true && hit?.isFocusable == true
+        ? hit
+        : null;
+    if (nextFocus != oldFocus) {
+      oldFocus?.setInteractionState(WidgetState.focused, false);
+      oldFocus?.onFocusChanged(false);
+      focus.focusedWidget = nextFocus;
+      nextFocus?.setInteractionState(WidgetState.focused, true);
+      nextFocus?.onFocusChanged(true);
     }
 
-    if (hit != null) {
+    if (hit != null && hit.enabled) {
       _dragTarget = hit;
       _dragging = true;
+      _pressedButton = event.button;
+      hit.setInteractionState(WidgetState.pressed, true);
       hit.onMouseDown(x, y, event.button);
       if (event.button == 272) {
-        // Left click — dismiss popups and context menu
-        popupHost?.dismiss();
-        contextMenu?.hide();
-        _dispatchClick(x, y);
+        // Left click dismisses popups after the control receives activation.
       } else {
         // Right click — show context menu at cursor
         contextMenu?.show(x, y);
@@ -168,10 +145,24 @@ class WidgetWindow extends Window {
   @override
   void onMouseButtonReleased(MouseButtonEvent event) {
     if (_dragging && _dragTarget != null) {
-      _dragTarget!.onMouseUp(event.x.toInt(), event.y.toInt(), event.button);
+      final target = _dragTarget!;
+      target.onMouseUp(event.x.toInt(), event.y.toInt(), event.button);
+      target.setInteractionState(WidgetState.pressed, false);
+      if (event.button == _pressedButton && event.button == 272) {
+        final hit = _hitTestRoot(event.x.toInt(), event.y.toInt());
+        if (identical(hit, target) && target.enabled) {
+          popupHost?.dismiss();
+          contextMenu?.hide();
+          _dispatchClick(event.x.toInt(), event.y.toInt());
+        } else {
+          target.onPointerCancel();
+        }
+      }
     }
     _dragging = false;
     _dragTarget = null;
+    _pressedButton = null;
+    if (_canPaint) paint();
   }
 
   @override
@@ -182,17 +173,37 @@ class WidgetWindow extends Window {
 
     // Collect all ScrollAreas from innermost to outermost under the cursor
     final scrollables = <ScrollArea>[];
-    _collectScrollAreas(root, event.x.toInt(), event.y.toInt(), 0, 0, scrollables);
+    _collectScrollAreas(
+      root,
+      event.x.toInt(),
+      event.y.toInt(),
+      0,
+      0,
+      scrollables,
+    );
 
     // Wire smooth scroll repaint for any ScrollArea that needs it
     for (final sa in scrollables) {
-      sa.onSmoothScroll = () { if (_canPaint) paint(); };
+      sa.onSmoothScroll = () {
+        if (_canPaint) paint();
+      };
     }
 
     // Try each one: if a scroll actually changes position, stop
     for (final sa in scrollables) {
       final before = sa.scrollY;
-      sa.scrollBy(dx > 0 ? 40 : dx < 0 ? -40 : 0, dy > 0 ? 40 : dy < 0 ? -40 : 0);
+      sa.scrollBy(
+        dx > 0
+            ? 40
+            : dx < 0
+            ? -40
+            : 0,
+        dy > 0
+            ? 40
+            : dy < 0
+            ? -40
+            : 0,
+      );
       if (sa.scrollY != before) break;
     }
     paint();
@@ -200,7 +211,14 @@ class WidgetWindow extends Window {
 
   /// Collect all ScrollAreas along the path from [w] to the deepest hit
   /// at (px, py), in innermost-first order.
-  void _collectScrollAreas(Widget w, int px, int py, int offX, int offY, List<ScrollArea> out) {
+  void _collectScrollAreas(
+    Widget w,
+    int px,
+    int py,
+    int offX,
+    int offY,
+    List<ScrollArea> out,
+  ) {
     if (w is ScrollArea) {
       final localPx = px + w.scrollX + offX;
       final localPy = py + w.scrollY + offY;
@@ -226,8 +244,6 @@ class WidgetWindow extends Window {
     }
   }
 
-
-
   @override
   void onKeyPressed(KeyEvent event) {
     // Escape to quit.
@@ -246,8 +262,23 @@ class WidgetWindow extends Window {
     }
     final focused = focus.focusedWidget;
     if (focused != null) {
+      if (event.key == 28 || event.key == 57) {
+        focused.setInteractionState(WidgetState.pressed, true);
+      }
       focused.onKeyPressed(event);
     }
+  }
+
+  @override
+  void onKeyReleased(KeyEvent event) {
+    final focused = focus.focusedWidget;
+    if (focused == null) return;
+    focused.setInteractionState(WidgetState.pressed, false);
+    if (event.key == 28 || event.key == 57) {
+      focused.activate();
+    }
+    focused.onKeyReleased(event);
+    if (_canPaint) paint();
   }
 
   /// Move focus to the next focusable widget (Tab order).
@@ -256,7 +287,10 @@ class WidgetWindow extends Window {
     if (elementTree?.root != null) {
       _syncElementFocusability(elementTree!.root!);
       final currentEl = _currentFocusElement();
-      final next = Element.findNextFocus(elementTree!.root!, current: currentEl);
+      final next = Element.findNextFocus(
+        elementTree!.root!,
+        current: currentEl,
+      );
       if (next != null) _setFocusElement(next);
       return;
     }
@@ -275,7 +309,10 @@ class WidgetWindow extends Window {
     if (elementTree?.root != null) {
       _syncElementFocusability(elementTree!.root!);
       final currentEl = _currentFocusElement();
-      final prev = Element.findPreviousFocus(elementTree!.root!, current: currentEl);
+      final prev = Element.findPreviousFocus(
+        elementTree!.root!,
+        current: currentEl,
+      );
       if (prev != null) _setFocusElement(prev);
       return;
     }
@@ -292,8 +329,10 @@ class WidgetWindow extends Window {
   void _setFocus(Widget w) {
     final old = focus.focusedWidget;
     if (old == w) return;
+    old?.setInteractionState(WidgetState.focused, false);
     old?.onFocusChanged(false);
     focus.focusedWidget = w;
+    w.setInteractionState(WidgetState.focused, true);
     w.onFocusChanged(true);
     if (_canPaint) paint();
   }
@@ -310,13 +349,15 @@ class WidgetWindow extends Window {
     final focused = focus.focusedWidget;
     if (focused == null || elementTree?.root == null) return null;
     Element? find(Element e) {
-      if (identical(e.widget, focused) || identical(e.renderWidget, focused)) return e;
+      if (identical(e.widget, focused) || identical(e.renderWidget, focused))
+        return e;
       for (final c in e.children) {
         final r = find(c);
         if (r != null) return r;
       }
       return null;
     }
+
     return find(elementTree!.root!);
   }
 
@@ -330,55 +371,45 @@ class WidgetWindow extends Window {
 
   void _collectFocusable(Widget w, List<Widget> out) {
     if (w.isFocusable) out.add(w);
-    for (final child in w.children) {
+    for (final child in childrenOf(w)) {
       _collectFocusable(child, out);
     }
   }
-
-
 
   /// Collect hit-test ancestor path at (px,py), deepest widget first.
   /// Uses widget-tree traversal (not element tree) because ScrollArea's
   /// scroll offset adjustments aren't reflected in element bounds.
   /// The generic [Element.hitTest] in layout_engine provides a
   /// framework-agnostic alternative for trees without scroll containers.
-  List<Widget> _hitTestPath(Widget w, int px, int py, [int offX = 0, int offY = 0]) {
-    if (w is ScrollArea) {
-      final localPx = px + w.scrollX + offX;
-      final localPy = py + w.scrollY + offY;
-      if (w.isOnScrollbar(px, py)) return [w];
-      w.child
-        ..x = w.x
-        ..y = w.y;
-      if (w.child.hitTest(localPx, localPy)) {
-        final childPath = _hitTestPath(w.child, localPx, localPy, 0, 0);
-        if (childPath.isNotEmpty) return childPath;
-      }
-      return w.hitTest(px, py) ? [w] : const [];
-    }
-    if (!w.hitTest(px, py)) return const [];
-    final children = w.children;
-    for (final child in children.reversed) {
-      final childPath = _hitTestPath(child, px, py, offX, offY);
-      if (childPath.isNotEmpty) return [w, ...childPath];
-    }
-    return [w];
+  List<Widget> _hitTestPath(
+    Widget w,
+    int px,
+    int py, [
+    int offX = 0,
+    int offY = 0,
+  ]) {
+    return widgetHost.hitTestPath(w, px, py, offX, offY);
   }
 
   /// Bubbles [onClick] through the ancestor path at (px,py).
   bool _dispatchClick(int px, int py) {
-    final path = _hitTestPath(root, px, py);
-    for (final w in path) {
-      final handler = w.onClick;
-      if (handler != null) {
-        if (handler()) return true;
-      }
-    }
-    return false;
+    return widgetHost.dispatchClick(px, py);
   }
 
   Widget? _hitTestRoot(int px, int py) {
     final path = _hitTestPath(root, px, py);
-    return path.isNotEmpty ? path.first : null;
+    return path.isNotEmpty ? path.last : null;
+  }
+
+  /// Applies pointer enter/leave callbacks to the changed ancestor path.
+  ///
+  /// Keeping the whole path active makes both a parent CSS `:hover` rule and
+  /// the deepest button/control state work when widgets are nested.
+  bool _updateHoverPath(int px, int py) {
+    return _setHoverPath(_hitTestPath(root, px, py));
+  }
+
+  bool _setHoverPath(List<Widget> next) {
+    return widgetHost.setHoverPath(next);
   }
 }

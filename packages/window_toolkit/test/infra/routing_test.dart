@@ -13,27 +13,57 @@ class _TestWidget extends Widget {
   final List<String> log = [];
 
   _TestWidget(this.id) {
-    onClick = () { clicks++; log.add('click:$id'); return true; };
-    onMouseEnter = () { enters++; log.add('enter:$id'); };
-    onMouseLeave = () { leaves++; log.add('leave:$id'); };
+    onClick = () {
+      clicks++;
+      log.add('click:$id');
+      return true;
+    };
+    onMouseEnter = () {
+      enters++;
+      log.add('enter:$id');
+    };
+    onMouseLeave = () {
+      leaves++;
+      log.add('leave:$id');
+    };
   }
 
   @override
   void draw(Painter canvas) {
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
       Paint()..color = const Color(255, 0, 0),
     );
   }
 
   @override
-  void onMouseDown(int x, int y, int button) { downs++; log.add('down:$id'); }
+  void onMouseDown(int x, int y, int button) {
+    downs++;
+    log.add('down:$id');
+  }
+
   @override
-  void onMouseUp(int x, int y, int button) { ups++; log.add('up:$id'); }
+  void onMouseUp(int x, int y, int button) {
+    ups++;
+    log.add('up:$id');
+  }
+
   @override
-  void onMouseDrag(int x, int y) { drags++; log.add('drag:$id'); }
+  void onMouseDrag(int x, int y) {
+    drags++;
+    log.add('drag:$id');
+  }
+
   @override
-  void onKeyPressed(KeyEvent event) { keyPresses++; log.add('key:$id'); }
+  void onKeyPressed(KeyEvent event) {
+    keyPresses++;
+    log.add('key:$id');
+  }
 }
 
 void main() {
@@ -46,6 +76,7 @@ void main() {
     final window = WidgetWindow(child);
 
     window.onMouseButtonPressed(MouseButtonEvent(15, 15, 272, true));
+    window.onMouseButtonReleased(MouseButtonEvent(15, 15, 272, false));
     expect(child.clicks, 1);
     expect(child.downs, 1);
     expect(child.log, contains('click:a'));
@@ -65,6 +96,30 @@ void main() {
 
     window.onMouseMotion(MouseMotionEvent(60, 60));
     expect(child.leaves, 1);
+  });
+
+  test('WidgetWindow initializes Hoverable buttons and CSS hover state', () {
+    final button = Button('Hover');
+    final window = WidgetWindow(button);
+
+    window.onMouseMotion(MouseMotionEvent(4, 4));
+    expect(button.hasPseudoClass('hover'), isTrue);
+
+    window.onMouseMotion(MouseMotionEvent(80, 80));
+    expect(button.hasPseudoClass('hover'), isFalse);
+  });
+
+  test('WidgetWindow routes hover to nested controls', () {
+    final button = Button('Nested');
+    final root = DecoratedBox(child: button)
+      ..x = 0
+      ..y = 0
+      ..width = 160
+      ..height = 40;
+    final window = WidgetWindow(root);
+
+    window.onMouseMotion(MouseMotionEvent(4, 4));
+    expect(button.hasPseudoClass('hover'), isTrue);
   });
 
   test('WidgetWindow routes drag events to target', () {

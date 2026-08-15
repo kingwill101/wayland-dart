@@ -1,7 +1,6 @@
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
-
 void main() {
   test('ContextMenu shows and hides', () {
     final cm = ContextMenu(items: [MenuItem('Copy'), MenuItem('Paste')]);

@@ -1,8 +1,10 @@
 import '../drawing/color.dart';
 import '../painter/painter.dart';
+import '../style.dart';
+import '../mixins/hoverable.dart';
 import '../widget.dart';
 
-class Tooltip extends Widget {
+class Tooltip extends Widget with Hoverable {
   @override
   @override
   List<Widget> get children => [child];
@@ -33,16 +35,18 @@ class Tooltip extends Widget {
     this.fontSize = 12,
     this.drawBorder = true,
     this.visible = false,
-  })  : _backgroundColor = backgroundColor,
-        _textColor = textColor,
-        _borderColor = borderColor {
+  }) : _backgroundColor = backgroundColor,
+       _textColor = textColor,
+       _borderColor = borderColor {
     width = child.width;
     height = child.height;
     onMouseEnter = () {
-      visible = true;
+      setHovering(true);
+      setState(() => visible = true);
     };
     onMouseLeave = () {
-      visible = false;
+      setHovering(false);
+      setState(() => visible = false);
     };
     onClick = () {
       visible = !visible;
@@ -51,7 +55,15 @@ class Tooltip extends Widget {
   }
 
   @override
+  Style styleRole() => Style(
+    color: textColor,
+    backgroundColor: backgroundColor,
+    borderColor: borderColor,
+  );
+
+  @override
   void draw(Painter canvas) {
+    final style = resolvedStyle();
     child
       ..x = x
       ..y = y
@@ -60,10 +72,7 @@ class Tooltip extends Widget {
     child.draw(canvas);
 
     if (visible && text.isNotEmpty) {
-      final bounds = canvas.measureTextBounds(
-        text,
-        size: fontSize,
-      );
+      final bounds = canvas.measureTextBounds(text, size: fontSize);
       final tipW = bounds.width + padding * 2;
       final tipH = bounds.height + padding * 2;
       final tipX = x + (width - tipW) / 2;
@@ -71,14 +80,14 @@ class Tooltip extends Widget {
 
       canvas.drawRect(
         Rect.fromLTWH(tipX, tipY, tipW, tipH),
-        Paint()..color = backgroundColor,
+        Paint()..color = style.backgroundColor!,
       );
 
       if (drawBorder) {
         canvas.drawRect(
           Rect.fromLTWH(tipX + 0.5, tipY + 0.5, tipW - 1, tipH - 1),
           Paint()
-            ..color = borderColor
+            ..color = style.borderColor
             ..style = PaintStyle.stroke
             ..strokeWidth = 1,
         );
@@ -91,7 +100,7 @@ class Tooltip extends Widget {
       canvas.drawText(
         text,
         Offset(originX, originY),
-        color: textColor,
+        color: style.color,
         size: fontSize,
       );
     }

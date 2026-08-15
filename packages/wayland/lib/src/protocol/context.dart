@@ -16,7 +16,7 @@ class Context {
     // VM service pauses (GC, heap snapshot) without filling up and
     // disconnecting us. Default is often 208-256 KB; 1 MB gives headroom.
     _socket.setReceiveBufferSize(1024 * 1024); // 1 MB receive buffer
-    _socket.setSendBufferSize(512 * 1024);     // 512 KB send buffer
+    _socket.setSendBufferSize(512 * 1024); // 512 KB send buffer
   }
 
   static String _waylandSocketPath() {
@@ -53,7 +53,7 @@ class Context {
         processed = true;
       }
       return processed;
-    } catch (e, st) {
+    } catch (e) {
       stderr.writeln('[wt] Wayland socket error — connection lost');
       _connected = false;
       return false;
@@ -125,6 +125,9 @@ class Context {
   int _nextClientId = 1;
 
   int allocateClientId() {
+    while (_proxyMap.containsKey(_nextClientId)) {
+      _nextClientId++;
+    }
     return _nextClientId++;
   }
 
@@ -134,6 +137,29 @@ class Context {
 
   void register(Proxy proxy) {
     _proxyMap[proxy.objectId] = proxy;
+  }
+
+  /// Attach a generated proxy to an object created by the compositor.
+  ///
+  /// Events such as `ext_workspace_manager_v1.workspace` and
+  /// `zwlr_foreign_toplevel_manager_v1.toplevel` carry a server-created
+  /// object id. Generated constructors allocate client ids, so protocol
+  /// clients need a small, explicit adoption step before they can receive
+  /// events or send requests through the typed proxy.
+  void adoptProxy(Proxy proxy, int objectId) {
+    _proxyMap.remove(proxy.objectId);
+    final existing = _proxyMap[objectId];
+    if (existing != null && !identical(existing, proxy)) {
+      throw StateError('Wayland object id $objectId is already in use');
+    }
+    proxy.id = objectId;
+    _proxyMap[objectId] = proxy;
+    // Wayland reserves the high object-id range for server-created objects
+    // (currently 0xff000000 and above). Those IDs must not move the client
+    // allocator forward; doing so makes subsequent new_id requests invalid.
+    if (objectId < 0xff000000 && objectId >= _nextClientId) {
+      _nextClientId = objectId + 1;
+    }
   }
 
   void unRegister(Proxy proxy) {

@@ -1,5 +1,6 @@
 import 'package:window_toolkit/window_toolkit.dart';
 
+import '../metrics.dart';
 import 'module.dart';
 
 /// Visual divider between modules (waybar-style custom separator).
@@ -36,17 +37,19 @@ class SeparatorModule extends BarModule {
 
   @override
   double measure(Painter painter) {
-    return painter.measureText(output, size: 12).width;
+    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
+    return painter.measureTextFont(output, font);
   }
 
   @override
   double draw(Painter painter, double x, double y) {
-    painter.drawText(
+    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
+    painter.drawTextFont(
       output,
       Offset(x, y + 1),
-      color: _color,
-      size: 12,
+      color: cssForeground ?? _color,
+      font: font,
     );
-    return painter.measureText(output, size: 12).width;
+    return painter.measureTextFont(output, font);
   }
 }

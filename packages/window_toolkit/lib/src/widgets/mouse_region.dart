@@ -1,31 +1,27 @@
 import '../painter/painter.dart';
+import '../mixins/hoverable.dart';
 import '../widget.dart';
 
 /// Captures hover/click callbacks around [child] without changing layout.
-class MouseRegion extends Widget {
+class MouseRegion extends Widget with Hoverable {
   final Widget child;
   final VoidCallback? onEnter;
   final VoidCallback? onExit;
   final VoidCallback? onTap;
 
-  bool _hovered = false;
-  bool get isHovered => _hovered;
-
-  MouseRegion({
-    required this.child,
-    this.onEnter,
-    this.onExit,
-    this.onTap,
-  }) {
+  MouseRegion({required this.child, this.onEnter, this.onExit, this.onTap}) {
     onMouseEnter = () {
-      setState(() => _hovered = true);
+      setHovering(true);
       onEnter?.call();
     };
     onMouseLeave = () {
-      setState(() => _hovered = false);
+      setHovering(false);
       onExit?.call();
     };
-    onClick = () { onTap?.call(); return true; };
+    onClick = () {
+      onTap?.call();
+      return true;
+    };
   }
 
   @override

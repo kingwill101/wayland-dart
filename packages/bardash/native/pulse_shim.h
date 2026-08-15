@@ -48,6 +48,18 @@ int pulse_shim_sink_volume_step(int delta_pct);
  */
 int pulse_shim_toggle_mute(void);
 
+/**
+ * Change default source (microphone) volume by delta percent points.
+ * Returns 0 on success, -1 on failure.
+ */
+int pulse_shim_source_volume_step(int delta_pct);
+
+/**
+ * Toggle mute on the default source (microphone).
+ * Returns 0 on success, -1 on failure.
+ */
+int pulse_shim_toggle_source_mute(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -55,7 +55,8 @@ class _AnimatedAnimation<T> extends Animation<T> {
   final Animatable<T> _animatable;
   final Animation<double> _parent;
 
-  _AnimatedAnimation(this._animatable, this._parent) : _value = _animatable.evaluate(_parent.value) {
+  _AnimatedAnimation(this._animatable, this._parent)
+    : _value = _animatable.evaluate(_parent.value) {
     _parent.addListener(_onParentChanged);
     _parent.addStatusListener(_onParentStatusChanged);
   }

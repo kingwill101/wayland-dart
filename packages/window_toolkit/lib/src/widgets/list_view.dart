@@ -14,6 +14,7 @@
 /// )
 /// ```
 library;
+
 import 'package:layout_engine/layout_engine.dart' as le;
 
 import '../painter/painter.dart';
@@ -45,7 +46,11 @@ class ListView extends Widget {
 
   @override
   void draw(Painter canvas) {
-    _scrollArea..x = x..y = y..width = width..height = height;
+    _scrollArea
+      ..x = x
+      ..y = y
+      ..width = width
+      ..height = height;
     _scrollArea.draw(canvas);
   }
 
@@ -54,13 +59,21 @@ class ListView extends Widget {
     width = containerWidth;
     _content.performLayout(containerWidth);
     height = _content.height;
-    _scrollArea..x = x..y = y..width = width..height = height;
+    _scrollArea
+      ..x = x
+      ..y = y
+      ..width = width
+      ..height = height;
     _scrollArea.performLayout(width);
   }
 
   @override
   bool hitTest(int px, int py) {
-    _scrollArea..x = x..y = y..width = width..height = height;
+    _scrollArea
+      ..x = x
+      ..y = y
+      ..width = width
+      ..height = height;
     return _scrollArea.hitTest(px, py);
   }
 }
@@ -95,7 +108,9 @@ class _ListViewContent extends Widget {
 
     // Phase 1: walk from front matching by runtimeType + key.
     var i = 0;
-    while (i < old.length && i < children.length && _canUpdate(old[i].widget, children[i])) {
+    while (i < old.length &&
+        i < children.length &&
+        _canUpdate(old[i].widget, children[i])) {
       old[i].widget = children[i];
       _renderChildren.add(old[i]);
       i++;
@@ -152,10 +167,12 @@ class _ListViewContent extends Widget {
       r.widget.performLayout(containerWidth);
       r.size = le.Size(r.widget.width.toDouble(), r.widget.height.toDouble());
     }
-    _renderList.layout(le.BoxConstraints(
-      maxWidth: containerWidth.toDouble(),
-      maxHeight: double.infinity,
-    ));
+    _renderList.layout(
+      le.BoxConstraints(
+        maxWidth: containerWidth.toDouble(),
+        maxHeight: double.infinity,
+      ),
+    );
     width = _renderList.size.width.round();
     height = _renderList.size.height.round();
     for (var i = 0; i < _renderChildren.length; i++) {

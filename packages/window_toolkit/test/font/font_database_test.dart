@@ -1,7 +1,6 @@
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
-
 void main() {
   late FontDatabase db;
 

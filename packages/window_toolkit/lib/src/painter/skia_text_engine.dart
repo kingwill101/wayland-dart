@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' show Platform, stderr;
 
 import 'package:skia_dart/skia_dart.dart';
 
@@ -19,6 +20,7 @@ class SkiaTextEngine {
   SkShaper? _shaper;
   final Map<String, SkTypeface> _typefaces = {};
   final Map<String, _ShapeCacheEntry> _shapeCache = {};
+  final Set<String> _debugGlyphLogs = {};
   static const _maxCacheEntries = 384;
 
   SkiaTextEngine._();
@@ -95,6 +97,7 @@ class SkiaTextEngine {
     _ensureShaper();
 
     final font = _fontFor(fontFamily, size);
+    _debugGlyphResolution(text, fontFamily, font);
     // Typographic advance from SkFont — reliable. Shaper endPoint.x is often
     // stuck at 0 with harfbuzzShapeDontWrapOrReorder, and textblob bounds can
     // be ~2× wider than the real advance (caused huge bar module gaps).
@@ -139,8 +142,7 @@ class SkiaTextEngine {
       final shapedAdvance = handler.endPoint.x;
       // Horizontal advance: SkFont (shaper endPoint.x is often 0 with
       // DontWrapOrReorder). Do NOT use blob.bounds.width — it is inflated.
-      final advance =
-          shapedAdvance > 0.5 ? shapedAdvance : fontAdvance;
+      final advance = shapedAdvance > 0.5 ? shapedAdvance : fontAdvance;
 
       // Vertical placement MUST use blob.bounds: harfbuzzShapeDontWrapOrReorder
       // builds blobs whose origin is the **line-box top** (top≈0, bottom≈lineH),
@@ -170,6 +172,27 @@ class SkiaTextEngine {
       fontIterator.dispose();
       font.dispose();
     }
+  }
+
+  void _debugGlyphResolution(String text, String family, SkFont font) {
+    if (Platform.environment['WAYLAND_DEBUG_TEXT'] != '1') return;
+    final typeface = _typefaceFor(family);
+    final codepoints = text.runes.toList();
+    final glyphs = typeface.unicharsToGlyphs(codepoints);
+    final key = '$family|${codepoints.join(',')}';
+    if (!_debugGlyphLogs.add(key)) return;
+    final formatted = codepoints
+        .asMap()
+        .entries
+        .map(
+          (e) =>
+              'U+${e.value.toRadixString(16).toUpperCase().padLeft(4, '0')}->${glyphs[e.key]}',
+        )
+        .join(' ');
+    stderr.writeln(
+      '[wt:text] family=${typeface.familyName} requested=$family '
+      'glyphs=$formatted advance=${font.measureText(SkEncodedText.string(text), includeBounds: true).advance}',
+    );
   }
 
   void drawText(

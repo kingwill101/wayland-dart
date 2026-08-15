@@ -46,9 +46,9 @@ class ScrollArea extends Widget {
     this.showVertical = true,
     this.enableFling = true,
     int initialScrollY = 0,
-  })  : _scrollbarColor = scrollbarColor,
-        _scrollbarBg = scrollbarBg,
-        _scrollbarHoverColor = scrollbarHoverColor {
+  }) : _scrollbarColor = scrollbarColor,
+       _scrollbarBg = scrollbarBg,
+       _scrollbarHoverColor = scrollbarHoverColor {
     _initScroll();
     _initialScrollY = initialScrollY;
   }
@@ -86,16 +86,16 @@ class ScrollArea extends Widget {
   bool isOnScrollbar(int px, int py) {
     if (showVertical && maxScrollY > 0) {
       final sbx = x + width - scrollbarWidth;
-      if (px >= sbx && px < sbx + scrollbarWidth && py >= y && py < y + height) return true;
+      if (px >= sbx && px < sbx + scrollbarWidth && py >= y && py < y + height)
+        return true;
     }
     if (showHorizontal && maxScrollX > 0) {
       final sby = y + height - scrollbarWidth;
-      if (py >= sby && py < sby + scrollbarWidth && px >= x && px < x + width) return true;
+      if (py >= sby && py < sby + scrollbarWidth && px >= x && px < x + width)
+        return true;
     }
     return false;
   }
-
-
 
   @override
   bool onMouseWheel(MouseWheelEvent event) {
@@ -106,7 +106,9 @@ class ScrollArea extends Widget {
       } else {
         final step = dy > 0 ? 40 : -40;
         _controller.scrollBy(step);
-        _animatedSmoothScroll(_controller.offset + (step > 0 ? step * 2 : step * 2));
+        _animatedSmoothScroll(
+          _controller.offset + (step > 0 ? step * 2 : step * 2),
+        );
       }
     }
     return true;
@@ -139,7 +141,7 @@ class ScrollArea extends Widget {
     final pos = _flingCtrl!.value.round();
     final clamped = pos.clamp(0, maxScrollY);
     _controller.jumpTo(clamped);
-    Widget.onNeedsRepaint?.call();
+    requestRepaint();
 
     // Stop fling when we hit a boundary.
     if (clamped != pos) {
@@ -153,14 +155,16 @@ class ScrollArea extends Widget {
     final startY = _controller.offset;
     final distance = (target - startY).abs();
     if (distance == 0) return;
-    final duration = Duration(milliseconds: (distance * 0.8).round().clamp(50, 300));
+    final duration = Duration(
+      milliseconds: (distance * 0.8).round().clamp(50, 300),
+    );
 
     _animCtrl = AnimationController(duration: duration, curve: easeOut);
     _animCtrl!.addListener(() {
       final t = _animCtrl!.value;
       final pos = (startY + (target - startY) * t).round().clamp(0, maxScrollY);
       _controller.jumpTo(pos);
-      Widget.onNeedsRepaint?.call();
+      requestRepaint();
     });
     _animCtrl!.forward();
   }
@@ -170,22 +174,35 @@ class ScrollArea extends Widget {
     if (button != 272) return;
     if (showVertical && maxScrollY > 0) {
       final tX = this.x + width - scrollbarWidth;
-      if (x >= tX && x < tX + scrollbarWidth && y >= this.y && y < this.y + height) {
+      if (x >= tX &&
+          x < tX + scrollbarWidth &&
+          y >= this.y &&
+          y < this.y + height) {
         final thumbH = _thumbHeight();
-        final thumbY = this.y + (_controller.offset * (height - thumbH) ~/ maxScrollY).clamp(0, height - thumbH);
+        final thumbY =
+            this.y +
+            (_controller.offset * (height - thumbH) ~/ maxScrollY).clamp(
+              0,
+              height - thumbH,
+            );
         if (y >= thumbY && y < thumbY + thumbH) {
           _dragAxis = 1;
           _dragStartScroll = _controller.offset;
           _dragStartCoord = y;
         } else {
-          _animatedSmoothScroll(y < thumbY ? _controller.offset - height : _controller.offset + height);
+          _animatedSmoothScroll(
+            y < thumbY
+                ? _controller.offset - height
+                : _controller.offset + height,
+          );
         }
         return;
       }
     }
   }
 
-  int _thumbHeight() => (height * height ~/ _contentHeight.clamp(1, height)).clamp(10, height);
+  int _thumbHeight() =>
+      (height * height ~/ _contentHeight.clamp(1, height)).clamp(10, height);
 
   @override
   void onMouseDrag(int x, int y) {
@@ -194,7 +211,8 @@ class ScrollArea extends Widget {
       final dragRange = height - thumbH;
       if (dragRange > 0) {
         final delta = y - _dragStartCoord;
-        final newOffset = (_dragStartScroll + delta * maxScrollY ~/ dragRange).clamp(0, maxScrollY);
+        final newOffset = (_dragStartScroll + delta * maxScrollY ~/ dragRange)
+            .clamp(0, maxScrollY);
         _controller.jumpTo(newOffset);
       }
     }
@@ -213,10 +231,12 @@ class ScrollArea extends Widget {
     // Ensure the child fills the full viewport width (fixes sticky 100px).
     child.performLayout(containerWidth);
 
-    _viewport.layout(le.BoxConstraints(
-      maxWidth: width.toDouble(),
-      maxHeight: height.toDouble(),
-    ));
+    _viewport.layout(
+      le.BoxConstraints(
+        maxWidth: width.toDouble(),
+        maxHeight: height.toDouble(),
+      ),
+    );
 
     // Apply initial scroll once extents are known.
     if (_initialScrollY > 0) {
@@ -238,10 +258,12 @@ class ScrollArea extends Widget {
     // Layout the viewport if dimensions changed.
     if (_viewport.size.width.round() != width ||
         _viewport.size.height.round() != height) {
-      _viewport.layout(le.BoxConstraints(
-        maxWidth: width.toDouble(),
-        maxHeight: height.toDouble(),
-      ));
+      _viewport.layout(
+        le.BoxConstraints(
+          maxWidth: width.toDouble(),
+          maxHeight: height.toDouble(),
+        ),
+      );
     }
 
     // Apply initial scroll once extents are known (draw path).
@@ -253,7 +275,12 @@ class ScrollArea extends Widget {
     // Clipped content area.
     canvas.save();
     canvas.clipRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
     );
 
     final scrollOff = _controller.offset;
@@ -268,13 +295,24 @@ class ScrollArea extends Widget {
     if (showVertical && maxScrollY > 0 && height > 0) {
       final tX = (x + width - scrollbarWidth).toDouble();
       canvas.drawRect(
-        Rect.fromLTWH(tX, y.toDouble(), scrollbarWidth.toDouble(), height.toDouble()),
+        Rect.fromLTWH(
+          tX,
+          y.toDouble(),
+          scrollbarWidth.toDouble(),
+          height.toDouble(),
+        ),
         Paint()..color = scrollbarBg,
       );
       final thumbH = _thumbHeight();
-      final thumbY = (_controller.offset * (height - thumbH) ~/ maxScrollY).clamp(0, height - thumbH);
+      final thumbY = (_controller.offset * (height - thumbH) ~/ maxScrollY)
+          .clamp(0, height - thumbH);
       canvas.drawRect(
-        Rect.fromLTWH(tX, (y + thumbY).toDouble(), scrollbarWidth.toDouble(), thumbH.toDouble()),
+        Rect.fromLTWH(
+          tX,
+          (y + thumbY).toDouble(),
+          scrollbarWidth.toDouble(),
+          thumbH.toDouble(),
+        ),
         Paint()..color = _dragAxis == 1 ? scrollbarHoverColor : scrollbarColor,
       );
     }

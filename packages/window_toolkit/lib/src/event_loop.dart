@@ -9,7 +9,7 @@ class Timer {
   DateTime _nextFire;
 
   Timer(this.interval, this.callback)
-      : _nextFire = DateTime.now().add(interval);
+    : _nextFire = DateTime.now().add(interval);
 
   bool get isActive => _active;
 

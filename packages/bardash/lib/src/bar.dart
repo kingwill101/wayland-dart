@@ -5,12 +5,12 @@ import 'package:window_toolkit/window_toolkit.dart';
 
 import 'command.dart';
 import 'config.dart';
+import 'bar_layout.dart';
 import 'module_widget.dart';
 import 'modules/group.dart';
 import 'skia_mem.dart';
 import 'modules/module.dart';
 import 'modules/registry.dart';
-import 'modules/sni.dart';
 import 'tray_menu.dart';
 
 class _ModuleEntry {
@@ -20,28 +20,34 @@ class _ModuleEntry {
   _ModuleEntry(this.align, this.widget, this.module);
 }
 
-class BardashBar extends LayerWindow {
+class BardashBar extends WidgetLayerWindow {
   final BardashConfig config;
-  final Container _layout = Container();
+  final BarLayout _layout;
   final List<Timer> _timers = [];
   final List<_ModuleEntry> _entries = [];
   _ModuleEntry? _hovered;
   TooltipOverlay? _tooltip;
+
   /// Last tip text we passed to [TooltipOverlay.show] (null when hidden).
   String? _activeTip;
+
   /// Last tray/icon anchor x used for placement (-1 when N/A).
   int _activeAnchorX = -1;
+
   /// Coalesce timer-driven paints (many modules share 1–5s intervals).
   bool _paintScheduled = false;
 
   BardashBar(this.config)
-    : super(
+    : _layout = BarLayout(spacing: config.spacing),
+      super(
         anchor: config.anchor,
         barHeight: config.height,
         exclusiveZone: config.exclusiveZone,
         namespace: 'bardash',
       ) {
-    stderr.writeln('[bardash] Bar created anchor=${config.anchor} height=${config.height}');
+    stderr.writeln(
+      '[bardash] Bar created anchor=${config.anchor} height=${config.height}',
+    );
     // Ensure density tokens are active even if config was built without
     // fromLua (tests / programmatic construction).
     config.applyMetrics();
@@ -53,8 +59,8 @@ class BardashBar extends LayerWindow {
     _setupCss();
     ModuleWidget.debugLayout =
         Platform.environment['BARDASH_DEBUG_LAYOUT'] == '1';
-    _layout.spacing = config.spacing;
     _buildLayout();
+    attachWidgetRoot(_layout, onRepaint: schedulePaint);
     stderr.writeln('[bardash] Bar layout built, ${_entries.length} modules');
 
     // Load CSS reload helper after build (watches style file)
@@ -66,10 +72,12 @@ class BardashBar extends LayerWindow {
 
     // Periodic Skia cache cleanup — bar text labels change rarely so
     // the shaped-text cache accumulates stale entries over hours.
-    _timers.add(EventLoop.instance.addTimer(
-      const Duration(seconds: 120),
-      _memoryHousekeeping,
-    ));
+    _timers.add(
+      EventLoop.instance.addTimer(
+        const Duration(seconds: 120),
+        _memoryHousekeeping,
+      ),
+    );
   }
 
   void _memoryHousekeeping() {
@@ -77,7 +85,9 @@ class BardashBar extends LayerWindow {
       final rss = ProcessInfo.currentRss;
       final fontUsed = skiaFontCacheUsed();
       final fontLimit = skiaFontCacheLimit();
-      stderr.writeln('[bardash] mem: rss=${rss ~/ 1024}KB skia_font_cache=${(fontUsed ~/ 1024)}KB/${(fontLimit ~/ 1024)}KB');
+      stderr.writeln(
+        '[bardash] mem: rss=${rss ~/ 1024}KB skia_font_cache=${(fontUsed ~/ 1024)}KB/${(fontLimit ~/ 1024)}KB',
+      );
       purgeSkiaCaches();
     } catch (e) {
       stderr.writeln('[bardash] mem housekeeping error: $e');
@@ -86,7 +96,9 @@ class BardashBar extends LayerWindow {
 
   void _buildLayout() {
     for (final list in [
-      config.modulesLeft, config.modulesCenter, config.modulesRight,
+      config.modulesLeft,
+      config.modulesCenter,
+      config.modulesRight,
     ]) {
       for (final name in list) {
         final module = createModule(name);
@@ -96,7 +108,8 @@ class BardashBar extends LayerWindow {
         };
         if (config.moduleConfigs.containsKey(name)) {
           for (final entry in config.moduleConfigs[name]!.entries) {
-            if (entry.value is String) modCfg[entry.key] = entry.value as String;
+            if (entry.value is String)
+              modCfg[entry.key] = entry.value as String;
           }
         }
         // Groups need the full config map so children get their own blocks.
@@ -115,46 +128,50 @@ class BardashBar extends LayerWindow {
         widget.addClass('module');
         widget.addClass(name);
         // Also tag Align wrapper so descendant selectors can match
-        final align = Align(
-          child: widget,
-          horizontalAlignment: HorizontalAlignment.left,
-          verticalAlignment: VerticalAlignment.center,
-        )..styleId = '${name}_align'
-         ..addClass('module-align');
+        final align =
+            Align(
+                child: widget,
+                horizontalAlignment: HorizontalAlignment.left,
+                verticalAlignment: VerticalAlignment.center,
+              )
+              ..styleId = '${name}_align'
+              ..addClass('module-align');
         // Keep style ancestry: widget.parent = align already via layout, but set now for StyleContext
         widget.parent = align;
         if (list == config.modulesLeft) {
           align.addClass('modules-left');
-          _layout.left.add(align);
+          _layout.left.children.add(align);
         } else if (list == config.modulesCenter) {
           align.addClass('modules-center');
-          _layout.center.add(align);
+          _layout.center.children.add(align);
         } else {
           align.addClass('modules-right');
-          _layout.right.add(align);
+          _layout.right.children.add(align);
         }
         _entries.add(_ModuleEntry(align, widget, module));
         if (module.interval > 0) {
-          _timers.add(EventLoop.instance.addTimer(Duration(seconds: module.interval), () {
-            final before = module.output;
-            module.update();
-            // Refresh tip text if this module is still hovered.
-            if (_hovered?.module == module &&
-                _activeTip != null &&
-                !TrayMenuController.isOpen) {
-              final tip = module.tooltip;
-              if (tip.isNotEmpty && tip != _activeTip) {
-                _showTooltipFor(_hovered!, tip);
-              } else if (tip.isEmpty) {
-                _dismissTooltip();
+          _timers.add(
+            EventLoop.instance.addTimer(Duration(seconds: module.interval), () {
+              final before = module.output;
+              module.update();
+              // Refresh tip text if this module is still hovered.
+              if (_hovered?.module == module &&
+                  _activeTip != null &&
+                  !TrayMenuController.isOpen) {
+                final tip = module.tooltip;
+                if (tip.isNotEmpty && tip != _activeTip) {
+                  _showTooltipFor(_hovered!, tip);
+                } else if (tip.isEmpty) {
+                  _dismissTooltip();
+                }
               }
-            }
-            // Async modules (wireplumber/network/mpd) call requestRepaint
-            // themselves when data changes. Only paint here for sync updates.
-            if (module.output != before) {
-              schedulePaint();
-            }
-          }));
+              // Async modules (wireplumber/network/mpd) call requestRepaint
+              // themselves when data changes. Only paint here for sync updates.
+              if (module.output != before) {
+                schedulePaint();
+              }
+            }),
+          );
         }
       }
     }
@@ -164,25 +181,9 @@ class BardashBar extends LayerWindow {
     for (int i = _entries.length - 1; i >= 0; i--) {
       final e = _entries[i];
       if (!e.align.hitTest(px, py)) continue;
-      final mw = e.module.widget;
-      if (mw != null) {
-        mw.x = e.widget.x; mw.y = e.widget.y;
-        if (mw.hitTest(px, py)) return (e, _deepestHit(mw, px, py));
-      }
-      return (e, null);
+      return (e, widgetHost.hitTest(px, py) ?? e.widget);
     }
     return (null, null);
-  }
-
-  Widget? _deepestHit(Widget w, int px, int py) {
-    Widget? best = w.hitTest(px, py) ? w : null;
-    if (w is HBox) {
-      for (final child in w.children) {
-        final sub = _deepestHit(child, px, py);
-        if (sub != null) best = sub;
-      }
-    }
-    return best;
   }
 
   /// One paint per microtask turn — module timers often fire together.
@@ -226,10 +227,16 @@ class BardashBar extends LayerWindow {
     _tooltip!.barAnchor = config.anchor;
     _tooltip!.gap = 0;
     _tooltip!.parentSurface = surface;
+    // Module-specific content (e.g. clock calendar grid); null = plain text.
+    _tooltip!.content = entry.module.tooltipContent;
 
     // Cap tip to bar width so edge modules (tray) never overflow the output.
-    final size =
-        _tooltip!.estimateSize(tip, maxWidth: (width - 8).clamp(48, width));
+    final size = entry.module.tooltipContent != null
+        ? _tooltip!.estimateContent(
+            entry.module.tooltipContent!,
+            maxWidth: (width - 8).clamp(48, width),
+          )
+        : _tooltip!.estimateSize(tip, maxWidth: (width - 8).clamp(48, width));
     final tw = size.width.round();
     final th = size.height.round();
     const edgePad = 4;
@@ -322,18 +329,26 @@ class BardashBar extends LayerWindow {
   }
 
   @override
-  void onMouseMotion(MouseMotionEvent event) =>
-      _updateHover(event.x.toInt(), event.y.toInt());
+  void onMouseEnter(MouseEnterEvent event) {
+    super.onMouseEnter(event);
+    _updateHover(event.x.toInt(), event.y.toInt());
+    schedulePaint();
+  }
 
   @override
-  void onMouseEnter(MouseEnterEvent event) =>
-      _updateHover(event.x.toInt(), event.y.toInt());
+  void onMouseMotion(MouseMotionEvent event) {
+    super.onMouseMotion(event);
+    _updateHover(event.x.toInt(), event.y.toInt());
+    schedulePaint();
+  }
 
   @override
   void onMouseLeave(MouseLeaveEvent event) {
+    super.onMouseLeave(event);
     _hovered?.module.hoverX = -1;
     _hovered = null;
     _dismissTooltip();
+    schedulePaint();
   }
 
   @override
@@ -350,7 +365,8 @@ class BardashBar extends LayerWindow {
       if (TrayMenuController.isOpen) TrayMenuController.close();
       return;
     }
-    if (event.button != 0x110 && event.button != 0x111) return;
+    if (event.button != 0x110 && event.button != 0x111 && event.button != 0x112)
+      return;
 
     // Module-local coordinates for multi-icon modules (tray, etc.).
     final localX = event.x - entry.widget.x;
@@ -403,9 +419,14 @@ class BardashBar extends LayerWindow {
       final provider = CssProvider();
       final ok = provider.loadFromPath(path);
       if (ok) {
-        StyleContext.addProviderForScreen(provider, priority: StyleProviderPriority.user);
+        StyleContext.addProviderForScreen(
+          provider,
+          priority: StyleProviderPriority.user,
+        );
         _cssProvider = provider;
-        stderr.writeln('[bardash] CSS loaded $path (${provider.rules.length} rules)');
+        stderr.writeln(
+          '[bardash] CSS loaded $path (${provider.rules.length} rules)',
+        );
       }
     } catch (e) {
       stderr.writeln('[bardash] CSS load failed $path: $e');
@@ -416,17 +437,24 @@ class BardashBar extends LayerWindow {
     final path = _resolveCssPath();
     if (path == null || _cssProvider == null) return;
     try {
-      _cssReloader = CssReloadHelper(_cssProvider!, path: path, onReload: (ok) {
-        stderr.writeln('[bardash] CSS reloaded $path ok=$ok');
-        schedulePaint();
-      })..start();
+      _cssReloader = CssReloadHelper(
+        _cssProvider!,
+        path: path,
+        onReload: (ok) {
+          stderr.writeln('[bardash] CSS reloaded $path ok=$ok');
+          schedulePaint();
+        },
+      )..start();
     } catch (_) {}
   }
 
   String? _resolveCssPath() {
     final explicit = config.stylePath;
     if (explicit != null) {
-      final expanded = explicit.replaceFirst('~', Platform.environment['HOME'] ?? '');
+      final expanded = explicit.replaceFirst(
+        '~',
+        Platform.environment['HOME'] ?? '',
+      );
       return expanded;
     }
     final home = Platform.environment['HOME'] ?? '';
@@ -443,16 +471,20 @@ class BardashBar extends LayerWindow {
 
   @override
   void draw(Painter painter) {
-    stderr.writeln('[bardash] draw() painter=$painter size=${painter.width.round()}x${painter.height.round()}');
-    // Wire tray module to the live layer surface for dbusmenu popups.
+    stderr.writeln(
+      '[bardash] draw() painter=$painter size=${painter.width.round()}x${painter.height.round()}',
+    );
+    // Wire overlay-capable modules (tray menu, audio panel) to the live
+    // layer surface once it exists — driven by each module's
+    // `needsPopupOverlay` flag, no per-module type checks.
     for (final e in _entries) {
-      if (e.module is SniModule) {
-        (e.module as SniModule).attach(
+      final module = e.module;
+      if (module.needsPopupOverlay) {
+        module.attachPopupOverlay(
           connection,
-          surface,
           parentWidth: width,
           parentHeight: height,
-          // Bottom bar → open menu upward into the screen.
+          // Bottom bar → open overlays upward into the screen.
           openUpward: config.anchor == Anchor.bottom,
         );
       }
@@ -461,12 +493,15 @@ class BardashBar extends LayerWindow {
     // CSS background for window#waybar overrides config (Skia/Gles/Raw all via Painter)
     final styleBg = StyleContext.forWidget(_layout).parsedBackgroundColor;
     final bg = styleBg ?? config.backgroundColor;
-    stderr.writeln('[bardash] clearing with bg=$bg (style ${styleBg != null ? "CSS" : "config"})');
+    stderr.writeln(
+      '[bardash] clearing with bg=$bg (style ${styleBg != null ? "CSS" : "config"})',
+    );
     painter.clear(bg);
-    _layout.x = 0;
-    _layout.y = 0;
-    _layout.width = painter.width.round();
-    _layout.height = painter.height.round();
+    // Measure before the shared host lays out Stack/Positioned/HBox. Module
+    // widths are intrinsic and are not available during the host's first
+    // layout pass.
+    _layout.measure(painter);
+    layoutWidgetRoot(painter.width.round(), painter.height.round());
     stderr.writeln('[bardash] layout: ${_layout.width}x${_layout.height}');
     _layout.draw(painter);
     if (ModuleWidget.debugLayout) {

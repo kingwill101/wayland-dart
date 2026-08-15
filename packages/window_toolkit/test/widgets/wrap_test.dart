@@ -1,17 +1,12 @@
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
-
 void main() {
   test('WrapLayout wraps children to multiple runs', () {
     final wrap = WrapLayout(
       spacing: 4,
       runSpacing: 6,
-      children: [
-        Label('AA'),
-        Label('BBB'),
-        Label('CCCC'),
-      ],
+      children: [Label('AA'), Label('BBB'), Label('CCCC')],
     );
     wrap.x = 10;
     wrap.y = 20;
@@ -32,10 +27,7 @@ void main() {
     final wrap = WrapLayout(
       spacing: 4,
       runSpacing: 6,
-      children: [
-        Label('AA'),
-        Label('BBB'),
-      ],
+      children: [Label('AA'), Label('BBB')],
     );
     wrap.x = 10;
     wrap.y = 20;
@@ -50,11 +42,7 @@ void main() {
     final wrap = WrapLayout(
       spacing: 4,
       runSpacing: 6,
-      children: [
-        Button('One'),
-        Button('Two'),
-        Button('Three'),
-      ],
+      children: [Button('One'), Button('Two'), Button('Three')],
     );
     wrap.x = 0;
     wrap.y = 0;

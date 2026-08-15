@@ -215,6 +215,10 @@ class AudioPopupOverlay with EventReceiver {
   int _openedAtMs = 0;
   MprisSnapshot _media = MprisSnapshot.empty;
   void Function(MprisSnapshot)? _mediaListener;
+  String _hoverControl = '';
+  late final TransportButton _previousButton;
+  late final TransportButton _playPauseButton;
+  late final TransportButton _nextButton;
 
   final int _w = 300;
   final int _h = 292;
@@ -250,6 +254,12 @@ class AudioPopupOverlay with EventReceiver {
     _micValue = (s.sourcePercent / 100).clamp(0.0, 1.0);
     _micMuted = s.sourceMuted;
     _media = MprisClient.instance.last;
+    _previousButton = TransportButton(TransportAction.previous);
+    _playPauseButton = TransportButton(TransportAction.play);
+    _nextButton = TransportButton(TransportAction.next);
+    _previousButton.initState();
+    _playPauseButton.initState();
+    _nextButton.initState();
   }
 
   bool get isOpen => _open;
@@ -340,6 +350,8 @@ class AudioPopupOverlay with EventReceiver {
     if (event is MouseLeaveEvent) {
       _draggingSink = false;
       _draggingSource = false;
+      _hoverControl = '';
+      _updateTransportHover();
       _scheduleRepaint();
       return;
     }
@@ -353,6 +365,23 @@ class AudioPopupOverlay with EventReceiver {
     }
 
     if (onLayer) {
+      if (event is MouseMotionEvent) {
+        final next = _controlAt(event.x, event.y);
+        if (next != _hoverControl) {
+          _hoverControl = next;
+          _updateTransportHover();
+          _scheduleRepaint();
+        }
+        if (_draggingSink) {
+          _value = _layout.fractionForX(event.x);
+          _applyVolume();
+        } else if (_draggingSource) {
+          _micValue = _layout.fractionForX(event.x);
+          _applySourceVolume();
+        }
+        event.accept();
+        return;
+      }
       if (event is MouseWheelEvent) {
         // Wheel turns the row under the cursor: mic row → source, else sink.
         final byMic = _layout.hitSourceSlider(event.x, event.y);
@@ -362,19 +391,6 @@ class AudioPopupOverlay with EventReceiver {
           PulseClient.instance.stepSourceVolume(step);
         } else {
           PulseClient.instance.stepVolume(step);
-        }
-        event.accept();
-        return;
-      }
-      if (event is MouseMotionEvent) {
-        if (_draggingSink) {
-          _value = _layout.fractionForX(event.x);
-          _applyVolume();
-          _scheduleRepaint();
-        } else if (_draggingSource) {
-          _micValue = _layout.fractionForX(event.x);
-          _applySourceVolume();
-          _scheduleRepaint();
         }
         event.accept();
         return;
@@ -429,6 +445,18 @@ class AudioPopupOverlay with EventReceiver {
     if (event is MouseButtonEvent && event.isPressed) {
       hide();
     }
+  }
+
+  String _controlAt(double x, double y) {
+    if (_layout.hitMediaPrevious(x, y)) return 'previous';
+    if (_layout.hitMediaPlayPause(x, y)) return 'play-pause';
+    if (_layout.hitMediaNext(x, y)) return 'next';
+    if (_layout.hitMute(x, y)) return 'mute';
+    if (_layout.hitMicMute(x, y)) return 'mic-mute';
+    if (_layout.hitMixer(x, y)) return 'mixer';
+    if (_layout.hitSlider(x, y)) return 'output';
+    if (_layout.hitSourceSlider(x, y)) return 'mic';
+    return '';
   }
 
   void _applyVolume() {
@@ -868,33 +896,23 @@ class AudioPopupOverlay with EventReceiver {
       final previous = _layout.mediaPrevious();
       final playPause = _layout.mediaPlayPause();
       final next = _layout.mediaNext();
-      for (final button in [previous, playPause, next]) {
-        painter.drawRRect(button, 7, 7, Paint()..color = _btn);
-      }
-      painter.drawText(
-        '‹',
-        Offset(previous.left + 17, _layout.mediaY + 5),
-        color: _text,
-        size: 18,
-      );
-      painter.drawText(
-        _media.isPlaying ? 'Ⅱ' : '▶',
-        Offset(playPause.left + 14, _layout.mediaY + 7),
-        color: _text,
-        size: 14,
-      );
-      painter.drawText(
-        '›',
-        Offset(next.left + 17, _layout.mediaY + 5),
-        color: _text,
-        size: 18,
-      );
+      _drawMediaButton(painter, previous, 'previous');
+      _drawMediaButton(painter, playPause, _media.isPlaying ? 'pause' : 'play');
+      _drawMediaButton(painter, next, 'next');
 
       // Divider + action row.
       final bTop = _layout.actionsY.toDouble();
       final bH = AudioPanelLayout.actionH.toDouble();
       final mb = _layout.muteButton();
-      painter.drawRRect(mb, 8, 8, Paint()..color = _muted ? _mutedFill : _btn);
+      painter.drawRRect(
+        mb,
+        8,
+        8,
+        Paint()
+          ..color = _hoverControl == 'mute'
+              ? _btnHover
+              : (_muted ? _mutedFill : _btn),
+      );
       final muteLabel = _muted ? 'Unmute' : 'Mute';
       final mbB = painter.measureTextBounds(
         muteLabel,
@@ -912,7 +930,10 @@ class AudioPopupOverlay with EventReceiver {
         micb,
         8,
         8,
-        Paint()..color = _micMuted ? _micMutedFill : _btn,
+        Paint()
+          ..color = _hoverControl == 'mic-mute'
+              ? _btnHover
+              : (_micMuted ? _micMutedFill : _btn),
       );
       final micLabel = _micMuted ? 'Mic on' : 'Mic';
       final micBtnB = painter.measureTextBounds(
@@ -927,7 +948,12 @@ class AudioPopupOverlay with EventReceiver {
         size: lw,
       );
       final mxb = _layout.mixerButton();
-      painter.drawRRect(mxb, 8, 8, Paint()..color = _btnHover);
+      painter.drawRRect(
+        mxb,
+        8,
+        8,
+        Paint()..color = _hoverControl == 'mixer' ? _btnHover : _btn,
+      );
       final mxB = painter.measureTextBounds(
         'Mixer',
         size: lw,
@@ -945,12 +971,43 @@ class AudioPopupOverlay with EventReceiver {
     }
   }
 
+  void _updateTransportHover() {
+    _previousButton.setHovering(_hoverControl == 'previous');
+    _playPauseButton.setHovering(_hoverControl == 'play-pause');
+    _nextButton.setHovering(_hoverControl == 'next');
+  }
+
+  /// Draw the shared toolkit transport primitive at the popup's legacy
+  /// geometry while the rest of this surface is migrated to widgets.
+  void _drawMediaButton(Painter painter, Rect rect, String icon) {
+    final button = icon == 'previous'
+        ? _previousButton
+        : icon == 'next'
+        ? _nextButton
+        : _playPauseButton;
+    button
+      ..action = icon == 'previous'
+          ? TransportAction.previous
+          : icon == 'next'
+          ? TransportAction.next
+          : (_media.isPlaying ? TransportAction.pause : TransportAction.play)
+      ..x = rect.left.round()
+      ..y = rect.top.round()
+      ..width = rect.width.round()
+      ..height = rect.height.round();
+    button.draw(painter);
+  }
+
   void _teardown() {
     _needsPaint = false;
     _paintScheduled = false;
     _presenting = false;
     _draggingSink = false;
     _draggingSource = false;
+    _hoverControl = '';
+    _previousButton.dispose();
+    _playPauseButton.dispose();
+    _nextButton.dispose();
     if (_mediaListener != null) {
       MprisClient.instance.removeListener(_mediaListener!);
       _mediaListener = null;

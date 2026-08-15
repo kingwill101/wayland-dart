@@ -173,6 +173,22 @@ class PulseClient {
     return true;
   }
 
+  bool stepSourceVolume(int deltaPercent) {
+    final b = _b;
+    if (!available || b == null) return false;
+    if (b.pulse_shim_source_volume_step(deltaPercent) != 0) return false;
+    _pull(force: true);
+    return true;
+  }
+
+  bool toggleSourceMute() {
+    final b = _b;
+    if (!available || b == null) return false;
+    if (b.pulse_shim_toggle_source_mute() != 0) return false;
+    _pull(force: true);
+    return true;
+  }
+
   void refresh() {
     if (!available) return;
     _b?.pulse_shim_refresh();

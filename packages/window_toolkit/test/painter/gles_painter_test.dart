@@ -10,7 +10,6 @@ library;
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
-
 void main() {
   group('drawLinearGradient', () {
     test('records a gradient command', () {
@@ -61,8 +60,13 @@ void main() {
 
     test('drawCircle with stroke', () {
       final p = RecordingPainter();
-      p.drawCircle(const Offset(100, 100), 30,
-          Paint()..style = PaintStyle.stroke..strokeWidth = 1.5);
+      p.drawCircle(
+        const Offset(100, 100),
+        30,
+        Paint()
+          ..style = PaintStyle.stroke
+          ..strokeWidth = 1.5,
+      );
       final cmd = p.commands.singleOfType<DrawCircleCommand>();
       expect(cmd.center.dx, 100);
       expect(cmd.center.dy, 100);
@@ -111,7 +115,7 @@ void main() {
       p.drawRect(Rect.fromLTWH(0, 0, 10, 10), Paint());
       final cmd = p.commands.singleOfType<DrawRectCommand>();
       expect(cmd.rect.left, 50); // restored x
-      expect(cmd.rect.top, 0);   // y unchanged by inner translate
+      expect(cmd.rect.top, 0); // y unchanged by inner translate
     });
   });
 
@@ -152,8 +156,11 @@ void main() {
   group('drawLine', () {
     test('records line command', () {
       final p = RecordingPainter();
-      p.drawLine(const Offset(0, 0), const Offset(100, 100),
-          Paint()..color = const Color(255, 255, 255));
+      p.drawLine(
+        const Offset(0, 0),
+        const Offset(100, 100),
+        Paint()..color = const Color(255, 255, 255),
+      );
       final cmd = p.commands.singleOfType<DrawLineCommand>();
       expect(cmd.from.dx, 0);
       expect(cmd.to.dx, 100);

@@ -51,7 +51,7 @@ abstract class ImplicitlyAnimated extends Widget {
 
   void _onTick() {
     if (_controller == null) return;
-    Widget.onNeedsRepaint?.call();
+    requestRepaint();
   }
 
   @override
@@ -122,7 +122,7 @@ class AnimatedOpacity extends Widget {
   }
 
   void _onTick() {
-    Widget.onNeedsRepaint?.call();
+    requestRepaint();
   }
 
   @override
@@ -204,7 +204,7 @@ class AnimatedSlide extends Widget {
   void _startTransition() {
     _controller?.dispose();
     _controller = AnimationController(duration: duration, curve: curve);
-    _controller!.addListener(() => Widget.onNeedsRepaint?.call());
+    _controller!.addListener(requestRepaint);
     _controller!.forward();
   }
 
@@ -262,12 +262,12 @@ class AnimatedContainer extends Widget {
     this.curve = easeOut,
     this.child,
     int? padding,
-  })  : _currentColor = const Color(0, 0, 0),
-        _currentPadL = padding ?? 0,
-        _currentPadT = padding ?? 0,
-        _currentPadR = padding ?? 0,
-        _currentPadB = padding ?? 0,
-        _currentRadius = 0 {
+  }) : _currentColor = const Color(0, 0, 0),
+       _currentPadL = padding ?? 0,
+       _currentPadT = padding ?? 0,
+       _currentPadR = padding ?? 0,
+       _currentPadB = padding ?? 0,
+       _currentRadius = 0 {
     if (boxWidth != null) this.boxWidth = boxWidth;
     if (boxHeight != null) this.boxHeight = boxHeight;
   }
@@ -287,12 +287,24 @@ class AnimatedContainer extends Widget {
     if (drawW > 0 && drawH > 0) {
       if (cr > 0) {
         canvas.drawRRect(
-          Rect.fromLTWH(x.toDouble(), y.toDouble(), drawW.toDouble(), drawH.toDouble()),
-          cr, cr, Paint()..color = cc,
+          Rect.fromLTWH(
+            x.toDouble(),
+            y.toDouble(),
+            drawW.toDouble(),
+            drawH.toDouble(),
+          ),
+          cr,
+          cr,
+          Paint()..color = cc,
         );
       } else {
         canvas.drawRect(
-          Rect.fromLTWH(x.toDouble(), y.toDouble(), drawW.toDouble(), drawH.toDouble()),
+          Rect.fromLTWH(
+            x.toDouble(),
+            y.toDouble(),
+            drawW.toDouble(),
+            drawH.toDouble(),
+          ),
           Paint()..color = cc,
         );
       }
@@ -329,16 +341,20 @@ class AnimatedContainer extends Widget {
   }
 
   void _maybeTransition() {
-    if (_currentColor.r == color.r && _currentColor.g == color.g &&
-        _currentColor.b == color.b && _currentColor.a == color.a &&
+    if (_currentColor.r == color.r &&
+        _currentColor.g == color.g &&
+        _currentColor.b == color.b &&
+        _currentColor.a == color.a &&
         _currentRadius == borderRadius &&
-        _currentPadL == padL && _currentPadT == padT &&
-        _currentPadR == padR && _currentPadB == padB) {
+        _currentPadL == padL &&
+        _currentPadT == padT &&
+        _currentPadR == padR &&
+        _currentPadB == padB) {
       return;
     }
     _controller?.dispose();
     _controller = AnimationController(duration: duration, curve: curve);
-    _controller!.addListener(() => Widget.onNeedsRepaint?.call());
+    _controller!.addListener(requestRepaint);
     _controller!.forward();
   }
 
@@ -400,10 +416,14 @@ class AnimatedCrossFade extends Widget {
     }
     final t = _controller?.value ?? (showFirst ? 1.0 : 0.0);
     if (t >= 0.5) {
-      firstChild..x = x..y = y;
+      firstChild
+        ..x = x
+        ..y = y;
       firstChild.draw(canvas);
     } else {
-      secondChild..x = x..y = y;
+      secondChild
+        ..x = x
+        ..y = y;
       secondChild.draw(canvas);
     }
   }
@@ -411,7 +431,7 @@ class AnimatedCrossFade extends Widget {
   void _startTransition() {
     _controller?.dispose();
     _controller = AnimationController(duration: duration, curve: curve);
-    _controller!.addListener(() => Widget.onNeedsRepaint?.call());
+    _controller!.addListener(requestRepaint);
     _controller!.forward();
   }
 

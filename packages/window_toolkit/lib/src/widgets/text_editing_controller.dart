@@ -7,7 +7,9 @@ class TextEditingController {
   int _selectionEnd = -1;
   VoidCallback? onChanged;
 
-  TextEditingController({String text = ''}) : _text = text, _cursor = text.length;
+  TextEditingController({String text = ''})
+    : _text = text,
+      _cursor = text.length;
 
   String get text => _text;
   set text(String value) {
@@ -26,9 +28,8 @@ class TextEditingController {
   }
 
   bool get hasSelection => _selectionStart >= 0;
-  String get selectedText => hasSelection
-      ? _text.substring(_selectionStart, _selectionEnd)
-      : '';
+  String get selectedText =>
+      hasSelection ? _text.substring(_selectionStart, _selectionEnd) : '';
 
   void insert(String char) {
     if (hasSelection) _deleteSelection();
@@ -38,7 +39,10 @@ class TextEditingController {
   }
 
   void deleteLeft() {
-    if (hasSelection) { _deleteSelection(); return; }
+    if (hasSelection) {
+      _deleteSelection();
+      return;
+    }
     if (_cursor <= 0) return;
     _text = _text.substring(0, _cursor - 1) + _text.substring(_cursor);
     _cursor--;
@@ -46,7 +50,10 @@ class TextEditingController {
   }
 
   void deleteRight() {
-    if (hasSelection) { _deleteSelection(); return; }
+    if (hasSelection) {
+      _deleteSelection();
+      return;
+    }
     if (_cursor >= _text.length) return;
     _text = _text.substring(0, _cursor) + _text.substring(_cursor + 1);
     onChanged?.call();
@@ -54,8 +61,12 @@ class TextEditingController {
 
   void _deleteSelection() {
     if (!hasSelection) return;
-    final start = _selectionStart < _selectionEnd ? _selectionStart : _selectionEnd;
-    final end = _selectionStart < _selectionEnd ? _selectionEnd : _selectionStart;
+    final start = _selectionStart < _selectionEnd
+        ? _selectionStart
+        : _selectionEnd;
+    final end = _selectionStart < _selectionEnd
+        ? _selectionEnd
+        : _selectionStart;
     _text = _text.substring(0, start) + _text.substring(end);
     _cursor = start;
     _selectionStart = -1;
@@ -63,10 +74,29 @@ class TextEditingController {
     onChanged?.call();
   }
 
-  void moveCursorLeft() { if (_cursor > 0) _cursor--; _selectionStart = -1; _selectionEnd = -1; }
-  void moveCursorRight() { if (_cursor < _text.length) _cursor++; _selectionStart = -1; _selectionEnd = -1; }
-  void moveCursorHome() { _cursor = 0; _selectionStart = -1; _selectionEnd = -1; }
-  void moveCursorEnd() { _cursor = _text.length; _selectionStart = -1; _selectionEnd = -1; }
+  void moveCursorLeft() {
+    if (_cursor > 0) _cursor--;
+    _selectionStart = -1;
+    _selectionEnd = -1;
+  }
+
+  void moveCursorRight() {
+    if (_cursor < _text.length) _cursor++;
+    _selectionStart = -1;
+    _selectionEnd = -1;
+  }
+
+  void moveCursorHome() {
+    _cursor = 0;
+    _selectionStart = -1;
+    _selectionEnd = -1;
+  }
+
+  void moveCursorEnd() {
+    _cursor = _text.length;
+    _selectionStart = -1;
+    _selectionEnd = -1;
+  }
 
   bool handleKey(KeyEvent event) {
     if (!event.isPressed) return false;

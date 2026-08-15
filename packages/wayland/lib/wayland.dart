@@ -2,7 +2,13 @@
 library wayland;
 
 export 'src/protocol/protocol.dart';
-export 'src/protocol/shared_memory.dart' show createAnonymousFile, writeToFd, closeFd, mmapFd, munmap;
+export 'src/protocol/shared_memory.dart'
+    show
+        createAnonymousFile,
+        writeToFd,
+        closeFd,
+        mmapFd,
+        munmap;
 
 // Core wayland protocol
 export 'protocols/wayland.dart';
@@ -40,6 +46,7 @@ export 'protocols/staging/single-pixel-buffer/single_pixel_buffer_v1.dart';
 export 'protocols/staging/tearing-control/tearing_control_v1.dart';
 export 'protocols/staging/xdg-activation/xdg_activation_v1.dart';
 export 'protocols/staging/xdg-dialog/xdg_dialog_v1.dart';
+export 'protocols/staging/xdg-session-management/xdg_session_management_v1.dart';
 export 'protocols/staging/xdg-system-bell/xdg_system_bell_v1.dart';
 export 'protocols/staging/xdg-toplevel-drag/xdg_toplevel_drag_v1.dart';
 export 'protocols/staging/xdg-toplevel-icon/xdg_toplevel_icon_v1.dart';

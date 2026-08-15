@@ -1,5 +1,6 @@
 import 'package:window_toolkit/window_toolkit.dart';
 
+import '../calendar_tooltip.dart';
 import '../metrics.dart';
 import 'module.dart';
 
@@ -17,6 +18,11 @@ const _monthsFull = [
 class ClockModule extends BarModule {
   @override
   String get name => 'clock';
+
+  /// The clock tooltip is a calendar; render it as a widget through the
+  /// toolkit's widget + style system.
+  @override
+  Widget? get tooltipContent => buildCalendarTooltip(DateTime.now(), fontSize: 12);
 
   Color _color = const Color(0xc8, 0xc8, 0xc8);
   bool _calendarInTooltip = true;

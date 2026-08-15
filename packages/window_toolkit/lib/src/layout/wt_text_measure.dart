@@ -11,8 +11,8 @@ class WtTextMeasure extends le.TextMeasure {
   final String _fontFamily;
 
   WtTextMeasure({double fontSize = 14, String fontFamily = 'sans'})
-      : _fontSize = fontSize,
-        _fontFamily = fontFamily;
+    : _fontSize = fontSize,
+      _fontFamily = fontFamily;
 
   @override
   double textWidth(String text) {

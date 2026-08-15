@@ -18,10 +18,9 @@ void main() {
     });
 
     test('draw records commands', () {
-      final harness = WidgetHarness(Stack(children: [
-        Button('Back'),
-        Button('Front'),
-      ]));
+      final harness = WidgetHarness(
+        Stack(children: [Button('Back'), Button('Front')]),
+      );
       harness.draw();
       expect(harness.painter.commands, isNotEmpty);
     });

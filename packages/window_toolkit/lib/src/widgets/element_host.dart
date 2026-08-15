@@ -12,7 +12,6 @@
 /// ```
 library;
 
-
 import '../painter/painter.dart';
 import '../widget.dart';
 
@@ -38,6 +37,7 @@ List<Widget> autoElementList(List<ElementWidget> items) {
 /// pipeline.
 class ElementHost extends Widget {
   final ElementWidget child;
+
   /// The internal element tree. Exposed for testing/state access.
   ElementTree? tree;
 

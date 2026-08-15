@@ -1,5 +1,8 @@
 import '../drawing/color.dart';
+import '../interaction.dart';
 import '../painter/painter.dart';
+import '../style.dart';
+import '../style/style_patch.dart';
 import '../widget.dart';
 
 class ListBox extends Widget {
@@ -14,7 +17,9 @@ class ListBox extends Widget {
   bool multiSelect;
   VoidCallback? onChanged;
 
-  final int _hoverIndex = -1;
+  int _hoverIndex = -1;
+
+  int get hoveredIndex => _hoverIndex;
   int _scrollOffset = 0;
 
   ListBox({
@@ -28,29 +33,79 @@ class ListBox extends Widget {
     this.itemHeight = 22,
     this.multiSelect = false,
     this.onChanged,
-  })  : assert(itemHeight > 0, 'ListBox itemHeight must be > 0');
+  }) : assert(itemHeight > 0, 'ListBox itemHeight must be > 0') {
+    onMouseLeave = () {
+      if (_hoverIndex != -1) {
+        setState(() => _hoverIndex = -1);
+        setInteractionState(WidgetState.hovered, false);
+      }
+    };
+  }
 
-  int get _maxScroll => (items.length * itemHeight - height).clamp(0, items.length * itemHeight);
+  @override
+  bool get acceptsFocus => true;
+
+  @override
+  Style styleRole() => Style(
+    color: textColor,
+    backgroundColor: backgroundColor,
+    borderColor: borderColor,
+  );
+
+  @override
+  void onMouseMove(int x, int y) {
+    final next = itemAt(x, y);
+    if (next == _hoverIndex) return;
+    setState(() {
+      _hoverIndex = next;
+      setInteractionState(WidgetState.hovered, next >= 0);
+    });
+  }
+
+  int get _maxScroll =>
+      (items.length * itemHeight - height).clamp(0, items.length * itemHeight);
 
   @override
   void draw(Painter canvas) {
+    final base = resolvedStyle();
+    final selected = resolvedStyleOn(const [
+      'selected',
+    ], local: StylePatch(backgroundColor: selectedColor));
+    final hovered = resolvedStyleOn(const [
+      'hover',
+    ], local: StylePatch(backgroundColor: hoverColor));
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
-      Paint()..color = backgroundColor,
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
+      Paint()..color = base.backgroundColor!,
     );
 
     canvas.drawRect(
       Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), 1),
-      Paint()..color = borderColor,
+      Paint()..color = base.borderColor,
     );
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), (y + height - 1).toDouble(), width.toDouble(), 1),
-      Paint()..color = borderColor,
+      Rect.fromLTWH(
+        x.toDouble(),
+        (y + height - 1).toDouble(),
+        width.toDouble(),
+        1,
+      ),
+      Paint()..color = base.borderColor,
     );
 
     canvas.save();
     canvas.clipRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
     );
 
     for (var i = 0; i < items.length; i++) {
@@ -62,20 +117,30 @@ class ListBox extends Widget {
 
       if (isSelected) {
         canvas.drawRect(
-          Rect.fromLTWH(x.toDouble(), iy.toDouble(), width.toDouble(), itemHeight.toDouble()),
-          Paint()..color = selectedColor,
+          Rect.fromLTWH(
+            x.toDouble(),
+            iy.toDouble(),
+            width.toDouble(),
+            itemHeight.toDouble(),
+          ),
+          Paint()..color = selected.backgroundColor!,
         );
       } else if (isHovered) {
         canvas.drawRect(
-          Rect.fromLTWH(x.toDouble(), iy.toDouble(), width.toDouble(), itemHeight.toDouble()),
-          Paint()..color = hoverColor,
+          Rect.fromLTWH(
+            x.toDouble(),
+            iy.toDouble(),
+            width.toDouble(),
+            itemHeight.toDouble(),
+          ),
+          Paint()..color = hovered.backgroundColor!,
         );
       }
 
       canvas.drawText(
         items[i],
         Offset((x + 4).toDouble(), (iy + 3).toDouble()),
-        color: textColor,
+        color: base.color,
         size: 16,
       );
     }
@@ -86,7 +151,10 @@ class ListBox extends Widget {
     final totalH = items.length * itemHeight;
     if (totalH > height && height > 0) {
       final barH = (height * height ~/ totalH).clamp(8, height);
-      final barY = (_scrollOffset * (height - barH) ~/ _maxScroll).clamp(0, height - barH);
+      final barY = (_scrollOffset * (height - barH) ~/ _maxScroll).clamp(
+        0,
+        height - barH,
+      );
       canvas.drawRect(
         Rect.fromLTWH(
           (x + width - 4).toDouble(),
@@ -94,7 +162,7 @@ class ListBox extends Widget {
           4,
           barH.toDouble(),
         ),
-        Paint()..color = const Color(120, 120, 120),
+        Paint()..color = base.borderColor,
       );
     }
   }
@@ -131,11 +199,14 @@ class ListBox extends Widget {
   void onKeyPressed(KeyEvent event) {
     if (!event.isPressed) return;
     final k = event.key;
-    if (k == 103) { // up
+    if (k == 103) {
+      // up
       if (selectedIndex > 0) select(selectedIndex - 1);
-    } else if (k == 108) { // down
+    } else if (k == 108) {
+      // down
       if (selectedIndex < items.length - 1) select(selectedIndex + 1);
-    } else if (k == 28) { // enter
+    } else if (k == 28) {
+      // enter
       onChanged?.call();
     }
   }

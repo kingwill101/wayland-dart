@@ -80,6 +80,19 @@ class PulseShimBindings {
   late final _pulse_shim_sink_volume_step = _pulse_shim_sink_volume_stepPtr
       .asFunction<int Function(int)>();
 
+  /// Change default source (microphone) volume by delta percent points.
+  /// Returns 0 on success, -1 on failure.
+  int pulse_shim_source_volume_step(int delta_pct) {
+    return _pulse_shim_source_volume_step(delta_pct);
+  }
+
+  late final _pulse_shim_source_volume_stepPtr =
+      _lookup<ffi.NativeFunction<ffi.Int Function(ffi.Int)>>(
+        'pulse_shim_source_volume_step',
+      );
+  late final _pulse_shim_source_volume_step = _pulse_shim_source_volume_stepPtr
+      .asFunction<int Function(int)>();
+
   /// Start the threaded PulseAudio mainloop and connect.
   /// Returns 0 on success, -1 on failure.
   int pulse_shim_start() {
@@ -120,5 +133,18 @@ class PulseShimBindings {
   late final _pulse_shim_toggle_mutePtr =
       _lookup<ffi.NativeFunction<ffi.Int Function()>>('pulse_shim_toggle_mute');
   late final _pulse_shim_toggle_mute = _pulse_shim_toggle_mutePtr
+      .asFunction<int Function()>();
+
+  /// Toggle mute on the default source (microphone).
+  /// Returns 0 on success, -1 on failure.
+  int pulse_shim_toggle_source_mute() {
+    return _pulse_shim_toggle_source_mute();
+  }
+
+  late final _pulse_shim_toggle_source_mutePtr =
+      _lookup<ffi.NativeFunction<ffi.Int Function()>>(
+        'pulse_shim_toggle_source_mute',
+      );
+  late final _pulse_shim_toggle_source_mute = _pulse_shim_toggle_source_mutePtr
       .asFunction<int Function()>();
 }

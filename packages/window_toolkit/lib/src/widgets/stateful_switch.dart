@@ -10,6 +10,8 @@
 library;
 
 import '../drawing/color.dart';
+import '../mixins/hoverable.dart';
+import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
 import '../widget.dart';
 
@@ -25,7 +27,6 @@ class StatefulSwitch extends StatefulWidget {
 
 class _SwitchState extends State<StatefulSwitch> {
   late bool _value;
-  bool _hovered = false;
 
   @override
   void initState() {
@@ -46,43 +47,41 @@ class _SwitchState extends State<StatefulSwitch> {
 
   @override
   ElementWidget build(BuildContext context) {
-    return _SwitchRender(
-      value: _value,
-      hovered: _hovered,
-      onToggle: toggle,
-      onHover: (v) => setState(() => _hovered = v),
-    );
+    return _SwitchRender(value: _value, onToggle: toggle);
   }
 }
 
-class _SwitchRender extends Widget {
+class _SwitchRender extends Widget with Hoverable, HoverAnimated {
   final bool value;
-  final bool hovered;
   final VoidCallback onToggle;
-  final void Function(bool) onHover;
 
-  _SwitchRender({
-    required this.value,
-    required this.hovered,
-    required this.onToggle,
-    required this.onHover,
-  }) {
-    onClick = () { onToggle(); return true; };
-    onMouseEnter = () => setState(() => onHover(true));
-    onMouseLeave = () => setState(() => onHover(false));
+  _SwitchRender({required this.value, required this.onToggle}) {
+    onClick = () {
+      onToggle();
+      return true;
+    };
     width = 42;
     height = 22;
   }
 
   @override
+  bool get acceptsFocus => true;
+
+  @override
   void draw(Painter canvas) {
     final trackColor = value ? const Color(0, 180, 80) : palette.mid;
-    final fill = hovered
-        ? Color.blend(trackColor, const Color(255, 255, 255, 24))
-        : trackColor;
+    final fill = transitionHover(
+      trackColor,
+      Color.blend(trackColor, const Color(255, 255, 255, 24)),
+    );
 
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
       Paint()..color = fill,
     );
     canvas.drawRect(
@@ -90,7 +89,12 @@ class _SwitchRender extends Widget {
       Paint()..color = palette.shadow,
     );
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), (y + height - 1).toDouble(), width.toDouble(), 1),
+      Rect.fromLTWH(
+        x.toDouble(),
+        (y + height - 1).toDouble(),
+        width.toDouble(),
+        1,
+      ),
       Paint()..color = palette.shadow,
     );
 
@@ -109,5 +113,4 @@ class _SwitchRender extends Widget {
     width = containerWidth > 0 ? containerWidth : 42;
     height = 22;
   }
-
 }

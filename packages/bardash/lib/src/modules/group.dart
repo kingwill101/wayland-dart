@@ -35,8 +35,7 @@ class GroupModule extends BarModule {
   @override
   String get name => _groupName;
 
-  List<BarModule> get contentChildren =>
-      List.unmodifiable(_contentChildren);
+  List<BarModule> get contentChildren => List.unmodifiable(_contentChildren);
 
   /// Wire shared config maps so children receive their own module blocks.
   void bindFactory({
@@ -76,9 +75,7 @@ class GroupModule extends BarModule {
     for (final childName in names) {
       final child = createModule(childName);
       if (child == null) continue;
-      final childCfg = <String, String>{
-        'icon-font-family': _iconFontFamily,
-      };
+      final childCfg = <String, String>{'icon-font-family': _iconFontFamily};
       final block = _allConfigs[childName];
       if (block != null) {
         for (final e in block.entries) {
@@ -101,11 +98,7 @@ class GroupModule extends BarModule {
     for (var i = 0; i < _contentChildren.length; i++) {
       if (i > 0 && _separator.isNotEmpty) {
         final sep = SeparatorModule();
-        sep.init({
-          'format': _separator,
-          'padding': '0',
-          'color': '#787878',
-        });
+        sep.init({'format': _separator, 'padding': '0', 'color': '#787878'});
         _allChildren.add(sep);
         boxChildren.add(ModuleWidget(sep));
       }
@@ -163,10 +156,8 @@ class GroupModule extends BarModule {
         ? child.tooltip
         : (child.tooltipFormat.isNotEmpty ? child.tooltipFormat : '');
     tooltip = tip;
-    tooltipAnchorX =
-        child.tooltipAnchorX >= 0 ? child.tooltipAnchorX : hoverX;
-    tooltipAnchorY =
-        child.tooltipAnchorY >= 0 ? child.tooltipAnchorY : cy + 8;
+    tooltipAnchorX = child.tooltipAnchorX >= 0 ? child.tooltipAnchorX : hoverX;
+    tooltipAnchorY = child.tooltipAnchorY >= 0 ? child.tooltipAnchorY : cy + 8;
   }
 
   @override
@@ -181,8 +172,7 @@ class GroupModule extends BarModule {
     // Delegate to the child once (CustomModule runs on-click itself).
     // Pass coords relative to the child widget for any multi-zone modules.
     final childWidget = _moduleWidgetFor(child);
-    final localX =
-        childWidget != null ? absX - childWidget.x : absX;
+    final localX = childWidget != null ? absX - childWidget.x : absX;
     final localY = y;
     child.hoverX = absX;
     child.onClick(localX, localY, button: button);
@@ -233,49 +223,7 @@ class GroupModule extends BarModule {
   }
 }
 
-class _GroupBox extends Widget {
-  final Color? background;
-  final Widget child;
-
-  _GroupBox({this.background, required this.child});
-
-  @override
-  void measure(Painter painter) {
-    child.measure(painter);
-    width = child.width;
-    height = child.height > 0 ? child.height : 14;
-  }
-
-  @override
-  void draw(Painter canvas) {
-    child
-      ..x = x
-      ..y = y
-      ..width = width
-      ..height = height;
-    if (background != null) {
-      final h = (height - 4).clamp(1, height);
-      canvas.drawRect(
-        Rect.fromLTWH(
-          x.toDouble(),
-          y.toDouble() + 2,
-          width.toDouble(),
-          h.toDouble(),
-        ),
-        Paint()..color = background!,
-      );
-    }
-    child.draw(canvas);
-  }
-
-  @override
-  bool hitTest(int px, int py) {
-    child
-      ..x = x
-      ..y = y
-      ..width = width
-      ..height = height;
-    if (child.hitTest(px, py)) return true;
-    return super.hitTest(px, py);
-  }
+class _GroupBox extends DecoratedBox {
+  _GroupBox({Color? background, required Widget child})
+    : super(color: background, child: child);
 }

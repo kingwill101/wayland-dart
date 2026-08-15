@@ -4,7 +4,6 @@ import '../widget.dart';
 
 class GroupBox extends Widget {
   @override
-
   String? title;
   @override
   List<Widget> children;
@@ -28,9 +27,9 @@ class GroupBox extends Widget {
     this.padding = 12,
     this.spacing = 8,
     this.titleHeight = 22,
-  })  : assert(borderWidth >= 0, 'GroupBox borderWidth must be >= 0'),
-        assert(padding >= 0, 'GroupBox padding must be >= 0'),
-        assert(spacing >= 0, 'GroupBox spacing must be >= 0');
+  }) : assert(borderWidth >= 0, 'GroupBox borderWidth must be >= 0'),
+       assert(padding >= 0, 'GroupBox padding must be >= 0'),
+       assert(spacing >= 0, 'GroupBox spacing must be >= 0');
 
   int get _titleOffset => title == null ? 0 : titleHeight;
 
@@ -51,26 +50,51 @@ class GroupBox extends Widget {
     performLayout(width);
 
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
       Paint()..color = backgroundColor,
     );
 
     // Border
     if (borderWidth > 0) {
       canvas.drawRect(
-        Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), borderWidth.toDouble()),
+        Rect.fromLTWH(
+          x.toDouble(),
+          y.toDouble(),
+          width.toDouble(),
+          borderWidth.toDouble(),
+        ),
         Paint()..color = borderColor,
       );
       canvas.drawRect(
-        Rect.fromLTWH(x.toDouble(), (y + height - borderWidth).toDouble(), width.toDouble(), borderWidth.toDouble()),
+        Rect.fromLTWH(
+          x.toDouble(),
+          (y + height - borderWidth).toDouble(),
+          width.toDouble(),
+          borderWidth.toDouble(),
+        ),
         Paint()..color = borderColor,
       );
       canvas.drawRect(
-        Rect.fromLTWH(x.toDouble(), y.toDouble(), borderWidth.toDouble(), height.toDouble()),
+        Rect.fromLTWH(
+          x.toDouble(),
+          y.toDouble(),
+          borderWidth.toDouble(),
+          height.toDouble(),
+        ),
         Paint()..color = borderColor,
       );
       canvas.drawRect(
-        Rect.fromLTWH((x + width - borderWidth).toDouble(), y.toDouble(), borderWidth.toDouble(), height.toDouble()),
+        Rect.fromLTWH(
+          (x + width - borderWidth).toDouble(),
+          y.toDouble(),
+          borderWidth.toDouble(),
+          height.toDouble(),
+        ),
         Paint()..color = borderColor,
       );
     }
@@ -80,12 +104,20 @@ class GroupBox extends Widget {
       final titleW = title!.length * 8 + 8;
       final titleX = x + padding;
       canvas.drawRect(
-        Rect.fromLTWH(titleX.toDouble(), y.toDouble(), titleW.toDouble(), titleHeight.toDouble()),
+        Rect.fromLTWH(
+          titleX.toDouble(),
+          y.toDouble(),
+          titleW.toDouble(),
+          titleHeight.toDouble(),
+        ),
         Paint()..color = titleBg,
       );
       canvas.drawText(
         title!,
-        Offset((titleX + 4).toDouble(), (y + (titleHeight - 16) ~/ 2).toDouble()),
+        Offset(
+          (titleX + 4).toDouble(),
+          (y + (titleHeight - 16) ~/ 2).toDouble(),
+        ),
         color: titleColor,
         size: 16,
       );

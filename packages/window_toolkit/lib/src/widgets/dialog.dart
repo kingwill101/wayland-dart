@@ -1,15 +1,17 @@
 import '../drawing/color.dart';
+import '../mixins/hoverable.dart';
+import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
+import '../style.dart';
+import '../style/style_patch.dart';
 import '../widget.dart';
 
-class DialogButton extends Widget {
+class DialogButton extends Widget with Hoverable, HoverAnimated {
   String label;
   Color textColor;
   Color backgroundColor;
   Color hoverColor;
   VoidCallback? onPressed;
-
-  bool _hovered = false;
 
   DialogButton(
     this.label, {
@@ -17,19 +19,39 @@ class DialogButton extends Widget {
     this.backgroundColor = const Color(55, 55, 55),
     this.hoverColor = const Color(80, 80, 80),
     this.onPressed,
-  })  : assert(label.isNotEmpty, 'DialogButton label must not be empty') {
+  }) : assert(label.isNotEmpty, 'DialogButton label must not be empty') {
     width = label.length * 8 + 16;
     height = 24;
-    onMouseEnter = () => setState(() => _hovered = true);
-    onMouseLeave = () => setState(() => _hovered = false);
-    onClick = () { onPressed?.call(); return true; };
+    onClick = () {
+      onPressed?.call();
+      return true;
+    };
   }
 
   @override
+  bool get acceptsFocus => true;
+
+  @override
+  Style styleRole() => Style(
+    color: textColor,
+    backgroundColor: backgroundColor,
+    borderColor: backgroundColor,
+  );
+
+  @override
   void draw(Painter canvas) {
-    final fill = _hovered ? hoverColor : backgroundColor;
+    final base = resolvedStyle();
+    final hover = resolvedStyleOn(const [
+      'hover',
+    ], local: StylePatch(backgroundColor: hoverColor));
+    final fill = transitionHover(base.backgroundColor!, hover.backgroundColor!);
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
       Paint()..color = fill,
     );
     canvas.drawText(
@@ -38,7 +60,7 @@ class DialogButton extends Widget {
         (x + (width - label.length * 8) ~/ 2).toDouble(),
         (y + 4).toDouble(),
       ),
-      color: textColor,
+      color: base.color,
       size: 16,
     );
   }
@@ -65,35 +87,58 @@ class Dialog extends Widget {
     this.textColor = const Color(200, 200, 200),
     this.titleBarHeight = 30,
     this.padding = 16,
-  })  : assert(padding >= 0, 'Dialog padding must be >= 0') {
+  }) : assert(padding >= 0, 'Dialog padding must be >= 0') {
     width = 300;
     final msgLines = (message.length / 40).ceil().clamp(1, 4);
     height = titleBarHeight + padding * 2 + msgLines * 20 + 40;
   }
 
   @override
+  Style styleRole() => Style(
+    color: textColor,
+    backgroundColor: backgroundColor,
+    borderColor: borderColor,
+  );
+
+  @override
   void draw(Painter canvas) {
+    final style = resolvedStyle();
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
-      Paint()..color = backgroundColor,
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
+      Paint()..color = style.backgroundColor!,
     );
 
     // Border
     canvas.drawRect(
       Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), 1),
-      Paint()..color = borderColor,
+      Paint()..color = style.borderColor,
     );
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), (y + height - 1).toDouble(), width.toDouble(), 1),
-      Paint()..color = borderColor,
+      Rect.fromLTWH(
+        x.toDouble(),
+        (y + height - 1).toDouble(),
+        width.toDouble(),
+        1,
+      ),
+      Paint()..color = style.borderColor,
     );
     canvas.drawRect(
       Rect.fromLTWH(x.toDouble(), y.toDouble(), 1, height.toDouble()),
-      Paint()..color = borderColor,
+      Paint()..color = style.borderColor,
     );
     canvas.drawRect(
-      Rect.fromLTWH((x + width - 1).toDouble(), y.toDouble(), 1, height.toDouble()),
-      Paint()..color = borderColor,
+      Rect.fromLTWH(
+        (x + width - 1).toDouble(),
+        y.toDouble(),
+        1,
+        height.toDouble(),
+      ),
+      Paint()..color = style.borderColor,
     );
 
     if (title != null) {
@@ -108,8 +153,11 @@ class Dialog extends Widget {
       );
       canvas.drawText(
         title!,
-        Offset((x + padding).toDouble(), (y + (titleBarHeight - 16) ~/ 2).toDouble()),
-        color: titleColor,
+        Offset(
+          (x + padding).toDouble(),
+          (y + (titleBarHeight - 16) ~/ 2).toDouble(),
+        ),
+        color: style.color,
         size: 16,
       );
     }
@@ -118,7 +166,7 @@ class Dialog extends Widget {
     canvas.drawText(
       message,
       Offset((x + padding).toDouble(), textY.toDouble()),
-      color: textColor,
+      color: style.color,
       size: 16,
     );
 

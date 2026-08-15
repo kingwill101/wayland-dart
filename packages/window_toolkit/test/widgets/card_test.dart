@@ -20,9 +20,9 @@ void main() {
     });
 
     test('title is displayed when set', () {
-      final harness = WidgetHarness(Card(title: 'Test Card', children: [
-        Button('OK'),
-      ]));
+      final harness = WidgetHarness(
+        Card(title: 'Test Card', children: [Button('OK')]),
+      );
       harness.draw();
       final texts = harness.painter.commands.ofType<DrawTextCommand>();
       expect(texts, isNotEmpty);

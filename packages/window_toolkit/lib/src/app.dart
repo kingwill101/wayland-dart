@@ -52,8 +52,6 @@ class Application {
     _eventReceivers.insert(0, receiver);
   }
 
-
-
   void _execTick() {
     if (!_running) return;
 

@@ -1,7 +1,6 @@
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
-
 abstract class FakeBackendBase implements Backend, EventReceiver {
   int _width = 0;
   int _height = 0;

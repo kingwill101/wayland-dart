@@ -69,7 +69,7 @@ class LayerBackend with Size, Events implements Backend {
   bool get isRunning => _running;
 
   @override
-  bool get canPaint => !_bufferBusy;
+  bool get canPaint => !_bufferBusy && connection.isConnected;
 
   LayerBackend({
     this.anchor = Anchor.top,
@@ -353,6 +353,7 @@ class LayerBackend with Size, Events implements Backend {
 
   @override
   void requestPaint() {
+    if (!connection.isConnected) return;
     stderr.writeln('[wt:layer] requestPaint bufferBusy=$_bufferBusy');
     if (_bufferBusy) {
       _needsPaint = true;

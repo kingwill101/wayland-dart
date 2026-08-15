@@ -3,7 +3,6 @@ import 'backlight.dart';
 import 'battery.dart';
 import 'bluetooth.dart';
 import 'clock.dart';
-import 'mpris.dart';
 import 'cpu.dart';
 import 'cpu_frequency.dart';
 import 'custom.dart';
@@ -21,9 +20,7 @@ import 'systemd_failed.dart';
 import 'temperature.dart';
 import 'upower.dart';
 import 'user.dart';
-import 'pulseaudio.dart';
 import 'cpu_usage.dart';
-import 'volume.dart';
 import 'wireplumber.dart';
 import 'mpd.dart';
 import 'sway_window.dart';
@@ -38,6 +35,7 @@ import 'wwan.dart';
 import 'gps.dart';
 import 'pulseaudio_slider.dart';
 import 'backlight_slider.dart';
+import 'audio.dart';
 import 'sni.dart';
 import 'image.dart';
 import 'hyprland_workspaces.dart';
@@ -57,10 +55,11 @@ final Map<String, ModuleConstructor> _registry = {
   'cpu-frequency': () => CpuFrequencyModule(),
   'disk': () => DiskModule(),
   'memory': () => MemoryModule(),
-  'mpris': () => MprisModule(),
-  'pulseaudio': () => PulseaudioModule(),
+  // Compatibility aliases. AudioModule owns the shared Pulse + MPRIS state.
+  'mpris': () => AudioModule(mediaOnly: true),
+  'pulseaudio': () => AudioModule(),
   'cpu-usage': () => CpuUsageModule(),
-  'volume': () => VolumeModule(),
+  'volume': () => AudioModule(),
   'network': () => NetworkModule(),
   'custom': () => CustomModule(),
   'temperature': () => TemperatureModule(),
@@ -86,6 +85,7 @@ final Map<String, ModuleConstructor> _registry = {
   'gps': () => GpsModule(),
   'pulseaudio-slider': () => PulseaudioSliderModule(),
   'backlight-slider': () => BacklightSliderModule(),
+  'audio': () => AudioModule(),
   // Waybar names the system tray "tray"; we implement StatusNotifierItem as sni.
   'sni': () => SniModule(),
   'tray': () => SniModule(),
@@ -122,7 +122,4 @@ BarModule? createModule(String name) {
   return null;
 }
 
-List<String> get availableModules => [
-      ..._registry.keys,
-      'group/* (dynamic)',
-    ];
+List<String> get availableModules => [..._registry.keys, 'group/* (dynamic)'];

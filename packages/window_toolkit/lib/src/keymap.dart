@@ -12,16 +12,24 @@ import 'dart:io' show Platform;
 import 'package:ffi/ffi.dart';
 import 'package:wayland/wayland.dart' show munmap;
 
-final DynamicLibrary _libc =
-    DynamicLibrary.open(Platform.isLinux ? 'libc.so.6' : 'libc.dylib');
+final DynamicLibrary _libc = DynamicLibrary.open(
+  Platform.isLinux ? 'libc.so.6' : 'libc.dylib',
+);
 
 // Low-level mmap with PROT_READ only (keymap fd is read-only).
 final Pointer<Void> Function(Pointer<Void>, int, int, int, int, int)
-    _mmapReadOnly = _libc.lookupFunction<
-        Pointer<Void> Function(Pointer<Void>, IntPtr, Int32, Int32, Int32,
-            IntPtr),
-        Pointer<Void> Function(Pointer<Void>, int, int, int, int,
-            int)>('mmap');
+_mmapReadOnly = _libc
+    .lookupFunction<
+      Pointer<Void> Function(
+        Pointer<Void>,
+        IntPtr,
+        Int32,
+        Int32,
+        Int32,
+        IntPtr,
+      ),
+      Pointer<Void> Function(Pointer<Void>, int, int, int, int, int)
+    >('mmap');
 
 final int Function(int) _close = _libc
     .lookupFunction<Int32 Function(Int32), int Function(int)>('close');
@@ -29,7 +37,9 @@ final int Function(int) _close = _libc
 // ── Opaque handle types ────────────────────────────────────────────
 
 final class XkbContext extends Opaque {}
+
 final class XkbKeymap extends Opaque {}
+
 final class XkbState extends Opaque {}
 
 // ── Constants ──────────────────────────────────────────────────────
@@ -65,57 +75,94 @@ DynamicLibrary get _xkb {
   throw UnsupportedError(
     'libxkbcommon not found. Install it with:\n'
     '  apt install libxkbcommon-dev   (Debian/Ubuntu)\n'
-    '  pacman -S libxkbcommon          (Arch)');
+    '  pacman -S libxkbcommon          (Arch)',
+  );
 }
 
 // ── FFI function bindings ─────────────────────────────────────────
 
 final Pointer<XkbContext> Function(int) _ctxNew = _xkb
-    .lookupFunction<Pointer<XkbContext> Function(Int32),
-        Pointer<XkbContext> Function(int)>('xkb_context_new');
+    .lookupFunction<
+      Pointer<XkbContext> Function(Int32),
+      Pointer<XkbContext> Function(int)
+    >('xkb_context_new');
 
 final void Function(Pointer<XkbContext>) _ctxUnref = _xkb
-    .lookupFunction<Void Function(Pointer<XkbContext>),
-        void Function(Pointer<XkbContext>)>('xkb_context_unref');
+    .lookupFunction<
+      Void Function(Pointer<XkbContext>),
+      void Function(Pointer<XkbContext>)
+    >('xkb_context_unref');
 
 final Pointer<XkbKeymap> Function(
-    Pointer<XkbContext>, Pointer<Utf8>, int, int, int) _keymapNewFromBuffer =
-    _xkb.lookupFunction<
-        Pointer<XkbKeymap> Function(
-            Pointer<XkbContext>, Pointer<Utf8>, Int32, Int32, Int32),
-        Pointer<XkbKeymap> Function(Pointer<XkbContext>, Pointer<Utf8>, int,
-            int, int)>('xkb_keymap_new_from_buffer');
+  Pointer<XkbContext>,
+  Pointer<Utf8>,
+  int,
+  int,
+  int,
+)
+_keymapNewFromBuffer = _xkb
+    .lookupFunction<
+      Pointer<XkbKeymap> Function(
+        Pointer<XkbContext>,
+        Pointer<Utf8>,
+        Int32,
+        Int32,
+        Int32,
+      ),
+      Pointer<XkbKeymap> Function(
+        Pointer<XkbContext>,
+        Pointer<Utf8>,
+        int,
+        int,
+        int,
+      )
+    >('xkb_keymap_new_from_buffer');
 
 final void Function(Pointer<XkbKeymap>) _keymapUnref = _xkb
-    .lookupFunction<Void Function(Pointer<XkbKeymap>),
-        void Function(Pointer<XkbKeymap>)>('xkb_keymap_unref');
+    .lookupFunction<
+      Void Function(Pointer<XkbKeymap>),
+      void Function(Pointer<XkbKeymap>)
+    >('xkb_keymap_unref');
 
 final Pointer<XkbState> Function(Pointer<XkbKeymap>) _stateNew = _xkb
-    .lookupFunction<Pointer<XkbState> Function(Pointer<XkbKeymap>),
-        Pointer<XkbState> Function(
-            Pointer<XkbKeymap>)>('xkb_state_new');
+    .lookupFunction<
+      Pointer<XkbState> Function(Pointer<XkbKeymap>),
+      Pointer<XkbState> Function(Pointer<XkbKeymap>)
+    >('xkb_state_new');
 
 final void Function(Pointer<XkbState>) _stateUnref = _xkb
-    .lookupFunction<Void Function(Pointer<XkbState>),
-        void Function(Pointer<XkbState>)>('xkb_state_unref');
+    .lookupFunction<
+      Void Function(Pointer<XkbState>),
+      void Function(Pointer<XkbState>)
+    >('xkb_state_unref');
 
 final int Function(Pointer<XkbState>, int, int) _stateUpdateKey = _xkb
     .lookupFunction<
-        Int32 Function(Pointer<XkbState>, Int32, Int32),
-        int Function(Pointer<XkbState>, int, int)>('xkb_state_update_key');
+      Int32 Function(Pointer<XkbState>, Int32, Int32),
+      int Function(Pointer<XkbState>, int, int)
+    >('xkb_state_update_key');
 
-final int Function(Pointer<XkbState>, int, Pointer<Utf8>, int) _stateKeyGetUtf8 =
-    _xkb.lookupFunction<
-        Int32 Function(Pointer<XkbState>, Int32, Pointer<Utf8>, IntPtr),
-        int Function(Pointer<XkbState>, int, Pointer<Utf8>,
-            int)>('xkb_state_key_get_utf8');
+final int Function(Pointer<XkbState>, int, Pointer<Utf8>, int)
+_stateKeyGetUtf8 = _xkb
+    .lookupFunction<
+      Int32 Function(Pointer<XkbState>, Int32, Pointer<Utf8>, IntPtr),
+      int Function(Pointer<XkbState>, int, Pointer<Utf8>, int)
+    >('xkb_state_key_get_utf8');
 
 final void Function(Pointer<XkbState>, int, int, int, int, int, int)
-    _stateUpdateMask = _xkb.lookupFunction<
-        Void Function(
-            Pointer<XkbState>, Uint32, Uint32, Uint32, Uint32, Uint32, Uint32),
-        void Function(Pointer<XkbState>, int, int, int, int, int,
-            int)>('xkb_state_update_mask');
+_stateUpdateMask = _xkb
+    .lookupFunction<
+      Void Function(
+        Pointer<XkbState>,
+        Uint32,
+        Uint32,
+        Uint32,
+        Uint32,
+        Uint32,
+        Uint32,
+      ),
+      void Function(Pointer<XkbState>, int, int, int, int, int, int)
+    >('xkb_state_update_mask');
 
 // ── High-level wrapper ─────────────────────────────────────────────
 
@@ -137,14 +184,20 @@ class XkbKeyboard {
   void loadKeymap(int format, int fd, int size) {
     _clear();
 
-    if (format != 1) { _close(fd); return; }
+    if (format != 1) {
+      _close(fd);
+      return;
+    }
 
     // mmap the keymap fd with PROT_READ only (the compositor sends a
     // read-only fd, so PROT_WRITE would fail).
     const protRead = 1; // PROT_READ
     const mapShared = 1; // MAP_SHARED
     final mapped = _mmapReadOnly(nullptr, size, protRead, mapShared, fd, 0);
-    if (mapped == nullptr || mapped.address == -1) { _close(fd); return; }
+    if (mapped == nullptr || mapped.address == -1) {
+      _close(fd);
+      return;
+    }
 
     _mappedKeymap = mapped;
     _mappedSize = size;
@@ -178,7 +231,11 @@ class XkbKeyboard {
     if (_state == nullptr) return null;
 
     final xkbKeycode = keycode + 8;
-    _stateUpdateKey(_state, xkbKeycode, pressed ? XkbKeyDir.down : XkbKeyDir.up);
+    _stateUpdateKey(
+      _state,
+      xkbKeycode,
+      pressed ? XkbKeyDir.down : XkbKeyDir.up,
+    );
 
     if (!pressed) return null;
 
@@ -189,11 +246,18 @@ class XkbKeyboard {
       final bytes = buf.asTypedList(len);
       // Check for all-zero (invalid) or unprintable
       bool allZero = true;
-      for (int i = 0; i < len; i++) { if (bytes[i] != 0) { allZero = false; break; } }
+      for (int i = 0; i < len; i++) {
+        if (bytes[i] != 0) {
+          allZero = false;
+          break;
+        }
+      }
       if (allZero) return null;
       try {
         return utf8.decode(bytes.toList());
-      } catch (_) { return null; }
+      } catch (_) {
+        return null;
+      }
     } finally {
       calloc.free(buf);
     }

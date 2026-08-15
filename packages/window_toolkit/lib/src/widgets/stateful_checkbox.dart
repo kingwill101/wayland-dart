@@ -12,6 +12,10 @@
 library;
 
 import '../painter/painter.dart';
+import '../drawing/color.dart';
+import '../interaction.dart';
+import '../mixins/hoverable.dart';
+import '../mixins/hover_animated.dart';
 import '../widget.dart';
 import 'label.dart';
 
@@ -58,7 +62,7 @@ class _CheckboxState extends State<StatefulCheckbox> {
 }
 
 /// Rendering widget for the stateful checkbox.
-class _CheckboxRender extends Widget {
+class _CheckboxRender extends Widget with Hoverable, HoverAnimated {
   final bool checked;
   final VoidCallback onToggle;
   final String label;
@@ -70,30 +74,82 @@ class _CheckboxRender extends Widget {
     this.label = '',
   }) {
     tabIndex = 1;
-    onClick = () { onToggle(); return true; };
+    setInteractionState(WidgetState.checked, checked);
+    onClick = () {
+      onToggle();
+      return true;
+    };
   }
 
   @override
+  bool get acceptsFocus => true;
+
+  @override
   void draw(Painter canvas) {
-    final outer = Rect.fromLTWH(x.toDouble(), y.toDouble(), boxSize.toDouble(), boxSize.toDouble());
-    canvas.drawRect(outer, Paint()..color = palette.base);
-    canvas.drawRect(Rect.fromLTWH(x.toDouble(), y.toDouble(), boxSize.toDouble(), 1),
-        Paint()..color = palette.mid);
-    canvas.drawRect(Rect.fromLTWH(x.toDouble(), (y + boxSize - 1).toDouble(), boxSize.toDouble(), 1),
-        Paint()..color = palette.mid);
-    canvas.drawRect(Rect.fromLTWH(x.toDouble(), y.toDouble(), 1, boxSize.toDouble()),
-        Paint()..color = palette.mid);
-    canvas.drawRect(Rect.fromLTWH((x + boxSize - 1).toDouble(), y.toDouble(), 1, boxSize.toDouble()),
-        Paint()..color = palette.mid);
+    final outer = Rect.fromLTWH(
+      x.toDouble(),
+      y.toDouble(),
+      boxSize.toDouble(),
+      boxSize.toDouble(),
+    );
+    final fill = transitionHover(
+      palette.base,
+      Color.blend(palette.base, const Color(255, 255, 255, 18)),
+    );
+    canvas.drawRect(outer, Paint()..color = fill);
+    canvas.drawRect(
+      Rect.fromLTWH(x.toDouble(), y.toDouble(), boxSize.toDouble(), 1),
+      Paint()..color = palette.mid,
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(
+        x.toDouble(),
+        (y + boxSize - 1).toDouble(),
+        boxSize.toDouble(),
+        1,
+      ),
+      Paint()..color = palette.mid,
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(x.toDouble(), y.toDouble(), 1, boxSize.toDouble()),
+      Paint()..color = palette.mid,
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(
+        (x + boxSize - 1).toDouble(),
+        y.toDouble(),
+        1,
+        boxSize.toDouble(),
+      ),
+      Paint()..color = palette.mid,
+    );
 
     if (checked) {
-      final p = Paint()..color = palette.text..strokeWidth = 2;
+      final p = Paint()
+        ..color = palette.text
+        ..strokeWidth = 2;
       canvas.drawLine(
-        Offset((x + boxSize * 0.22).toDouble(), (y + boxSize * 0.55).toDouble()),
-        Offset((x + boxSize * 0.42).toDouble(), (y + boxSize * 0.75).toDouble()), p);
+        Offset(
+          (x + boxSize * 0.22).toDouble(),
+          (y + boxSize * 0.55).toDouble(),
+        ),
+        Offset(
+          (x + boxSize * 0.42).toDouble(),
+          (y + boxSize * 0.75).toDouble(),
+        ),
+        p,
+      );
       canvas.drawLine(
-        Offset((x + boxSize * 0.40).toDouble(), (y + boxSize * 0.74).toDouble()),
-        Offset((x + boxSize * 0.78).toDouble(), (y + boxSize * 0.28).toDouble()), p);
+        Offset(
+          (x + boxSize * 0.40).toDouble(),
+          (y + boxSize * 0.74).toDouble(),
+        ),
+        Offset(
+          (x + boxSize * 0.78).toDouble(),
+          (y + boxSize * 0.28).toDouble(),
+        ),
+        p,
+      );
     }
 
     if (label.isNotEmpty) {
@@ -109,5 +165,4 @@ class _CheckboxRender extends Widget {
     width = containerWidth;
     height = boxSize;
   }
-
 }

@@ -43,6 +43,21 @@ final class DrawLineCommand extends PaintCommand {
   const DrawLineCommand(this.from, this.to, this.paint);
 }
 
+final class DrawArcCommand extends PaintCommand {
+  final Rect oval;
+  final double startAngle;
+  final double sweepAngle;
+  final bool useCenter;
+  final RecordedPaint paint;
+  const DrawArcCommand(
+    this.oval,
+    this.startAngle,
+    this.sweepAngle,
+    this.useCenter,
+    this.paint,
+  );
+}
+
 final class DrawImageCommand extends PaintCommand {
   final String filePath;
   final double x;
@@ -57,7 +72,12 @@ final class DrawLinearGradientCommand extends PaintCommand {
   final Color color0;
   final Color color1;
   final double angle;
-  const DrawLinearGradientCommand(this.rect, this.color0, this.color1, this.angle);
+  const DrawLinearGradientCommand(
+    this.rect,
+    this.color0,
+    this.color1,
+    this.angle,
+  );
 }
 
 final class DrawTextCommand extends PaintCommand {
@@ -66,7 +86,13 @@ final class DrawTextCommand extends PaintCommand {
   final Color? color;
   final double size;
   final String fontFamily;
-  const DrawTextCommand(this.text, this.position, {this.color, this.size = 14, this.fontFamily = 'sans'});
+  const DrawTextCommand(
+    this.text,
+    this.position, {
+    this.color,
+    this.size = 14,
+    this.fontFamily = 'sans',
+  });
 }
 
 // ── Recorded paint state ─────────────────────────────────────────
@@ -85,11 +111,11 @@ class RecordedPaint {
   });
 
   factory RecordedPaint.fromPaint(Paint p) => RecordedPaint(
-        color: p.color,
-        style: p.style,
-        strokeWidth: p.strokeWidth,
-        antiAlias: p.antiAlias,
-      );
+    color: p.color,
+    style: p.style,
+    strokeWidth: p.strokeWidth,
+    antiAlias: p.antiAlias,
+  );
 }
 
 // ── Transform state ──────────────────────────────────────────────
@@ -109,7 +135,8 @@ class RecordingPainter implements Painter {
   final List<_TransformState> _stack = [_TransformState.identity()];
 
   RecordingPainter({double width = 800, double height = 600})
-      : _width = width, _height = height;
+    : _width = width,
+      _height = height;
 
   @override
   Size get size => Size(_width, _height);
@@ -123,8 +150,11 @@ class RecordingPainter implements Painter {
   Rect _transformRect(Rect r) {
     final t = _current;
     return Rect.fromLTRB(
-        r.left * t.sx + t.tx, r.top * t.sy + t.ty,
-        r.right * t.sx + t.tx, r.bottom * t.sy + t.ty);
+      r.left * t.sx + t.tx,
+      r.top * t.sy + t.ty,
+      r.right * t.sx + t.tx,
+      r.bottom * t.sy + t.ty,
+    );
   }
 
   Offset _transformOffset(Offset o) {
@@ -138,12 +168,15 @@ class RecordingPainter implements Painter {
   void clear(Color color) => commands.add(ClearCommand(color));
 
   @override
-  void drawRect(Rect rect, Paint paint) =>
-      commands.add(DrawRectCommand(_transformRect(rect), RecordedPaint.fromPaint(paint)));
+  void drawRect(Rect rect, Paint paint) => commands.add(
+    DrawRectCommand(_transformRect(rect), RecordedPaint.fromPaint(paint)),
+  );
 
   @override
   void drawRRect(Rect rect, double radiusX, double radiusY, Paint paint) =>
-      commands.add(DrawRectCommand(_transformRect(rect), RecordedPaint.fromPaint(paint)));
+      commands.add(
+        DrawRectCommand(_transformRect(rect), RecordedPaint.fromPaint(paint)),
+      );
 
   @override
   void drawCircle(Offset center, double radius, Paint paint) {
@@ -153,33 +186,90 @@ class RecordingPainter implements Painter {
   }
 
   @override
-  void drawLine(Offset from, Offset to, Paint paint) =>
-      commands.add(DrawLineCommand(_transformOffset(from), _transformOffset(to),
-          RecordedPaint.fromPaint(paint)));
+  void drawLine(Offset from, Offset to, Paint paint) => commands.add(
+    DrawLineCommand(
+      _transformOffset(from),
+      _transformOffset(to),
+      RecordedPaint.fromPaint(paint),
+    ),
+  );
 
   @override
-  void drawText(String text, Offset position,
-      {Color? color, double size = 14, String fontFamily = 'sans'}) {
-    commands.add(DrawTextCommand(text, _transformOffset(position),
-        color: color, size: size, fontFamily: fontFamily));
+  void drawArc(
+    Rect oval,
+    double startAngle,
+    double sweepAngle,
+    bool useCenter,
+    Paint paint,
+  ) {
+    commands.add(
+      DrawArcCommand(
+        _transformRect(oval),
+        startAngle,
+        sweepAngle,
+        useCenter,
+        RecordedPaint.fromPaint(paint),
+      ),
+    );
   }
 
   @override
-  Size measureText(String text, {double size = 14, String fontFamily = 'sans'}) =>
-      Size(text.length * size * 0.6, size);
+  void drawText(
+    String text,
+    Offset position, {
+    Color? color,
+    double size = 14,
+    String fontFamily = 'sans',
+  }) {
+    commands.add(
+      DrawTextCommand(
+        text,
+        _transformOffset(position),
+        color: color,
+        size: size,
+        fontFamily: fontFamily,
+      ),
+    );
+  }
 
   @override
-  double measureTextAdvance(String text, {double size = 14, String fontFamily = 'sans'}) =>
-      text.length * size * 0.6;
+  Size measureText(
+    String text, {
+    double size = 14,
+    String fontFamily = 'sans',
+  }) => Size(text.length * size * 0.6, size);
 
   @override
-  Rect measureTextBounds(String text, {double size = 14, String fontFamily = 'sans'}) =>
-      Rect.fromLTWH(0, 0, text.length * size * 0.6, size);
+  double measureTextAdvance(
+    String text, {
+    double size = 14,
+    String fontFamily = 'sans',
+  }) => text.length * size * 0.6;
 
   @override
-  void drawImage(String filePath, double x, double y, {double? width, double? height}) {
-    commands.add(DrawImageCommand(filePath, _current.tx + x, _current.ty + y,
-        width: width, height: height));
+  Rect measureTextBounds(
+    String text, {
+    double size = 14,
+    String fontFamily = 'sans',
+  }) => Rect.fromLTWH(0, 0, text.length * size * 0.6, size);
+
+  @override
+  void drawImage(
+    String filePath,
+    double x,
+    double y, {
+    double? width,
+    double? height,
+  }) {
+    commands.add(
+      DrawImageCommand(
+        filePath,
+        _current.tx + x,
+        _current.ty + y,
+        width: width,
+        height: height,
+      ),
+    );
   }
 
   @override
@@ -189,16 +279,30 @@ class RecordingPainter implements Painter {
   void dispose() {}
 
   @override
-  void drawLinearGradient(Rect rect, Color color0, Color color1, {double angle = 0.0}) {
-    commands.add(DrawLinearGradientCommand(_transformRect(rect), color0, color1, angle));
+  void drawLinearGradient(
+    Rect rect,
+    Color color0,
+    Color color1, {
+    double angle = 0.0,
+  }) {
+    commands.add(
+      DrawLinearGradientCommand(_transformRect(rect), color0, color1, angle),
+    );
   }
 
   @override
-  void clipRect(Rect rect) => commands.add(ClipRectCommand(_transformRect(rect)));
+  void clipRect(Rect rect) =>
+      commands.add(ClipRectCommand(_transformRect(rect)));
 
   @override
-  void save() => _stack.add(_TransformState(
-      sx: _current.sx, sy: _current.sy, tx: _current.tx, ty: _current.ty));
+  void save() => _stack.add(
+    _TransformState(
+      sx: _current.sx,
+      sy: _current.sy,
+      tx: _current.tx,
+      ty: _current.ty,
+    ),
+  );
 
   @override
   void restore() {
@@ -208,15 +312,21 @@ class RecordingPainter implements Painter {
   @override
   void translate(double dx, double dy) {
     _stack[_stack.length - 1] = _TransformState(
-        sx: _current.sx, sy: _current.sy,
-        tx: _current.tx + dx, ty: _current.ty + dy);
+      sx: _current.sx,
+      sy: _current.sy,
+      tx: _current.tx + dx,
+      ty: _current.ty + dy,
+    );
   }
 
   @override
   void scale(double sx, double sy) {
     _stack[_stack.length - 1] = _TransformState(
-        sx: _current.sx * sx, sy: _current.sy * sy,
-        tx: _current.tx, ty: _current.ty);
+      sx: _current.sx * sx,
+      sy: _current.sy * sy,
+      tx: _current.tx,
+      ty: _current.ty,
+    );
   }
 }
 
@@ -230,7 +340,8 @@ extension PaintCommandListX on List<PaintCommand> {
     final matches = ofType<T>().toList();
     if (matches.length != 1) {
       throw StateError(
-          'Expected exactly one ${T.runtimeType}, got ${matches.length}');
+        'Expected exactly one ${T.runtimeType}, got ${matches.length}',
+      );
     }
     return matches.single;
   }

@@ -6,10 +6,12 @@ void main() {
     test('Theme.of returns data in child build context', () {
       // Create a widget tree with Theme containing a consumer widget.
       final consumer = _ThemeReader();
-      final host = ElementHost(child: Theme(
-        data: Palette.lightPalette.forState(true, true),
-        child: consumer,
-      ));
+      final host = ElementHost(
+        child: Theme(
+          data: Palette.lightPalette.forState(true, true),
+          child: consumer,
+        ),
+      );
 
       host.performLayout(200);
 

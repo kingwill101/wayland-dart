@@ -1,13 +1,8 @@
-enum PixelFormat {
-  rgb,
-  rgba,
-  grayscale,
-  argb8888
-}
+enum PixelFormat { rgb, rgba, grayscale, argb8888 }
 
 class Color {
   final int a, r, g, b;
-  
+
   const Color(this.r, this.g, this.b, [this.a = 255]);
 
   factory Color.fromArgb8888(int argb) {
@@ -25,10 +20,14 @@ class Color {
 
   List<int> toList(PixelFormat format) {
     switch (format) {
-      case PixelFormat.rgb: return [r, g, b];
-      case PixelFormat.rgba: return [r, g, b, a];
-      case PixelFormat.grayscale: return [(r + g + b) ~/ 3];
-      case PixelFormat.argb8888: return [toArgb8888()];
+      case PixelFormat.rgb:
+        return [r, g, b];
+      case PixelFormat.rgba:
+        return [r, g, b, a];
+      case PixelFormat.grayscale:
+        return [(r + g + b) ~/ 3];
+      case PixelFormat.argb8888:
+        return [toArgb8888()];
     }
   }
 

@@ -23,7 +23,12 @@ class _Child extends Widget {
   @override
   void draw(Painter canvas) {
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
       Paint()..color = const Color(255, 0, 0),
     );
   }
@@ -62,16 +67,17 @@ void main() {
     final window = WidgetWindow(child);
 
     window.onMouseButtonPressed(MouseButtonEvent(15, 15, 272, true));
+    window.onMouseButtonReleased(MouseButtonEvent(15, 15, 272, false));
     expect(child.clicks, 1);
   });
 
   test('WidgetWindow tracks focus across clicks', () {
-    final a = _Child('a')
+    final a = Button('a')
       ..x = 0
       ..y = 0
       ..width = 20
       ..height = 40;
-    final b = _Child('b')
+    final b = Button('b')
       ..x = 30
       ..y = 0
       ..width = 20

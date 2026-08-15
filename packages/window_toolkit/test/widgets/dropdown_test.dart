@@ -28,10 +28,9 @@ void main() {
     });
 
     test('opened dropdown draws items', () {
-      final harness = WidgetHarness(Dropdown(
-        items: ['Red', 'Green', 'Blue'],
-        opened: true,
-      ));
+      final harness = WidgetHarness(
+        Dropdown(items: ['Red', 'Green', 'Blue'], opened: true),
+      );
       harness.draw();
       expect(harness.painter.commands, isNotEmpty);
     });

@@ -12,12 +12,13 @@ import 'font_metrics.dart';
 /// measure/draw (shared typeface + shape caches).
 class SkiaFontEngine extends FontEngineBase {
   SkiaFontEngine({SkiaTextEngine? textEngine, SkFontMgr? fontMgr})
-      : _text = textEngine ?? SkiaTextEngine.shared,
-        _mgr = fontMgr;
+    : _text = textEngine ?? SkiaTextEngine.shared,
+      _mgr = fontMgr;
 
   final SkiaTextEngine _text;
   SkFontMgr? _mgr;
   final Map<String, SkTypeface> _faces = {};
+
   /// Families registered via [addApplicationFont] (path → family name).
   final Map<String, String> _appFonts = {};
   List<String>? _familyCache;
@@ -33,12 +34,7 @@ class SkiaFontEngine extends FontEngineBase {
     if (_familyCache != null) {
       return List<String>.from(_familyCache!);
     }
-    final names = <String>{
-      'sans',
-      'serif',
-      'monospace',
-      ..._appFonts.values,
-    };
+    final names = <String>{'sans', 'serif', 'monospace', ..._appFonts.values};
     try {
       final n = _fontMgr.countFamilies();
       // Cap enumeration cost on huge system font sets.
@@ -135,8 +131,9 @@ class SkiaFontEngine extends FontEngineBase {
     final name = _resolveFamilyName(request);
     final face = _typeface(request);
     final exact = face.glyphCount > 0;
-    final resolvedName =
-        exact && face.familyName.isNotEmpty ? face.familyName : name;
+    final resolvedName = exact && face.familyName.isNotEmpty
+        ? face.familyName
+        : name;
     return FontInfo(
       family: resolvedName,
       pixelSize: request.pixelSize,
@@ -174,8 +171,10 @@ class SkiaFontEngine extends FontEngineBase {
       }
     } catch (_) {}
 
-    final metricsHeight =
-        (ascent + descent + leading).clamp(size * 0.5, size * 4.0);
+    final metricsHeight = (ascent + descent + leading).clamp(
+      size * 0.5,
+      size * 4.0,
+    );
 
     skFont.dispose();
 
@@ -188,22 +187,13 @@ class SkiaFontEngine extends FontEngineBase {
       averageCharWidth: avg,
       maxCharWidth: maxW,
       fixedPitch: isFixedPitch(family),
-      horizontalAdvance: (text) => _text.measureTextAdvance(
-        text,
-        size: size,
-        fontFamily: family,
-      ),
+      horizontalAdvance: (text) =>
+          _text.measureTextAdvance(text, size: size, fontFamily: family),
       // Shaped-blob bounds (line-top origin) — required for drawText v-center.
-      boundingRect: (text) => _text.measureTextBounds(
-        text,
-        size: size,
-        fontFamily: family,
-      ),
-      tightBoundingRect: (text) => _text.measureTextBounds(
-        text,
-        size: size,
-        fontFamily: family,
-      ),
+      boundingRect: (text) =>
+          _text.measureTextBounds(text, size: size, fontFamily: family),
+      tightBoundingRect: (text) =>
+          _text.measureTextBounds(text, size: size, fontFamily: family),
     );
   }
 

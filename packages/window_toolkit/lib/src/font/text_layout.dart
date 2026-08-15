@@ -93,11 +93,7 @@ class TextLayout {
   }
 
   /// [baselineInBox] using [FontMetrics] for [font].
-  static double baselineForFont(
-    double boxTop,
-    double boxHeight,
-    Font font,
-  ) {
+  static double baselineForFont(double boxTop, double boxHeight, Font font) {
     final m = FontDatabase.instance.metrics(font);
     return baselineInBox(
       boxTop,
@@ -126,8 +122,7 @@ class TextLayout {
     double boxTop,
     double boxHeight,
     Rect bounds,
-  ) =>
-      drawOriginForBounds(boxTop, boxHeight, bounds);
+  ) => drawOriginForBounds(boxTop, boxHeight, bounds);
 
   /// Optional extra lift (px). Keep 0 when using shaped-blob bounds.
   static double opticalLift = 0.0;
@@ -353,8 +348,7 @@ class TextLayout {
 
     final contentH = prepared.isEmpty
         ? 0.0
-        : prepared.length * lh +
-            (prepared.length - 1).clamp(0, 1000) * lineGap;
+        : prepared.length * lh + (prepared.length - 1).clamp(0, 1000) * lineGap;
 
     // Block origin (top of first line box) from vertical align.
     double blockTop;
@@ -431,8 +425,7 @@ class TextLayout {
     TextOption option = const TextOption(align: TextAlign.topLeft),
     Color? color,
   }) {
-    final layout =
-        layoutBlockInRect(text, rect, font: font, option: option);
+    final layout = layoutBlockInRect(text, rect, font: font, option: option);
     for (final line in layout.lines) {
       painter.drawTextFont(
         line.displayText,

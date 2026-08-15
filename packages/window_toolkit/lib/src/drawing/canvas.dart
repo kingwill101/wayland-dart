@@ -10,7 +10,7 @@ class Canvas {
   final Uint8List pixels;
 
   Canvas(this.width, this.height, this.format)
-      : pixels = Uint8List(width * height * _formatSize(format));
+    : pixels = Uint8List(width * height * _formatSize(format));
 
   static int _formatSize(PixelFormat format) {
     switch (format) {
@@ -32,12 +32,18 @@ class Canvas {
       case PixelFormat.rgb:
         return Color(pixels[index], pixels[index + 1], pixels[index + 2]);
       case PixelFormat.rgba:
-        return Color(pixels[index], pixels[index + 1], pixels[index + 2],
-            pixels[index + 3]);
+        return Color(
+          pixels[index],
+          pixels[index + 1],
+          pixels[index + 2],
+          pixels[index + 3],
+        );
       case PixelFormat.grayscale:
         return Color(pixels[index], pixels[index], pixels[index]);
       case PixelFormat.argb8888:
-        return Color.fromArgb8888(Uint32List.view(pixels.buffer)[y * width + x]);
+        return Color.fromArgb8888(
+          Uint32List.view(pixels.buffer)[y * width + x],
+        );
     }
   }
 

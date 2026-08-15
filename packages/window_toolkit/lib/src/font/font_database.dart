@@ -35,6 +35,7 @@ class FontDatabase {
     FontRole.icon: 'sans',
     FontRole.mono: 'monospace',
   };
+
   /// Default UI size when a [Font] omits a positive [Font.pixelSize].
   double defaultPixelSize = 13;
 
@@ -109,22 +110,17 @@ class FontDatabase {
     if (family.isEmpty) {
       family = familyForRole(FontRole.ui);
     }
-    final size =
-        request.pixelSize > 0 ? request.pixelSize : defaultPixelSize;
+    final size = request.pixelSize > 0 ? request.pixelSize : defaultPixelSize;
     return request.copyWith(family: family, pixelSize: size);
   }
 
   FontInfo fontInfo(Font request) => _engine.resolve(resolveRequest(request));
 
-  FontMetrics metrics(Font request) =>
-      _engine.metrics(resolveRequest(request));
+  FontMetrics metrics(Font request) => _engine.metrics(resolveRequest(request));
 
   /// Shortcut: metrics for a role at [pixelSize].
   FontMetrics metricsForRole(FontRole role, {double? pixelSize}) {
-    return metrics(Font(
-      role: role,
-      pixelSize: pixelSize ?? defaultPixelSize,
-    ));
+    return metrics(Font(role: role, pixelSize: pixelSize ?? defaultPixelSize));
   }
 
   /// Horizontal advance helper (layout width).
@@ -135,7 +131,8 @@ class FontDatabase {
     double? pixelSize,
     FontRole? role,
   }) {
-    final f = font ??
+    final f =
+        font ??
         Font(
           family: family ?? '',
           pixelSize: pixelSize ?? defaultPixelSize,

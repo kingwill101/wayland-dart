@@ -3,12 +3,11 @@ import '../widget.dart';
 
 class VBoxLayout extends Widget {
   @override
-
   final List<Widget> children;
   int spacing;
 
   VBoxLayout({this.spacing = 0, List<Widget>? children})
-      : children = children ?? [];
+    : children = children ?? [];
 
   @override
   void performLayout(int containerWidth) {

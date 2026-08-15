@@ -1,6 +1,7 @@
 import '../drawing/color.dart';
 import '../event_loop.dart';
 import '../painter/painter.dart';
+import '../style.dart';
 import '../widget.dart';
 
 class Spinner extends Widget {
@@ -22,6 +23,13 @@ class Spinner extends Widget {
     width = dotCount * dotRadius * 3;
     height = dotCount * dotRadius * 3;
   }
+
+  @override
+  Style styleRole() => Style(
+    color: color,
+    backgroundColor: const Color(0, 0, 0, 0),
+    borderColor: color,
+  );
 
   Timer? _timer;
 
@@ -47,6 +55,7 @@ class Spinner extends Widget {
   @override
   void draw(Painter canvas) {
     if (!active) return;
+    final baseColor = resolvedStyle().color;
 
     final cx = x + width ~/ 2;
     final cy = y + height ~/ 2;
@@ -56,10 +65,14 @@ class Spinner extends Widget {
       final angle = (i / dotCount) * 3.14159 * 2;
       final offset = ((i + frame) % dotCount) / dotCount;
       final alpha = (255 * offset).round();
-      final dotColor = Color(color.r, color.g, color.b, alpha);
+      final dotColor = Color(baseColor.r, baseColor.g, baseColor.b, alpha);
       final dx = (cx + (radius * cos(angle)).round()).toDouble();
       final dy = (cy + (radius * sin(angle)).round()).toDouble();
-      canvas.drawCircle(Offset(dx, dy), dotRadius.toDouble(), Paint()..color = dotColor);
+      canvas.drawCircle(
+        Offset(dx, dy),
+        dotRadius.toDouble(),
+        Paint()..color = dotColor,
+      );
     }
   }
 

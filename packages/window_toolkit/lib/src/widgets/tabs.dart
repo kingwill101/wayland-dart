@@ -1,10 +1,12 @@
 import '../drawing/color.dart';
+import '../interaction.dart';
+import '../mixins/hoverable.dart';
+import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
 import '../widget.dart';
 
-class TabBar extends Widget {
+class TabBar extends Widget with Hoverable, HoverAnimated {
   @override
-
   List<String> labels;
   int activeIndex;
   Color activeColor;
@@ -14,6 +16,7 @@ class TabBar extends Widget {
   Color textColor;
   int tabHeight;
   VoidCallback? onChanged;
+  int _hoverIndex = -1;
 
   TabBar({
     this.labels = const [],
@@ -25,8 +28,28 @@ class TabBar extends Widget {
     this.textColor = const Color(200, 200, 200),
     this.tabHeight = 28,
     this.onChanged,
-  })  : assert(tabHeight > 0, 'TabBar tabHeight must be > 0') {
+  }) : assert(tabHeight > 0, 'TabBar tabHeight must be > 0') {
     height = tabHeight;
+    onClick = () {
+      if (_hoverIndex >= 0) {
+        select(_hoverIndex);
+        return true;
+      }
+      return false;
+    };
+  }
+
+  @override
+  bool get acceptsFocus => true;
+
+  @override
+  void onMouseMove(int x, int y) {
+    final next = tabAt(x, y);
+    if (next == _hoverIndex) return;
+    setState(() {
+      _hoverIndex = next;
+      setInteractionState(WidgetState.hovered, next >= 0);
+    });
   }
 
   int get tabWidth => labels.isEmpty ? 0 : (width ~/ labels.length);
@@ -40,9 +63,20 @@ class TabBar extends Widget {
     for (var i = 0; i < labels.length; i++) {
       final tx = x + i * tw;
       final isActive = i == activeIndex;
+      final isHovered = i == _hoverIndex;
       canvas.drawRect(
-        Rect.fromLTWH(tx.toDouble(), y.toDouble(), tw.toDouble(), tabHeight.toDouble()),
-        Paint()..color = isActive ? activeColor : inactiveColor,
+        Rect.fromLTWH(
+          tx.toDouble(),
+          y.toDouble(),
+          tw.toDouble(),
+          tabHeight.toDouble(),
+        ),
+        Paint()
+          ..color = isActive
+              ? activeColor
+              : (isHovered
+                    ? Color.blend(inactiveColor, const Color(255, 255, 255, 18))
+                    : inactiveColor),
       );
 
       canvas.drawText(
@@ -78,20 +112,26 @@ class TabBar extends Widget {
     }
     return -1;
   }
+
+  void select(int index) {
+    if (index < 0 || index >= labels.length || index == activeIndex) return;
+    setState(() {
+      activeIndex = index;
+      setInteractionState(WidgetState.selected, true);
+    });
+    onChanged?.call();
+  }
 }
 
 class TabView extends Widget {
   @override
-  List<Widget> get children => pages;
+  List<Widget> get children => [header, ...pages];
   final TabBar header;
   final List<Widget> pages;
   final int index; // synced from header.activeIndex
 
-  TabView({
-    required this.header,
-    required this.pages,
-    int? index,
-  }) : index = index ?? header.activeIndex;
+  TabView({required this.header, required this.pages, int? index})
+    : index = index ?? header.activeIndex;
 
   @override
   void draw(Painter canvas) {
@@ -118,6 +158,7 @@ class TabView extends Widget {
   @override
   bool hitTest(int px, int py) {
     if (!super.hitTest(px, py)) return false;
+    if (header.hitTest(px, py)) return true;
     final active = header.activeIndex;
     if (active >= 0 && active < pages.length) {
       return pages[active].hitTest(px, py);

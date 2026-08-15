@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:window_toolkit/window_toolkit.dart';
 
+import '../metrics.dart';
 import 'module.dart';
 
 /// CPU usage sparkline graph.
@@ -25,13 +26,22 @@ class CpuGraphModule extends BarModule {
   @override
   String get name => 'cpu/graph';
 
+  @override
+  bool get showsGraphics => true;
+
   final List<double> _history = [];
-  int _prevUser = 0, _prevNice = 0, _prevSystem = 0, _prevIdle = 0, _prevIowait = 0;
+  int _prevUser = 0,
+      _prevNice = 0,
+      _prevSystem = 0,
+      _prevIdle = 0,
+      _prevIowait = 0;
   double _currentUsage = 0.0;
   int _graphWidth = 30;
   int _graphHeight = 14;
   int _maxSamples = 30;
   Color _lineColor = const Color(0x88, 0xc0, 0xd0);
+  late final TextRuns _textWidget;
+  late final Sparkline _graphWidget;
 
   @override
   void init(Map<String, String> config) {
@@ -44,6 +54,21 @@ class CpuGraphModule extends BarModule {
     if (config.containsKey('color')) {
       _lineColor = parseColor(config['color']!);
     }
+    _textWidget = TextRuns('');
+    _graphWidget = Sparkline(
+      values: _history,
+      width: _graphWidth,
+      height: _graphHeight,
+      lineColor: _lineColor,
+      minValue: 0,
+    );
+    widget = HBox(spacing: 4, children: [_textWidget, _graphWidget]);
+  }
+
+  void _syncWidget() {
+    _textWidget.text = output;
+    _graphWidget.values = _history;
+    requestRepaint?.call();
   }
 
   @override
@@ -53,6 +78,7 @@ class CpuGraphModule extends BarModule {
       final parts = line.split(RegExp(r'\s+'));
       if (parts.length < 5 || parts[0] != 'cpu') {
         output = 'ERR';
+        _syncWidget();
         return;
       }
       final user = int.tryParse(parts[1]) ?? 0;
@@ -62,7 +88,8 @@ class CpuGraphModule extends BarModule {
       final iowait = parts.length > 5 ? int.tryParse(parts[5]) ?? 0 : 0;
 
       if (_prevUser != 0) {
-        final totalDelta = (user - _prevUser) +
+        final totalDelta =
+            (user - _prevUser) +
             (nice - _prevNice) +
             (system - _prevSystem) +
             (idle - _prevIdle) +
@@ -84,26 +111,34 @@ class CpuGraphModule extends BarModule {
       _prevIowait = iowait;
 
       output = format.replaceAll('{usage}', _currentUsage.toStringAsFixed(1));
+      _syncWidget();
     } catch (_) {
       output = 'ERR';
+      _syncWidget();
     }
   }
 
   @override
   double measure(Painter painter) {
-    final textWidth = painter.measureText(output, size: 14).width;
+    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
+    final textWidth = painter.measureTextFont(output, font);
     return textWidth + 4 + _graphWidth.toDouble();
   }
 
   @override
   double draw(Painter painter, double x, double y) {
+    final m = BarMetrics.current;
+    final font = Font.ui(pixelSize: m.fontSize);
+    final textColor = cssForeground ?? const Color(0xc8, 0xc8, 0xc8);
     // Draw text label
-    painter.drawText(output, Offset(x, y), color: const Color(0xc8, 0xc8, 0xc8));
-    final textWidth = painter.measureText(output).width;
+    painter.drawTextFont(output, Offset(x, y), font: font, color: textColor);
+    final textWidth = painter.measureTextFont(output, font);
 
     // Draw sparkline
     final graphX = x + textWidth + 4;
-    final graphY = y + (_graphHeight > 14 ? (_graphHeight - 14) ~/ 2 : 0);
+    final glyphSize = m.fontSize.round();
+    final graphY =
+        y + (_graphHeight > glyphSize ? (_graphHeight - glyphSize) ~/ 2 : 0);
     final maxVal = _history.reduce((a, b) => a > b ? a : b).clamp(1.0, 100.0);
 
     if (_history.length >= 2) {

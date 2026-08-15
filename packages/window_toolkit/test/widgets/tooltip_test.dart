@@ -20,11 +20,8 @@ void main() {
       harness.draw();
       expect(harness.painter.commands, isNotEmpty);
     });
-test('draws overlay when visible', () {
-      final tip = Tooltip(
-        text: 'Help',
-        child: Button('?'),
-      );
+    test('draws overlay when visible', () {
+      final tip = Tooltip(text: 'Help', child: Button('?'));
       tip.x = 10;
       tip.y = 10;
 

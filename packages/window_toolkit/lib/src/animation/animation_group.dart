@@ -28,7 +28,8 @@ class SequentialAnimation extends Animation<double> {
   int _currentIndex = 0;
   bool _playing = false;
 
-  SequentialAnimation(List<Animation<double>> animations) : _animations = List.of(animations);
+  SequentialAnimation(List<Animation<double>> animations)
+    : _animations = List.of(animations);
 
   @override
   double get value {
@@ -125,7 +126,8 @@ class ParallelAnimationGroup extends Animation<double> {
   int _completedCount = 0;
   bool _playing = false;
 
-  ParallelAnimationGroup(List<Animation<double>> animations) : _animations = List.of(animations);
+  ParallelAnimationGroup(List<Animation<double>> animations)
+    : _animations = List.of(animations);
 
   @override
   double get value {

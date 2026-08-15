@@ -16,10 +16,10 @@ class Rect {
   final double left, top, right, bottom;
   const Rect.fromLTRB(this.left, this.top, this.right, this.bottom);
   const Rect.fromLTWH(double left, double top, double width, double height)
-      : left = left,
-        top = top,
-        right = left + width,
-        bottom = top + height;
+    : left = left,
+      top = top,
+      right = left + width,
+      bottom = top + height;
 
   double get width => right - left;
   double get height => bottom - top;
@@ -50,22 +50,39 @@ abstract class Painter {
   void drawRect(Rect rect, Paint paint);
   void drawCircle(Offset center, double radius, Paint paint);
   void drawLine(Offset from, Offset to, Paint paint);
+  void drawArc(
+    Rect oval,
+    double startAngle,
+    double sweepAngle,
+    bool useCenter,
+    Paint paint,
+  ) {
+    // Default no-op for backends without arc support.
+  }
 
   /// Rounded rectangle. Default implementation falls back to [drawRect].
   void drawRRect(Rect rect, double radiusX, double radiusY, Paint paint) {
     drawRect(rect, paint);
   }
 
-  void drawText(String text, Offset position, {Color? color, double size = 14, String fontFamily = 'sans'});
+  void drawText(
+    String text,
+    Offset position, {
+    Color? color,
+    double size = 14,
+    String fontFamily = 'sans',
+  });
 
   /// Typographic size for layout: width is the advance (not ink bounds).
-  Size measureText(String text,
-      {double size = 14, String fontFamily = 'sans'});
+  Size measureText(String text, {double size = 14, String fontFamily = 'sans'});
 
   /// Typographic advance (where the next glyph would start). Defaults to
   /// [measureText].width for painters that don't distinguish advance/bounds.
-  double measureTextAdvance(String text,
-      {double size = 14, String fontFamily = 'sans'}) {
+  double measureTextAdvance(
+    String text, {
+    double size = 14,
+    String fontFamily = 'sans',
+  }) {
     return measureText(text, size: size, fontFamily: fontFamily).width;
   }
 
@@ -77,15 +94,24 @@ abstract class Painter {
   ///
   /// **Do not use bounds.width for horizontal layout of bar modules** — it can
   /// be much wider than the advance. Prefer [measureText] / [measureTextAdvance].
-  Rect measureTextBounds(String text,
-      {double size = 14, String fontFamily = 'sans'}) {
+  Rect measureTextBounds(
+    String text, {
+    double size = 14,
+    String fontFamily = 'sans',
+  }) {
     final s = measureText(text, size: size, fontFamily: fontFamily);
     return Rect.fromLTWH(0, 0, s.width, s.height);
   }
 
   /// Draw a PNG/JPEG image from [filePath] at (x, y) scaled to [width]x[height].
   /// If [width]/[height] are omitted the image's native dimensions are used.
-  void drawImage(String filePath, double x, double y, {double? width, double? height});
+  void drawImage(
+    String filePath,
+    double x,
+    double y, {
+    double? width,
+    double? height,
+  });
 
   void clipRect(Rect rect);
 
@@ -97,8 +123,12 @@ abstract class Painter {
   /// Fill a rectangle with a linear gradient from [color0] to [color1]
   /// at [angle] radians (0 = left→right, π/2 = bottom→top).
   /// Default implementation draws a solid [color0] rect.
-  void drawLinearGradient(Rect rect, Color color0, Color color1,
-      {double angle = 0.0}) {
+  void drawLinearGradient(
+    Rect rect,
+    Color color0,
+    Color color1, {
+    double angle = 0.0,
+  }) {
     drawRect(rect, Paint()..color = color0);
   }
 

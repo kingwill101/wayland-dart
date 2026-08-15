@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:window_toolkit/window_toolkit.dart';
 
+import '../command.dart';
 import 'module.dart';
 
 class PulseaudioModule extends BarModule {
@@ -10,12 +11,14 @@ class PulseaudioModule extends BarModule {
 
   int _volume = 0;
   bool _muted = false;
+  int _scrollStep = 5;
 
   @override
   void init(Map<String, String> config) {
     super.init(config);
     format = resolveFormat(config, '{volume}% {icon}', '');
     interval = parseInt(config, 'interval', 2);
+    _scrollStep = parseInt(config, 'scroll-step', 5).clamp(1, 25);
   }
 
   @override
@@ -79,5 +82,25 @@ class PulseaudioModule extends BarModule {
   double draw(Painter painter, double x, double y) {
     painter.drawText(output, Offset(x, y));
     return painter.measureText(output).width;
+  }
+
+  /// Wheel steps the default sink volume (±[scroll-step]%, default 5).
+  @override
+  void onScroll(double delta) {
+    if (delta == 0) return;
+    if (onScrollUpCmd.isNotEmpty && delta < 0) {
+      runBarCommand(onScrollUpCmd);
+      return;
+    }
+    if (onScrollDownCmd.isNotEmpty && delta > 0) {
+      runBarCommand(onScrollDownCmd);
+      return;
+    }
+    final step = delta < 0 ? '+$_scrollStep%' : '-$_scrollStep%';
+    Process.run('pactl', ['set-sink-volume', '@DEFAULT_SINK@', step],
+        runInShell: false);
+    Process.run('pactl', ['set-sink-mute', '@DEFAULT_SINK@', '0'],
+        runInShell: false);
+    update();
   }
 }

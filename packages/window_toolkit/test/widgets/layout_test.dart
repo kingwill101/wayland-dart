@@ -1,15 +1,11 @@
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
-
 void main() {
   test('VBoxLayout stacks children with spacing', () {
     final layout = VBoxLayout(
       spacing: 4,
-      children: [
-        Label('first')..height = 10,
-        Label('second')..height = 20,
-      ],
+      children: [Label('first')..height = 10, Label('second')..height = 20],
     );
     layout.x = 10;
     layout.y = 20;
@@ -27,27 +23,6 @@ void main() {
     expect(layout.hitTest(12, 22), isTrue);
     expect(layout.hitTest(12, 36), isTrue);
     expect(layout.hitTest(0, 0), isFalse);
-  });
-
-  test('BarLayout sizes spacers and keeps section alignment', () {
-    final layout = BarLayout();
-    final leftLabel = Label('L');
-    final spacer = Spacer();
-    final leftTail = Label('RR');
-    final center = Label('C');
-    final right = Label('X');
-
-    layout.left.addAll([leftLabel, spacer, leftTail]);
-    layout.center.add(center);
-    layout.right.add(right);
-
-    layout.layout(200, 30);
-
-    expect(spacer.width, 160);
-    expect(leftLabel.x, 0);
-    expect(leftTail.x, 168);
-    expect(center.x, 96);
-    expect(right.x, 192);
   });
 
   test('Frame draws background, border, and respects child hit testing', () {

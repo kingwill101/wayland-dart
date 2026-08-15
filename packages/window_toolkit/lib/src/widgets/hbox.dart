@@ -6,15 +6,14 @@ import '../widget.dart';
 /// Horizontal row of children, backed by [le.RenderRow] for layout.
 class HBox extends Widget {
   @override
-
   final List<Widget> children;
   int spacing;
   final le.RenderRow _renderRow = le.RenderRow();
   final List<_RenderWidgetBox> _renderChildren = [];
 
   HBox({this.spacing = 0, List<Widget>? children, super.key})
-      : assert(spacing >= 0, 'HBox spacing must be >= 0'),
-        children = children ?? [];
+    : assert(spacing >= 0, 'HBox spacing must be >= 0'),
+      children = children ?? [];
 
   void _ensureRenderTree() {
     _renderRow.children.clear();
@@ -35,17 +34,19 @@ class HBox extends Widget {
     }
 
     for (final r in _renderChildren) {
-      r.widget.performLayout(r.widget.width > 0 ? r.widget.width : containerWidth);
+      r.widget.performLayout(
+        r.widget.width > 0 ? r.widget.width : containerWidth,
+      );
     }
 
-    _renderRow.layout(le.BoxConstraints(
-      maxWidth: containerWidth.toDouble(),
-      maxHeight: double.infinity,
-    ));
+    _renderRow.layout(
+      le.BoxConstraints(
+        maxWidth: containerWidth.toDouble(),
+        maxHeight: double.infinity,
+      ),
+    );
 
-    width = containerWidth > 0
-        ? containerWidth
-        : _renderRow.size.width.round();
+    width = containerWidth > 0 ? containerWidth : _renderRow.size.width.round();
     height = _renderRow.size.height.round();
 
     for (var i = 0; i < _renderChildren.length; i++) {
@@ -77,9 +78,9 @@ class HBox extends Widget {
 
   @override
   void draw(Painter canvas) {
-    if (_renderChildren.isEmpty && width > 0) {
-      performLayout(width);
-    }
+    // Always re-layout at draw (see VBox.draw): nested children are laid out
+    // against a stale parent offset; re-applying at draw composes correctly.
+    if (width > 0) performLayout(width);
     for (final child in children) {
       child.draw(canvas);
     }
@@ -105,7 +106,9 @@ class _RenderWidgetBox extends le.RenderBox {
     // Use the child's intrinsic width first; fall back to constraints.
     final childWidth = widget.width > 0
         ? widget.width
-        : (constraints.hasBoundedWidth ? constraints.maxWidth.round() : widget.width);
+        : (constraints.hasBoundedWidth
+              ? constraints.maxWidth.round()
+              : widget.width);
     widget.performLayout(childWidth);
     size = le.Size(widget.width.toDouble(), widget.height.toDouble());
   }

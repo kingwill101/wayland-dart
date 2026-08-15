@@ -30,14 +30,43 @@ void main() {
     test('hover state toggles on mouse enter/leave', () {
       bool hovered = false;
       final btn = Button('Hover');
-      btn.onMouseEnter = () { hovered = true; };
-      btn.onMouseLeave = () { hovered = false; };
+      btn.onMouseEnter = () {
+        hovered = true;
+      };
+      btn.onMouseLeave = () {
+        hovered = false;
+      };
 
       btn.onMouseEnter?.call();
       expect(hovered, isTrue);
 
       btn.onMouseLeave?.call();
       expect(hovered, isFalse);
+    });
+
+    test('setHovering drives the canonical animated hover state', () {
+      final btn = Button('Hover');
+
+      btn.setHovering(true);
+      expect(btn.isHovered, isTrue);
+      expect(btn.hasPseudoClass('hover'), isTrue);
+
+      btn.setHovering(false);
+      expect(btn.isHovered, isFalse);
+      expect(btn.hasPseudoClass('hover'), isFalse);
+    });
+
+    test('hover state requests a repaint', () {
+      final btn = Button('Repaint');
+      final previous = Widget.onNeedsRepaint;
+      var repaints = 0;
+      Widget.onNeedsRepaint = () => repaints++;
+      try {
+        btn.setHovering(true);
+        expect(repaints, greaterThan(0));
+      } finally {
+        Widget.onNeedsRepaint = previous;
+      }
     });
 
     test('draw records rect and text commands', () {

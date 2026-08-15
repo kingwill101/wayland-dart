@@ -34,8 +34,9 @@ class Circle extends Shape {
     if (other is Circle) {
       int distanceX = (centerX - other.centerX).abs();
       int distanceY = (centerY - other.centerY).abs();
-      int distance =
-          math.sqrt(distanceX * distanceX + distanceY * distanceY).toInt();
+      int distance = math
+          .sqrt(distanceX * distanceX + distanceY * distanceY)
+          .toInt();
       return distance <= (radius + other.radius);
     }
     // Add collision detection for other shapes as needed
@@ -47,7 +48,7 @@ class Rectangle extends Shape {
   int x, y, width, height;
 
   Rectangle(this.x, this.y, this.width, this.height, Color color)
-      : super(color);
+    : super(color);
 
   @override
   void draw(Canvas area) {
@@ -110,7 +111,7 @@ class Triangle extends Shape {
   int x1, y1, x2, y2, x3, y3;
 
   Triangle(this.x1, this.y1, this.x2, this.y2, this.x3, this.y3, Color color)
-      : super(color);
+    : super(color);
 
   @override
   void draw(Canvas area) {

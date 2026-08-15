@@ -4,13 +4,17 @@ import 'package:window_toolkit/window_toolkit.dart';
 void main() {
   group('Animation', () {
     test('AnimationController starts at 0.0', () {
-      final c = AnimationController(duration: const Duration(milliseconds: 100));
+      final c = AnimationController(
+        duration: const Duration(milliseconds: 100),
+      );
       expect(c.value, closeTo(0.0, 1e-6));
       expect(c.status, AnimationStatus.dismissed);
     });
 
     test('AnimationController forward drives value to 1.0', () {
-      final c = AnimationController(duration: const Duration(milliseconds: 100));
+      final c = AnimationController(
+        duration: const Duration(milliseconds: 100),
+      );
       double lastValue = 0.0;
       c.addListener(() {
         lastValue = c.value;
@@ -30,7 +34,9 @@ void main() {
     });
 
     test('AnimationController reverse drives value to 0.0', () {
-      final c = AnimationController(duration: const Duration(milliseconds: 100));
+      final c = AnimationController(
+        duration: const Duration(milliseconds: 100),
+      );
       double lastValue = 0.0;
       c.addListener(() {
         lastValue = c.value;
@@ -49,8 +55,26 @@ void main() {
       c.dispose();
     });
 
+    test('AnimationController reverses from its current value', () {
+      final c = AnimationController(
+        duration: const Duration(milliseconds: 100),
+        curve: linear,
+      );
+
+      c.forward();
+      c.tick(const Duration(milliseconds: 40));
+      expect(c.value, closeTo(0.4, 0.01));
+
+      c.reverse();
+      c.tick(const Duration(milliseconds: 50));
+      expect(c.value, closeTo(0.2, 0.01));
+      c.dispose();
+    });
+
     test('AnimationController stop halts animation', () {
-      final c = AnimationController(duration: const Duration(milliseconds: 200));
+      final c = AnimationController(
+        duration: const Duration(milliseconds: 200),
+      );
       double lastValue = 0.0;
       c.addListener(() {
         lastValue = c.value;
@@ -68,7 +92,9 @@ void main() {
     });
 
     test('AnimationController reset goes to 0', () {
-      final c = AnimationController(duration: const Duration(milliseconds: 100));
+      final c = AnimationController(
+        duration: const Duration(milliseconds: 100),
+      );
       c.reset();
       expect(c.value, closeTo(0.0, 1e-6));
       expect(c.status, AnimationStatus.dismissed);
@@ -76,7 +102,9 @@ void main() {
     });
 
     test('Tween animates between begin and end', () {
-      final c = AnimationController(duration: const Duration(milliseconds: 100));
+      final c = AnimationController(
+        duration: const Duration(milliseconds: 100),
+      );
       final tween = Tween<int>(begin: 0, end: 100);
       final anim = tween.animate(c);
 
@@ -200,10 +228,7 @@ void main() {
     });
 
     test('SizeTween interpolates width/height', () {
-      final t = SizeTween(
-        begin: const Size(10, 20),
-        end: const Size(110, 70),
-      );
+      final t = SizeTween(begin: const Size(10, 20), end: const Size(110, 70));
       expect(t.evaluate(0.0).width, closeTo(10, 1e-6));
       expect(t.evaluate(0.0).height, closeTo(20, 1e-6));
       expect(t.evaluate(0.5).width, closeTo(60, 1e-6));
@@ -236,9 +261,11 @@ void main() {
       expect(chained.evaluate(1.0), closeTo(20, 1e-6));
     });
   });
-group('AnimationController.drive', () {
+  group('AnimationController.drive', () {
     test('drives a Tween<double>', () {
-      final c = AnimationController(duration: const Duration(milliseconds: 100));
+      final c = AnimationController(
+        duration: const Duration(milliseconds: 100),
+      );
       final anim = c.drive(Tween<double>(begin: 0, end: 100));
 
       c.forward();
@@ -252,7 +279,9 @@ group('AnimationController.drive', () {
     });
 
     test('drives a ColorTween and notifies listeners', () {
-      final c = AnimationController(duration: const Duration(milliseconds: 100));
+      final c = AnimationController(
+        duration: const Duration(milliseconds: 100),
+      );
       final anim = c.drive(
         ColorTween(begin: const Color(0, 0, 0), end: const Color(255, 0, 0)),
       );
@@ -268,7 +297,9 @@ group('AnimationController.drive', () {
     });
 
     test('drives an OffsetTween', () {
-      final c = AnimationController(duration: const Duration(milliseconds: 100));
+      final c = AnimationController(
+        duration: const Duration(milliseconds: 100),
+      );
       final anim = c.drive(
         OffsetTween(begin: const Offset(0, 0), end: const Offset(100, 200)),
       );
@@ -281,7 +312,9 @@ group('AnimationController.drive', () {
     });
 
     test('drives an int Tween with rounding', () {
-      final c = AnimationController(duration: const Duration(milliseconds: 100));
+      final c = AnimationController(
+        duration: const Duration(milliseconds: 100),
+      );
       final anim = c.drive(Tween<int>(begin: 0, end: 10));
 
       c.forward();
@@ -294,7 +327,9 @@ group('AnimationController.drive', () {
 
   group('AnimationController.repeat', () {
     test('repeats continuously with restart mode', () {
-      final c = AnimationController(duration: const Duration(milliseconds: 100));
+      final c = AnimationController(
+        duration: const Duration(milliseconds: 100),
+      );
       c.repeat();
       c.tick(const Duration(milliseconds: 50));
       expect(c.value, closeTo(0.5, 0.05));
@@ -304,7 +339,9 @@ group('AnimationController.drive', () {
     });
 
     test('repeats with count and completes after count cycles', () {
-      final c = AnimationController(duration: const Duration(milliseconds: 100));
+      final c = AnimationController(
+        duration: const Duration(milliseconds: 100),
+      );
       c.repeat(count: 2);
       c.tick(const Duration(milliseconds: 100));
       expect(c.status, isNot(AnimationStatus.completed));
@@ -314,7 +351,9 @@ group('AnimationController.drive', () {
     });
 
     test('reverse mode alternates direction', () {
-      final c = AnimationController(duration: const Duration(milliseconds: 100));
+      final c = AnimationController(
+        duration: const Duration(milliseconds: 100),
+      );
       c.repeat(mode: RepeatMode.reverse);
       c.tick(const Duration(milliseconds: 100));
       expect(c.value, closeTo(1.0, 0.01));
@@ -334,7 +373,9 @@ group('AnimationController.drive', () {
     });
 
     test('animateTo is available', () {
-      final c = AnimationController(duration: const Duration(milliseconds: 100));
+      final c = AnimationController(
+        duration: const Duration(milliseconds: 100),
+      );
       c.forward();
       c.tick(const Duration(milliseconds: 100));
       expect(c.value, closeTo(1.0, 0.01));
@@ -344,7 +385,11 @@ group('AnimationController.drive', () {
 
   group('TweenAnimation', () {
     test('exposes driven animation and controller', () {
-      final ta = TweenAnimation<double>(begin: 0, end: 100, duration: const Duration(milliseconds: 100));
+      final ta = TweenAnimation<double>(
+        begin: 0,
+        end: 100,
+        duration: const Duration(milliseconds: 100),
+      );
       ta.forward();
       ta.controller.tick(const Duration(milliseconds: 50));
       expect(ta.value, closeTo(50, 0.1));

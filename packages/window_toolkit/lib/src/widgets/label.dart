@@ -6,6 +6,7 @@ import '../font/text_layout.dart';
 import '../font/text_option.dart';
 import '../metrics.dart';
 import '../painter/painter.dart';
+import '../style/style_patch.dart';
 import '../widget.dart';
 
 /// Text label with proper measurement and baseline-aware vertical centering.
@@ -39,15 +40,19 @@ class Label extends Widget {
     this.ellipsis = true,
     this.softWrap = false,
     super.key,
-  })  : assert(fontSize == null || fontSize > 0, 'Label fontSize must be > 0'),
-        assert(maxWidth == null || maxWidth > 0, 'Label maxWidth must be > 0'),
-        fontSize = fontSize ?? ThemeMetrics.current.fontSize {
+  }) : assert(fontSize == null || fontSize > 0, 'Label fontSize must be > 0'),
+       assert(maxWidth == null || maxWidth > 0, 'Label maxWidth must be > 0'),
+       fontSize = fontSize ?? ThemeMetrics.current.fontSize {
     // Stable intrinsic size before [measure] (keeps layout tests / bars predictable).
     height = 16;
     width = (text.length * 8).clamp(1, 10000);
   }
 
-  Color get resolvedColor => color ?? palette.text;
+  /// CSS `color` wins, then the explicit [color], then the palette text color.
+  Color get resolvedColor => resolvedStyle().color;
+
+  @override
+  StylePatch localOverrides() => StylePatch(color: color);
 
   Font get resolvedFont {
     if (font != null) {
@@ -64,7 +69,9 @@ class Label extends Widget {
     final adv = painter.measureTextFont(display, f);
     final metrics = painter.fontMetrics(f);
     width = adv.ceil().clamp(1, maxWidth ?? 100000);
-    height = TextLayout.lineHeightOf(metrics).ceil().clamp(f.pixelSize.ceil(), 1000);
+    height = TextLayout.lineHeightOf(
+      metrics,
+    ).ceil().clamp(f.pixelSize.ceil(), 1000);
     if (height < f.pixelSize.ceil()) height = f.pixelSize.ceil();
   }
 
@@ -82,7 +89,12 @@ class Label extends Widget {
     // Qt-style: draw in this label's rect, vertically centered.
     canvas.drawTextInRect(
       display,
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
       font: f,
       option: TextOption.leftCenter,
       color: resolvedColor,

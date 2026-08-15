@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:window_toolkit/window_toolkit.dart';
 
+import '../metrics.dart';
+import '../bar_text.dart';
 import 'module.dart';
 
 /// Backlight brightness slider rendered as an inline level bar.
@@ -27,12 +29,17 @@ class BacklightSliderModule extends BarModule {
   @override
   String get name => 'backlight-slider';
 
+  @override
+  bool get showsGraphics => true;
+
   int _percent = 0;
   int _barWidth = 40;
   int _barHeight = 8;
   String? _device;
   late Color _barColor;
   late Color _barBgColor;
+  late final TextRuns _textWidget;
+  late final ProgressBar _levelWidget;
 
   @override
   void init(Map<String, String> config) {
@@ -48,6 +55,21 @@ class BacklightSliderModule extends BarModule {
     _barBgColor = config.containsKey('bar-bg-color')
         ? parseColor(config['bar-bg-color']!)
         : const Color(0x3b, 0x42, 0x52);
+    _textWidget = TextRuns('');
+    _levelWidget = ProgressBar(
+      barWidth: _barWidth,
+      barHeight: _barHeight,
+      showText: false,
+      fillColor: _barColor,
+      backgroundColor: _barBgColor,
+    );
+    widget = HBox(spacing: 4, children: [_textWidget, _levelWidget]);
+  }
+
+  void _syncWidget() {
+    _textWidget.text = output;
+    _levelWidget.value = _percent;
+    requestRepaint?.call();
   }
 
   @override
@@ -58,6 +80,7 @@ class BacklightSliderModule extends BarModule {
         output = format
             .replaceAll('{percent}', 'N/A')
             .replaceAll('{icon}', '\u{f185}');
+        _syncWidget();
         return;
       }
 
@@ -72,6 +95,7 @@ class BacklightSliderModule extends BarModule {
         output = format
             .replaceAll('{percent}', 'N/A')
             .replaceAll('{icon}', '\u{f185}');
+        _syncWidget();
         return;
       }
 
@@ -80,10 +104,12 @@ class BacklightSliderModule extends BarModule {
       output = format
           .replaceAll('{percent}', '$_percent')
           .replaceAll('{icon}', '\u{f185}');
+      _syncWidget();
     } catch (_) {
       output = format
           .replaceAll('{percent}', 'ERR')
           .replaceAll('{icon}', '\u{f185}');
+      _syncWidget();
     }
   }
 
@@ -107,19 +133,25 @@ class BacklightSliderModule extends BarModule {
 
   @override
   double measure(Painter painter) {
-    final textWidth = painter.measureText(output, size: 14).width;
+    final font = BarText.fontFor(output);
+    final textWidth = output.isEmpty
+        ? 0
+        : painter.measureTextFont(output, font);
     return textWidth + 4 + _barWidth.toDouble();
   }
 
   @override
   double draw(Painter painter, double x, double y) {
-    // Draw text label
-    painter.drawText(output, Offset(x, y), color: const Color(0xc8, 0xc8, 0xc8));
-    final textWidth = painter.measureText(output).width;
+    // Draw text label (densitied + tinted by CSS when present)
+    final font = BarText.fontFor(output);
+    final color = cssForeground ?? const Color(0xc8, 0xc8, 0xc8);
+    painter.drawTextFont(output, Offset(x, y), font: font, color: color);
+    final textWidth = painter.measureTextFont(output, font);
 
     // Draw level bar
     final barX = x + textWidth + 4;
-    final barY = y + (14 - _barHeight) / 2;
+    final glyph = BarMetrics.current.fontSize.round();
+    final barY = y + (glyph - _barHeight) / 2;
 
     // Track background
     painter.drawRect(
@@ -168,7 +200,10 @@ class BacklightSliderModule extends BarModule {
       final maxFile = File('$device/max_brightness');
       final maxBrightness =
           int.tryParse(maxFile.readAsStringSync().trim()) ?? 100;
-      final value = (maxBrightness * percent / 100).round().clamp(1, maxBrightness);
+      final value = (maxBrightness * percent / 100).round().clamp(
+        1,
+        maxBrightness,
+      );
       File('$device/brightness').writeAsStringSync('$value\n');
     } catch (_) {}
   }

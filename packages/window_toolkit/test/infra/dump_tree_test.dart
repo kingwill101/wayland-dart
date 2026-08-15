@@ -17,7 +17,10 @@ void main() {
   test('dumpTree runs without error on nested VBoxLayout', () {
     final tree = VBoxLayout(
       spacing: 4,
-      children: [Label('top'), Padding(child: Button('ok'))],
+      children: [
+        Label('top'),
+        Padding(child: Button('ok')),
+      ],
     );
     tree
       ..x = 0
@@ -33,7 +36,11 @@ void main() {
   test('dumpTree runs without error on Flex', () {
     final tree = Row(
       spacing: 8,
-      children: [Button('A'), Expanded(child: Button('B')), Button('C')],
+      children: [
+        Button('A'),
+        Expanded(child: Button('B')),
+        Button('C'),
+      ],
     );
     tree
       ..x = 0
@@ -69,12 +76,20 @@ void main() {
       spacing: 4,
       children: [
         Label('header'),
-        Row(children: [Button('L'), Expanded(child: Button('M')), Button('R')]),
+        Row(
+          children: [
+            Button('L'),
+            Expanded(child: Button('M')),
+            Button('R'),
+          ],
+        ),
         ScrollArea(
-          child: VBoxLayout(children: [
-            Label('line'),
-            Padding(child: Button('ok'), all: 8),
-          ]),
+          child: VBoxLayout(
+            children: [
+              Label('line'),
+              Padding(child: Button('ok'), all: 8),
+            ],
+          ),
         ),
         Frame(children: [Label('a')]),
       ],

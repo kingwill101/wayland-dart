@@ -271,7 +271,9 @@ enum Key {
   brightnessDown(224),
   brightnessUp(225),
   media(226),
-  switchVideoMode(227), // Cycle between available video outputs (Monitor/LCD/TV-out/etc)
+  switchVideoMode(
+    227,
+  ), // Cycle between available video outputs (Monitor/LCD/TV-out/etc)
   kbdIllumToggle(228),
   kbdIllumDown(229),
   kbdIllumUp(230),
@@ -288,7 +290,9 @@ enum Key {
   videoNext(241), // drive next video source
   videoPrev(242), // drive previous video source
   brightnessCycle(243), // brightness up, after max is min
-  brightnessAuto(244), // Set Auto Brightness: manual brightness control is off, rely on ambient
+  brightnessAuto(
+    244,
+  ), // Set Auto Brightness: manual brightness control is off, rely on ambient
   brightnessZero(244),
   displayOff(245), // display device to off state
   wwan(246), // Wireless WAN (LTE, UMTS, GSM, etc.)
@@ -550,9 +554,15 @@ enum Key {
   keyKbdLayoutNext(0x248), // AC Next Keyboard Layout Select
   keyEmojiPicker(0x249), // Show/hide emoji picker (HUTRR101)
   keyDictate(0x24a), // Start or Stop Voice Dictation Session (HUTRR99)
-  keyCameraAccessEnable(0x24b), // Enables programmatic access to camera devices. (HUTRR72)
-  keyCameraAccessDisable(0x24c), // Disables programmatic access to camera devices. (HUTRR72)
-  keyCameraAccessToggle(0x24d), // Toggles the current state of the camera access control. (HUTRR72)
+  keyCameraAccessEnable(
+    0x24b,
+  ), // Enables programmatic access to camera devices. (HUTRR72)
+  keyCameraAccessDisable(
+    0x24c,
+  ), // Disables programmatic access to camera devices. (HUTRR72)
+  keyCameraAccessToggle(
+    0x24d,
+  ), // Toggles the current state of the camera access control. (HUTRR72)
   keyBrightnessMin(0x250), // Set Brightness to Minimum
   keyBrightnessMax(0x251), // Set Brightness to Maximum
   keyKbdInputAssistPrev(0x260),
@@ -578,11 +588,15 @@ enum Key {
   keyUnmute(0x274),
   keyFastReverse(0x275),
   keySlowReverse(0x276),
-  keyData(0x277), // Control a data application associated with the currently viewed channel
+  keyData(
+    0x277,
+  ), // Control a data application associated with the currently viewed channel
   keyOnScreenKeyboard(0x278),
   keyPrivacyScreenToggle(0x279), // Electronic privacy screen control
   keySelectiveScreenshot(0x27a), // Select an area of screen to be copied
-  keyNextElement(0x27b), // Move the focus to the next or previous user controllable element within a UI container
+  keyNextElement(
+    0x27b,
+  ), // Move the focus to the next or previous user controllable element within a UI container
   keyPreviousElement(0x27c),
   keyAutopilotEngageToggle(0x27d), // Toggle Autopilot engagement
   keyMarkWaypoint(0x27e), // Shortcut Keys
@@ -597,7 +611,9 @@ enum Key {
   keySideVuSonar(0x287),
   keyNavInfo(0x288),
   keyBrightnessMenu(0x289),
-  keyMacro1(0x290), // Keys for controlling the host-side software responsible for the macro handling
+  keyMacro1(
+    0x290,
+  ), // Keys for controlling the host-side software responsible for the macro handling
   keyMacro2(0x291),
   keyMacro3(0x292),
   keyMacro4(0x293),

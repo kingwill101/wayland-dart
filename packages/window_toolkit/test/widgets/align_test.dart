@@ -13,7 +13,10 @@ void main() {
 
     test('performLayout centers child horizontally', () {
       final btn = Button('Centered');
-      final a = Align(child: btn, horizontalAlignment: HorizontalAlignment.center);
+      final a = Align(
+        child: btn,
+        horizontalAlignment: HorizontalAlignment.center,
+      );
       a.x = 0;
       a.width = 200;
       a.performLayout(200);
@@ -26,14 +29,15 @@ void main() {
 
     test('right alignment positions child at end', () {
       final btn = Button('R');
-      final a = Align(child: btn, horizontalAlignment: HorizontalAlignment.right);
+      final a = Align(
+        child: btn,
+        horizontalAlignment: HorizontalAlignment.right,
+      );
       a.width = 200;
       a.x = 0;
       a.performLayout(200);
       expect(btn.x + btn.width, 200, reason: 'right edge at parent right');
     });
-
-
 
     test('draw records child commands', () {
       final harness = WidgetHarness(Align(child: Button('A')));

@@ -48,13 +48,17 @@ class BitmapFont {
   }
 
   static void _loadDefaultGlyphs(BitmapFont font) {
-    final chars = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    final chars =
+        ' ABCDEFGHIJKLMNOPQRSTUVWXYZ'
         'abcdefghijklmnopqrstuvwxyz'
         '0123456789'
         '!@#\$%^&*()-_=+[]{}|;:\'",.<>?/\\~`';
 
     for (var i = 0; i < chars.length; i++) {
-      font.loadGlyph(chars.codeUnitAt(i), _defaultGlyph(chars[i], font.charWidth, font.charHeight));
+      font.loadGlyph(
+        chars.codeUnitAt(i),
+        _defaultGlyph(chars[i], font.charWidth, font.charHeight),
+      );
     }
   }
 

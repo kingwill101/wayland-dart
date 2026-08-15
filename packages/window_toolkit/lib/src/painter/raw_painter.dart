@@ -73,7 +73,13 @@ class RawPainter implements Painter {
       final innerH = (ch - 2 * sw).clamp(0, 4096).round();
       if (innerH > 0) {
         Rectangle(cl, ct + sw, sw, innerH, paint.color).draw(canvas);
-        Rectangle((cr - sw).round(), ct + sw, sw, innerH, paint.color).draw(canvas);
+        Rectangle(
+          (cr - sw).round(),
+          ct + sw,
+          sw,
+          innerH,
+          paint.color,
+        ).draw(canvas);
       }
       return;
     }
@@ -108,7 +114,9 @@ class RawPainter implements Painter {
     final t = r.top.round();
     final rt = r.right.round();
     final b = r.bottom.round();
-    final sw = paint.style == PaintStyle.stroke ? paint.strokeWidth.round().clamp(1, 4096) : 0;
+    final sw = paint.style == PaintStyle.stroke
+        ? paint.strokeWidth.round().clamp(1, 4096)
+        : 0;
     for (var y = t; y < b; y++) {
       if (y < clip.top || y >= clip.bottom) continue;
       for (var x = l; x < rt; x++) {
@@ -221,7 +229,10 @@ class RawPainter implements Painter {
     int err = dx - dy;
     int x = x0, y = y0;
     while (true) {
-      if (x >= clip.left && x < clip.right && y >= clip.top && y < clip.bottom) {
+      if (x >= clip.left &&
+          x < clip.right &&
+          y >= clip.top &&
+          y < clip.bottom) {
         canvas.setPixel(x, y, paint.color);
       }
       if (x == x1 && y == y1) break;
@@ -257,8 +268,10 @@ class RawPainter implements Painter {
     // Clipping is per-pixel in BitmapFont._drawGlyph via setPixel, so we
     // pass clipped check inside loop. Just ensure origin is within rough bounds
     // before drawing.
-    if (px < clip.right && px + text.length * 8 * sx > clip.left &&
-        py < clip.bottom && py + 16 * sy > clip.top) {
+    if (px < clip.right &&
+        px + text.length * 8 * sx > clip.left &&
+        py < clip.bottom &&
+        py + 16 * sy > clip.top) {
       _defaultFont.drawText(
         canvas,
         px,
@@ -270,7 +283,12 @@ class RawPainter implements Painter {
   }
 
   @override
-  void drawLinearGradient(Rect rect, Color color0, Color color1, {double angle = 0.0}) {
+  void drawLinearGradient(
+    Rect rect,
+    Color color0,
+    Color color1, {
+    double angle = 0.0,
+  }) {
     final tx = _translateX.last.round();
     final ty = _translateY.last.round();
     final sx = _scaleX.last;
@@ -286,9 +304,11 @@ class RawPainter implements Painter {
     final cb = (t + h).clamp(clip.top.round(), clip.bottom.round());
     if (cr <= cl || cb <= ct) return;
     // Fast path: horizontal (angle ~0)
-    final isHorizontal = (angle % (2 * math.pi)).abs() < 0.01 ||
+    final isHorizontal =
+        (angle % (2 * math.pi)).abs() < 0.01 ||
         (angle % (2 * math.pi) - math.pi).abs() < 0.01;
-    final isVertical = (angle - math.pi / 2).abs() < 0.01 ||
+    final isVertical =
+        (angle - math.pi / 2).abs() < 0.01 ||
         (angle - 3 * math.pi / 2).abs() < 0.01;
     for (var y = ct; y < cb; y++) {
       for (var x = cl; x < cr; x++) {
@@ -315,7 +335,13 @@ class RawPainter implements Painter {
   }
 
   @override
-  void drawImage(String filePath, double x, double y, {double? width, double? height}) {
+  void drawImage(
+    String filePath,
+    double x,
+    double y, {
+    double? width,
+    double? height,
+  }) {
     final tx = _translateX.last.round();
     final ty = _translateY.last.round();
     final sx = _scaleX.last;
@@ -326,13 +352,24 @@ class RawPainter implements Painter {
     final dh = height != null ? (height * sy).round() : 16;
     final clip = _clipRect();
     // Placeholder: keep old behavior but respect clip via drawRect.
-    final rect = Rect.fromLTWH(dx.toDouble(), dy.toDouble(), dw.toDouble(), dh.toDouble());
+    final rect = Rect.fromLTWH(
+      dx.toDouble(),
+      dy.toDouble(),
+      dw.toDouble(),
+      dh.toDouble(),
+    );
     final cl = rect.left.clamp(clip.left, clip.right);
     final ct = rect.top.clamp(clip.top, clip.bottom);
     final cr = rect.right.clamp(clip.left, clip.right);
     final cb = rect.bottom.clamp(clip.top, clip.bottom);
     if (cr > cl && cb > ct) {
-      Rectangle(cl.round(), ct.round(), (cr - cl).round(), (cb - ct).round(), const Color(0x60, 0x60, 0x70)).draw(canvas);
+      Rectangle(
+        cl.round(),
+        ct.round(),
+        (cr - cl).round(),
+        (cb - ct).round(),
+        const Color(0x60, 0x60, 0x70),
+      ).draw(canvas);
     }
   }
 
@@ -380,10 +417,16 @@ class RawPainter implements Painter {
     if (current == null) {
       _clips[_clips.length - 1] = transformed;
     } else {
-      final nx = transformed.left > current.left ? transformed.left : current.left;
+      final nx = transformed.left > current.left
+          ? transformed.left
+          : current.left;
       final ny = transformed.top > current.top ? transformed.top : current.top;
-      final nr = transformed.right < current.right ? transformed.right : current.right;
-      final nb = transformed.bottom < current.bottom ? transformed.bottom : current.bottom;
+      final nr = transformed.right < current.right
+          ? transformed.right
+          : current.right;
+      final nb = transformed.bottom < current.bottom
+          ? transformed.bottom
+          : current.bottom;
       _clips[_clips.length - 1] = Rect.fromLTRB(nx, ny, nr, nb);
     }
   }
@@ -443,4 +486,13 @@ class RawPainter implements Painter {
       _disposed = true;
     }
   }
+
+  @override
+  void drawArc(
+    Rect oval,
+    double startAngle,
+    double sweepAngle,
+    bool useCenter,
+    Paint paint,
+  ) {}
 }

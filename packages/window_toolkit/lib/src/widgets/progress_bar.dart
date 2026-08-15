@@ -1,5 +1,6 @@
 import '../drawing/color.dart';
 import '../painter/painter.dart';
+import '../style.dart';
 import '../widget.dart';
 
 class ProgressBar extends Widget {
@@ -21,40 +22,66 @@ class ProgressBar extends Widget {
     this.fillColor = const Color(100, 200, 100),
     this.backgroundColor = const Color(50, 50, 50),
     this.showText = true,
-  })  : assert(barWidth > 0, 'ProgressBar barWidth must be > 0'),
-        assert(barHeight > 0, 'ProgressBar barHeight must be > 0'),
-        assert(max > min, 'ProgressBar max must be > min') {
+  }) : assert(barWidth > 0, 'ProgressBar barWidth must be > 0'),
+       assert(barHeight > 0, 'ProgressBar barHeight must be > 0'),
+       assert(max > min, 'ProgressBar max must be > min') {
     const charHeight = 16;
     width = barWidth;
-    height = showText ? (barHeight > charHeight ? barHeight : charHeight) : barHeight;
+    height = showText
+        ? (barHeight > charHeight ? barHeight : charHeight)
+        : barHeight;
   }
 
   @override
+  Style styleRole() => Style(
+    color: fillColor,
+    backgroundColor: backgroundColor,
+    borderColor: backgroundColor,
+  );
+
+  @override
   void draw(Painter canvas) {
+    final style = resolvedStyle();
     final clampedValue = value.clamp(min, max);
     final range = max - min;
 
     canvas.drawRect(
-        Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(),
-            height.toDouble()),
-        Paint()..color = backgroundColor);
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
+      Paint()..color = style.backgroundColor!,
+    );
 
     if (range > 0 && clampedValue > min) {
       final fillWidth = ((clampedValue - min) * width ~/ range);
       canvas.drawRect(
-          Rect.fromLTWH(x.toDouble(), y.toDouble(), fillWidth.toDouble(),
-              height.toDouble()),
-          Paint()..color = fillColor);
+        Rect.fromLTWH(
+          x.toDouble(),
+          y.toDouble(),
+          fillWidth.toDouble(),
+          height.toDouble(),
+        ),
+        Paint()..color = style.color,
+      );
     }
 
     if (showText) {
       const charHeight = 16;
-      final percentage = range > 0 ? ((clampedValue - min) * 100 ~/ range) : 100;
+      final percentage = range > 0
+          ? ((clampedValue - min) * 100 ~/ range)
+          : 100;
       final text = '$percentage%';
       final textX = x + (width - text.length * 8) ~/ 2;
       final textY = y + (height - charHeight) ~/ 2;
-      canvas.drawText(text, Offset(textX.toDouble(), textY.toDouble()),
-          size: charHeight.toDouble());
+      canvas.drawText(
+        text,
+        Offset(textX.toDouble(), textY.toDouble()),
+        color: style.color,
+        size: charHeight.toDouble(),
+      );
     }
   }
 }

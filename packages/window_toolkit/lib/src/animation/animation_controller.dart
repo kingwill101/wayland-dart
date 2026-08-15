@@ -33,6 +33,7 @@ class AnimationController extends Animation<double> {
     this.duration = const Duration(milliseconds: 200),
     this.curve = linear,
   }) {
+    _activeDuration = duration;
     _updateValue(0.0, AnimationStatus.dismissed);
   }
 
@@ -40,6 +41,9 @@ class AnimationController extends Animation<double> {
   AnimationStatus _status = AnimationStatus.dismissed;
   DateTime _startTime = DateTime.now();
   int _direction = 1; // 1 = forward, -1 = reverse
+  double _startValue = 0.0;
+  double _endValue = 1.0;
+  late Duration _activeDuration;
   el.Timer? _timer;
   bool _active = true;
   bool _disposed = false;
@@ -84,10 +88,13 @@ class AnimationController extends Animation<double> {
     if (_disposed || !isAnimating) return;
 
     final elapsed = DateTime.now().difference(_startTime);
-    final t = (elapsed.inMicroseconds / duration.inMicroseconds).clamp(0.0, 1.0);
+    final t = (elapsed.inMicroseconds / _activeDuration.inMicroseconds).clamp(
+      0.0,
+      1.0,
+    );
 
     final curved = curve.transform(t);
-    final v = _direction == 1 ? curved : 1.0 - curved;
+    final v = _startValue + (_endValue - _startValue) * curved;
 
     if (t >= 1.0) {
       if (_isRepeating) {
@@ -102,6 +109,8 @@ class AnimationController extends Animation<double> {
         if (_repeatMode == RepeatMode.reverse) {
           _direction *= -1;
         }
+        _startValue = _direction == 1 ? 0.0 : 1.0;
+        _endValue = _direction == 1 ? 1.0 : 0.0;
         _startTime = DateTime.now();
         _scheduleNextFrame();
         return;
@@ -122,6 +131,9 @@ class AnimationController extends Animation<double> {
     if (_disposed) return;
     _active = true;
     _direction = 1;
+    _startValue = from ?? _value;
+    _endValue = 1.0;
+    _activeDuration = duration;
     _isRepeating = false;
     _repeatCount = 0;
     _currentCycle = 0;
@@ -135,6 +147,9 @@ class AnimationController extends Animation<double> {
     if (_disposed) return;
     _active = true;
     _direction = -1;
+    _startValue = from ?? _value;
+    _endValue = 0.0;
+    _activeDuration = duration;
     _isRepeating = false;
     _repeatCount = 0;
     _currentCycle = 0;
@@ -147,6 +162,10 @@ class AnimationController extends Animation<double> {
   void animateTo(double target, {Duration? duration}) {
     if (_disposed) return;
     _active = true;
+    _startValue = _value;
+    _endValue = target.clamp(0.0, 1.0);
+    _direction = _endValue >= _startValue ? 1 : -1;
+    _activeDuration = duration ?? this.duration;
     _isRepeating = false;
     _repeatCount = 0;
     _currentCycle = 0;
@@ -155,10 +174,17 @@ class AnimationController extends Animation<double> {
   }
 
   /// Repeat the animation continuously.
-  void repeat({int count = 0, RepeatMode mode = RepeatMode.restart, double? from}) {
+  void repeat({
+    int count = 0,
+    RepeatMode mode = RepeatMode.restart,
+    double? from,
+  }) {
     if (_disposed) return;
     _active = true;
     _direction = 1;
+    _startValue = from ?? _value;
+    _endValue = 1.0;
+    _activeDuration = duration;
     _isRepeating = true;
     _repeatMode = mode;
     _repeatCount = count;
@@ -180,6 +206,9 @@ class AnimationController extends Animation<double> {
     if (_disposed) return;
     stop();
     _active = true;
+    _startValue = 0.0;
+    _endValue = 1.0;
+    _activeDuration = duration;
     _updateValue(0.0, AnimationStatus.dismissed);
   }
 
@@ -192,9 +221,12 @@ class AnimationController extends Animation<double> {
   double tick(Duration elapsed) {
     if (!_active || _disposed) return value;
 
-    final t = (elapsed.inMicroseconds / duration.inMicroseconds).clamp(0.0, 1.0);
+    final t = (elapsed.inMicroseconds / _activeDuration.inMicroseconds).clamp(
+      0.0,
+      1.0,
+    );
     final curved = curve.transform(t);
-    final v = _direction == 1 ? curved : 1.0 - curved;
+    final v = _startValue + (_endValue - _startValue) * curved;
 
     if (t >= 1.0) {
       if (_isRepeating) {
@@ -206,6 +238,8 @@ class AnimationController extends Animation<double> {
         if (_repeatMode == RepeatMode.reverse) {
           _direction *= -1;
         }
+        _startValue = _direction == 1 ? 0.0 : 1.0;
+        _endValue = _direction == 1 ? 1.0 : 0.0;
         _startTime = DateTime.now();
         _updateValue(v, AnimationStatus.forward);
         return value;
@@ -213,7 +247,10 @@ class AnimationController extends Animation<double> {
 
       _updateValue(v, AnimationStatus.completed);
     } else {
-      _updateValue(v, _direction == 1 ? AnimationStatus.forward : AnimationStatus.reverse);
+      _updateValue(
+        v,
+        _direction == 1 ? AnimationStatus.forward : AnimationStatus.reverse,
+      );
     }
     return value;
   }
@@ -245,7 +282,8 @@ class TweenAnimation<T extends num> {
   T get value => animation.value;
 
   void addListener(void Function() listener) => animation.addListener(listener);
-  void removeListener(void Function() listener) => animation.removeListener(listener);
+  void removeListener(void Function() listener) =>
+      animation.removeListener(listener);
 
   void addStatusListener(AnimationStatusListener listener) =>
       animation.addStatusListener(listener);

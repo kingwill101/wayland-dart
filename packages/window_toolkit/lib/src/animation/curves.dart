@@ -1,7 +1,6 @@
 /// Easing curves for animations.
 library;
 
-
 /// A mapping of the unit interval to the unit interval.
 ///
 /// A curve must map t=0.0 to 0.0 and t=1.0 to 1.0.
@@ -40,9 +39,7 @@ class CubicCurve extends Curve {
   double transformInternal(double t) {
     final t2 = t * t;
     final t3 = t2 * t;
-    return 3 * a * (1 - t) * (1 - t) * t +
-        3 * c * (1 - t) * t2 +
-        t3;
+    return 3 * a * (1 - t) * (1 - t) * t + 3 * c * (1 - t) * t2 + t3;
   }
 }
 

@@ -6,15 +6,14 @@ import '../widget.dart';
 /// Vertical stack of children, backed by [le.RenderColumn] for layout.
 class VBox extends Widget {
   @override
-
   final List<Widget> children;
   int spacing;
   final le.RenderColumn _renderColumn = le.RenderColumn();
   final List<_RenderWidgetBox> _renderChildren = [];
 
   VBox({this.spacing = 0, List<Widget>? children, super.key})
-      : assert(spacing >= 0, 'VBox spacing must be >= 0'),
-        children = children ?? [];
+    : assert(spacing >= 0, 'VBox spacing must be >= 0'),
+      children = children ?? [];
 
   void _ensureRenderTree() {
     _renderColumn.children.clear();
@@ -28,7 +27,10 @@ class VBox extends Widget {
 
   @override
   void performLayout(int containerWidth) {
-    assert(containerWidth >= 0, 'VBox.performLayout: containerWidth=$containerWidth must be >= 0');
+    assert(
+      containerWidth >= 0,
+      'VBox.performLayout: containerWidth=$containerWidth must be >= 0',
+    );
     _ensureRenderTree();
     _renderColumn.gap = spacing.toDouble();
     for (final c in children) {
@@ -40,10 +42,12 @@ class VBox extends Widget {
       r.widget.performLayout(containerWidth);
     }
 
-    _renderColumn.layout(le.BoxConstraints(
-      maxWidth: containerWidth.toDouble(),
-      maxHeight: double.infinity,
-    ));
+    _renderColumn.layout(
+      le.BoxConstraints(
+        maxWidth: containerWidth.toDouble(),
+        maxHeight: double.infinity,
+      ),
+    );
 
     width = _renderColumn.size.width.round();
     height = _renderColumn.size.height.round();
@@ -78,9 +82,11 @@ class VBox extends Widget {
 
   @override
   void draw(Painter canvas) {
-    if (_renderChildren.isEmpty && width > 0) {
-      performLayout(width);
-    }
+    // Always re-layout at draw: nested layout computes each box's interior
+    // against a stale parent offset, so re-applying positions at draw time
+    // keeps descendants at their final row/column (otherwise a VBox-of-HBoxes
+    // like the calendar collapses onto one line).
+    if (width > 0) performLayout(width);
     for (final child in children) {
       child.draw(canvas);
     }
@@ -105,7 +111,9 @@ class _RenderWidgetBox extends le.RenderBox {
   void layout(le.BoxConstraints constraints) {
     final childWidth = widget.width > 0
         ? widget.width
-        : (constraints.hasBoundedWidth ? constraints.maxWidth.round() : widget.width);
+        : (constraints.hasBoundedWidth
+              ? constraints.maxWidth.round()
+              : widget.width);
     widget.performLayout(childWidth);
     size = le.Size(widget.width.toDouble(), widget.height.toDouble());
   }

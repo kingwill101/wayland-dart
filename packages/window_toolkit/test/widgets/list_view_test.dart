@@ -4,11 +4,7 @@ import 'package:window_toolkit/window_toolkit.dart';
 void main() {
   group('ListView', () {
     test('lays out children vertically', () {
-      final list = ListView(children: [
-        Button('A'),
-        Button('B'),
-        Button('C'),
-      ]);
+      final list = ListView(children: [Button('A'), Button('B'), Button('C')]);
 
       list.performLayout(100);
       expect(list.width, 100);
@@ -16,26 +12,28 @@ void main() {
     });
 
     test('draw records commands', () {
-      final list = ListView(children: [
-        Button('X'),
-        Button('Y'),
-      ]);
+      final list = ListView(children: [Button('X'), Button('Y')]);
 
       final painter = RecordingPainter();
       list.width = 100;
       list.height = 200;
       list.draw(painter);
 
-      final buttons = painter.commands.where((c) =>
-          c.toString().contains('drawRect') || c.toString().contains('DrawRect'));
+      final buttons = painter.commands.where(
+        (c) =>
+            c.toString().contains('drawRect') ||
+            c.toString().contains('DrawRect'),
+      );
       expect(buttons.isNotEmpty, isTrue);
     });
 
     test('hitTest finds children', () {
-      final list = ListView(children: [
-        SizedBox(width: 100, height: 24, child: Button('Top')),
-        SizedBox(width: 100, height: 24, child: Button('Bottom')),
-      ]);
+      final list = ListView(
+        children: [
+          SizedBox(width: 100, height: 24, child: Button('Top')),
+          SizedBox(width: 100, height: 24, child: Button('Bottom')),
+        ],
+      );
 
       list.x = 0;
       list.y = 0;
@@ -43,17 +41,14 @@ void main() {
       list.height = 200;
       list.performLayout(100);
 
-      expect(list.hitTest(10, 10), isTrue);  // inside first child
-      expect(list.hitTest(10, 30), isTrue);  // inside second child
+      expect(list.hitTest(10, 10), isTrue); // inside first child
+      expect(list.hitTest(10, 30), isTrue); // inside second child
       expect(list.hitTest(10, 100), isFalse); // outside content
     });
 
     test('re-renders with updated children', () {
       // Create a ListView with initial children
-      final list = ListView(children: [
-        Button('A'),
-        Button('B'),
-      ]);
+      final list = ListView(children: [Button('A'), Button('B')]);
 
       // This shouldn't crash — basic smoke test
       list.performLayout(100);

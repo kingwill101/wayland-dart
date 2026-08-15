@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:window_toolkit/window_toolkit.dart';
 
 import '../audio_popup.dart';
-import '../bar_text.dart';
 import '../command.dart';
 import '../native/pulse_client.dart';
 import '../native/mpris_client.dart';
@@ -136,6 +135,11 @@ class AudioModule extends BarModule {
         .replaceAll('{media-icon}', _media.isPlaying ? '' : '')
         .replaceAll(RegExp(r'\s{2,}'), ' ')
         .trim();
+    if (Platform.environment['BARDASH_DEBUG_AUDIO'] == '1') {
+      stderr.writeln(
+        '[audio] compose volume=$_volume muted=$_muted output=${output.runes.toList()}',
+      );
+    }
     tooltip = resolveTooltip(
       _media.hasTrack
           ? '${_media.identity}\n${_media.artist} — ${_media.title}\n${_media.status}'
@@ -210,23 +214,6 @@ class AudioModule extends BarModule {
     final volume = int.parse(volMatch.group(1)!);
     final muted = out.contains('[off]');
     return (volume, muted);
-  }
-
-  @override
-  double measure(Painter painter) {
-    final textWidth = output.isEmpty
-        ? 0
-        : painter.measureTextFont(output, BarText.fontFor(output));
-    return textWidth.toDouble();
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    final text = output;
-    final font = BarText.fontFor(text);
-    final color = cssForeground ?? const Color(0xc8, 0xc8, 0xc8);
-    painter.drawTextFont(text, Offset(x, y), font: font, color: color);
-    return painter.measureTextFont(text, font);
   }
 
   @override

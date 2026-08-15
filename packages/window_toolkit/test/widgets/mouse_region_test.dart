@@ -12,10 +12,7 @@ void main() {
 
     test('onTap fires when clicked', () {
       int count = 0;
-      final mr = MouseRegion(
-        child: Button('Click'),
-        onTap: () => count++,
-      );
+      final mr = MouseRegion(child: Button('Click'), onTap: () => count++);
       mr.onClick?.call();
       expect(count, 1);
     });

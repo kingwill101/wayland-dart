@@ -31,7 +31,11 @@ void main() {
 
     test('hover toggles _hovered state', () {
       final sw = Switch();
-      expect(sw.onMouseEnter, isNotNull);
+      final window = WidgetWindow(sw);
+      window.onMouseMotion(MouseMotionEvent(1, 1));
+      expect(sw.isHovered, isTrue);
+      window.onMouseMotion(MouseMotionEvent(100, 100));
+      expect(sw.isHovered, isFalse);
     });
 
     test('draw records commands', () {

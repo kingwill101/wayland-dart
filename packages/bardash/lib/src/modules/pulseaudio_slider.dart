@@ -2,6 +2,9 @@ import 'dart:io';
 
 import 'package:window_toolkit/window_toolkit.dart';
 
+import '../bar_text.dart';
+import '../command.dart';
+import '../metrics.dart';
 import 'module.dart';
 
 /// PulseAudio volume slider rendered as an inline level bar.
@@ -26,18 +29,30 @@ class PulseaudioSliderModule extends BarModule {
   @override
   String get name => 'pulseaudio-slider';
 
+  @override
+  bool get showsGraphics => true;
+
   int _volume = 0;
   bool _muted = false;
   int _barWidth = 40;
   int _barHeight = 8;
+  int _scrollStep = 5;
   late Color _barColor;
   late Color _barBgColor;
+  late final TextRuns _textWidget;
+  late final ProgressBar _levelWidget;
+
+  /// Icon glyph for the current volume/state.
+  String get _levelIcon => _muted
+      ? '\u{f026}' // muted
+      : getIcon(_volume, ['\u{f025}', '\u{f027}', '\u{f028}']);
 
   @override
   void init(Map<String, String> config) {
     super.init(config);
     format = resolveFormat(config, '{icon}', '');
     interval = parseInt(config, 'interval', 2);
+    _scrollStep = parseInt(config, 'scroll-step', 5).clamp(1, 25);
     _barWidth = parseInt(config, 'bar-width', 40);
     _barHeight = parseInt(config, 'bar-height', 8);
     _barColor = config.containsKey('bar-color')
@@ -46,6 +61,22 @@ class PulseaudioSliderModule extends BarModule {
     _barBgColor = config.containsKey('bar-bg-color')
         ? parseColor(config['bar-bg-color']!)
         : const Color(0x3b, 0x42, 0x52);
+    _textWidget = TextRuns('');
+    _levelWidget = ProgressBar(
+      barWidth: _barWidth,
+      barHeight: _barHeight,
+      showText: false,
+      fillColor: _barColor,
+      backgroundColor: _barBgColor,
+    );
+    widget = HBox(spacing: 4, children: [_textWidget, _levelWidget]);
+  }
+
+  void _syncWidget() {
+    _textWidget.text = output;
+    _levelWidget.value = _volume;
+    _levelWidget.fillColor = _muted ? const Color(0x60, 0x60, 0x60) : _barColor;
+    requestRepaint?.call();
   }
 
   @override
@@ -56,37 +87,48 @@ class PulseaudioSliderModule extends BarModule {
         result = _runAmixer();
       }
       if (result == null) {
-        output = format.replaceAll('{icon}', 'ERR');
+        // error icon
+        output = format.replaceAll('{icon}', '\u{f03a}');
+        _syncWidget();
         return;
       }
       _volume = result.$1;
       _muted = result.$2;
+      // Compose the real (icon + text) string so measure/draw agree.
+      output = format.replaceAll('{icon}', _levelIcon);
+      _syncWidget();
     } catch (_) {
-      output = format.replaceAll('{icon}', 'ERR');
+      output = format.replaceAll('{icon}', '\u{f03a}');
+      _syncWidget();
     }
   }
 
   (int, bool)? _runPactl() {
-    final volResult = Process.runSync(
-        'pactl', ['get-sink-volume', '@DEFAULT_SINK@'],
-        runInShell: true);
+    final volResult = Process.runSync('pactl', [
+      'get-sink-volume',
+      '@DEFAULT_SINK@',
+    ], runInShell: true);
     if (volResult.exitCode != 0) return null;
     final volOut = volResult.stdout as String;
     final volMatch = RegExp(r'(\d+)%').firstMatch(volOut);
     if (volMatch == null) return null;
     final volume = int.parse(volMatch.group(1)!);
 
-    final muteResult = Process.runSync(
-        'pactl', ['get-sink-mute', '@DEFAULT_SINK@'],
-        runInShell: true);
-    final muted = muteResult.exitCode == 0 &&
+    final muteResult = Process.runSync('pactl', [
+      'get-sink-mute',
+      '@DEFAULT_SINK@',
+    ], runInShell: true);
+    final muted =
+        muteResult.exitCode == 0 &&
         (muteResult.stdout as String).contains('Mute: yes');
     return (volume, muted);
   }
 
   (int, bool)? _runAmixer() {
-    final result = Process.runSync('amixer', ['get', 'Master'],
-        runInShell: true);
+    final result = Process.runSync('amixer', [
+      'get',
+      'Master',
+    ], runInShell: true);
     if (result.exitCode != 0) return null;
     final out = result.stdout as String;
     final volMatch = RegExp(r'\[(\d+)%\]').firstMatch(out);
@@ -98,23 +140,25 @@ class PulseaudioSliderModule extends BarModule {
 
   @override
   double measure(Painter painter) {
-    final iconWidth = painter.measureText(output, size: 14).width;
-    return iconWidth + 4 + _barWidth.toDouble();
+    final textWidth = output.isEmpty
+        ? 0
+        : painter.measureTextFont(output, BarText.fontFor(output));
+    return textWidth + 4 + _barWidth.toDouble();
   }
 
   @override
   double draw(Painter painter, double x, double y) {
     // Draw icon/text
-    final icon = _muted
-        ? '\u{f026}' // 
-        : getIcon(_volume, ['\u{f025}', '\u{f027}', '\u{f028}']);
-    final text = format.replaceAll('{icon}', icon);
-    painter.drawText(text, Offset(x, y), color: const Color(0xc8, 0xc8, 0xc8));
-    final textWidth = painter.measureText(text).width;
+    final text = output;
+    final font = BarText.fontFor(text);
+    final color = cssForeground ?? const Color(0xc8, 0xc8, 0xc8);
+    painter.drawTextFont(text, Offset(x, y), font: font, color: color);
+    final textWidth = painter.measureTextFont(text, font);
 
     // Draw level bar
     final barX = x + textWidth + 4;
-    final barY = y + (14 - _barHeight) / 2;
+    final glyph = BarMetrics.current.fontSize.round();
+    final barY = y + (glyph - _barHeight) / 2;
 
     // Track background
     painter.drawRect(
@@ -137,6 +181,32 @@ class PulseaudioSliderModule extends BarModule {
   @override
   bool get hasClick => true;
 
+  /// Wheel over the module steps the output volume (±[scroll-step]%).
+  @override
+  void onScroll(double delta) {
+    if (delta == 0) return;
+    if (onScrollUpCmd.isNotEmpty && delta < 0) {
+      runBarCommand(onScrollUpCmd);
+      return;
+    }
+    if (onScrollDownCmd.isNotEmpty && delta > 0) {
+      runBarCommand(onScrollDownCmd);
+      return;
+    }
+    final step = delta < 0 ? '+$_scrollStep%' : '-$_scrollStep%';
+    Process.run('pactl', [
+      'set-sink-volume',
+      '@DEFAULT_SINK@',
+      step,
+    ], runInShell: false);
+    Process.run('pactl', [
+      'set-sink-mute',
+      '@DEFAULT_SINK@',
+      '0',
+    ], runInShell: false);
+    update();
+  }
+
   @override
   void onClick(double x, double y, {int button = 0x110}) {
     if (onClickCmd.isNotEmpty) {
@@ -145,8 +215,11 @@ class PulseaudioSliderModule extends BarModule {
     }
     // Simple toggle mute on click
     final arg = _muted ? '0' : '1';
-    Process.runSync('pactl', ['set-sink-mute', '@DEFAULT_SINK@', arg],
-        runInShell: true);
+    Process.runSync('pactl', [
+      'set-sink-mute',
+      '@DEFAULT_SINK@',
+      arg,
+    ], runInShell: true);
     update();
   }
 }

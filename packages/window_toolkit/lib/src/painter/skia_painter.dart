@@ -26,6 +26,7 @@ class SkiaPainter implements Painter {
   final int _bufferSize;
   final SkSurface _surface;
   final SkCanvas _canvas;
+
   /// Shared across all painters — never create a FontMgr per frame.
   final SkiaTextEngine _text = SkiaTextEngine.shared;
 
@@ -126,6 +127,25 @@ class SkiaPainter implements Painter {
   }
 
   @override
+  void drawArc(
+    Rect oval,
+    double startAngle,
+    double sweepAngle,
+    bool useCenter,
+    Paint paint,
+  ) {
+    final skPaint = _makePaint(paint);
+    final skOval = SkRect.fromLTRB(
+      oval.left,
+      oval.top,
+      oval.right,
+      oval.bottom,
+    );
+    _canvas.drawArc(skOval, startAngle, sweepAngle, useCenter, skPaint);
+    skPaint.dispose();
+  }
+
+  @override
   void drawText(
     String text,
     Offset position, {
@@ -145,13 +165,23 @@ class SkiaPainter implements Painter {
   }
 
   @override
-  void drawLinearGradient(Rect rect, Color color0, Color color1,
-      {double angle = 0.0}) {
+  void drawLinearGradient(
+    Rect rect,
+    Color color0,
+    Color color1, {
+    double angle = 0.0,
+  }) {
     drawRect(rect, Paint()..color = color0);
   }
 
   @override
-  void drawImage(String filePath, double x, double y, {double? width, double? height}) {
+  void drawImage(
+    String filePath,
+    double x,
+    double y, {
+    double? width,
+    double? height,
+  }) {
     try {
       final data = SkData.fromFile(filePath);
       if (data == null) return;
@@ -165,11 +195,7 @@ class SkiaPainter implements Painter {
       final dstW = width ?? imageW;
       final dstH = height ?? imageH;
       final dst = SkRect.fromLTRB(x, y, x + dstW, y + dstH);
-      _canvas.drawImageRect(
-        image,
-        dst,
-        sampling: const SkSamplingOptions(),
-      );
+      _canvas.drawImageRect(image, dst, sampling: const SkSamplingOptions());
       image.dispose();
       data.dispose();
     } catch (e) {

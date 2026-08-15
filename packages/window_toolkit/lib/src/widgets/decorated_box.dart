@@ -1,6 +1,8 @@
 import '../drawing/color.dart';
 import '../metrics.dart';
 import '../painter/painter.dart';
+import '../style.dart';
+import '../style/style_patch.dart';
 import '../widget.dart';
 
 /// Draws a background (and optional border / rounded corners) behind [child].
@@ -19,9 +21,9 @@ class DecoratedBox extends Widget {
     this.borderWidth = 0,
     double? borderRadius,
     this.padding = 0,
-  })  : assert(borderWidth >= 0, 'DecoratedBox borderWidth must be >= 0'),
-        assert(padding >= 0, 'DecoratedBox padding must be >= 0'),
-        borderRadius = borderRadius ?? ThemeMetrics.current.borderRadiusSm;
+  }) : assert(borderWidth >= 0, 'DecoratedBox borderWidth must be >= 0'),
+       assert(padding >= 0, 'DecoratedBox padding must be >= 0'),
+       borderRadius = borderRadius ?? ThemeMetrics.current.borderRadiusSm;
 
   @override
   void measure(Painter painter) {
@@ -42,46 +44,72 @@ class DecoratedBox extends Widget {
     }
   }
 
+  /// DecoratedBox role: transparent background, no border by default; only an
+  /// explicit background / CSS / local values produce a filled or bordered box.
+  @override
+  Style styleRole() => Style(
+    color: palette.text,
+    backgroundColor: const Color(0, 0, 0, 0),
+    borderColor: palette.mid,
+    borderWidth: 0,
+    borderRadius: ThemeMetrics.current.borderRadiusSm.toDouble(),
+  );
+
+  /// The box's own explicit fields fold into the single cascade.
+  @override
+  StylePatch localOverrides() => StylePatch(
+    backgroundColor: color,
+    borderTopColor: borderColor,
+    borderRightColor: borderColor,
+    borderBottomColor: borderColor,
+    borderLeftColor: borderColor,
+    borderTopWidth: borderWidth,
+    borderRightWidth: borderWidth,
+    borderBottomWidth: borderWidth,
+    borderLeftWidth: borderWidth,
+    borderTopLeftRadius: borderRadius,
+    borderTopRightRadius: borderRadius,
+    borderBottomRightRadius: borderRadius,
+    borderBottomLeftRadius: borderRadius,
+  );
+
   @override
   void draw(Painter canvas) {
+    // CSS (style system) overrides explicit / theme values, centrally.
+    final st = resolvedStyle();
+    final bg = st.backgroundColor;
+    final rad = st.borderRadius;
+    final bw = st.borderWidth;
+    final bord = st.borderColor;
+
     final rect = Rect.fromLTWH(
       x.toDouble(),
       y.toDouble(),
       width.toDouble(),
       height.toDouble(),
     );
-    if (color != null) {
-      if (borderRadius > 0) {
-        canvas.drawRRect(rect, borderRadius, borderRadius, Paint()..color = color!);
+    if (bg != null) {
+      if (rad > 0) {
+        canvas.drawRRect(rect, rad, rad, Paint()..color = bg);
       } else {
-        canvas.drawRect(rect, Paint()..color = color!);
+        canvas.drawRect(rect, Paint()..color = bg);
       }
     }
-    if (borderColor != null && borderWidth > 0) {
+    if (bw > 0) {
       final borderPaint = Paint()
-        ..color = borderColor!
+        ..color = bord
         ..style = PaintStyle.stroke
-        ..strokeWidth = borderWidth;
-      if (borderRadius > 0) {
+        ..strokeWidth = bw;
+      if (rad > 0) {
         canvas.drawRRect(
-          Rect.fromLTWH(
-            x + borderWidth / 2,
-            y + borderWidth / 2,
-            width - borderWidth,
-            height - borderWidth,
-          ),
-          borderRadius,
-          borderRadius,
+          Rect.fromLTWH(x + bw / 2, y + bw / 2, width - bw, height - bw),
+          rad,
+          rad,
           borderPaint,
         );
       } else {
         canvas.drawRect(
-          Rect.fromLTWH(
-            x + borderWidth / 2,
-            y + borderWidth / 2,
-            width - borderWidth,
-            height - borderWidth,
-          ),
+          Rect.fromLTWH(x + bw / 2, y + bw / 2, width - bw, height - bw),
           borderPaint,
         );
       }

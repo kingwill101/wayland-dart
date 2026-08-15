@@ -1,13 +1,16 @@
 import '../drawing/color.dart';
 import '../font/font.dart';
 import '../font/painter_font.dart';
+import '../interaction.dart';
 import '../metrics.dart';
+import '../mixins/hoverable.dart';
+import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
 import '../widget.dart';
 import 'label.dart';
 
 /// Compact pill/chip control (useful for workspace buttons, tags, status).
-class Chip extends Widget {
+class Chip extends Widget with Hoverable, HoverAnimated {
   String label;
   Color? backgroundColor;
   Color? textColor;
@@ -30,21 +33,19 @@ class Chip extends Widget {
     this.selected = false,
     this.hovered = false,
     double? fontSize,
-  })  : assert(paddingH == null || paddingH >= 0, 'Chip paddingH must be >= 0'),
-        assert(paddingV == null || paddingV >= 0, 'Chip paddingV must be >= 0'),
-        borderRadius = borderRadius ?? ThemeMetrics.current.borderRadiusMd,
-        paddingH = paddingH ?? ThemeMetrics.current.paddingMd,
-        paddingV = paddingV ?? ThemeMetrics.current.paddingSm,
-        fontSize = fontSize ?? ThemeMetrics.current.fontSize {
-    onMouseEnter = () => hovered = true;
-    onMouseLeave = () => hovered = false;
+  }) : assert(paddingH == null || paddingH >= 0, 'Chip paddingH must be >= 0'),
+       assert(paddingV == null || paddingV >= 0, 'Chip paddingV must be >= 0'),
+       borderRadius = borderRadius ?? ThemeMetrics.current.borderRadiusMd,
+       paddingH = paddingH ?? ThemeMetrics.current.paddingMd,
+       paddingV = paddingV ?? ThemeMetrics.current.paddingSm,
+       fontSize = fontSize ?? ThemeMetrics.current.fontSize {
+    setInteractionState(WidgetState.hovered, hovered);
   }
 
   Color get _bg {
     if (backgroundColor != null) return backgroundColor!;
     if (selected) return palette.highlight;
-    if (hovered) return palette.midlight;
-    return palette.button;
+    return transitionHover(palette.button, palette.midlight);
   }
 
   Color get _fg {
@@ -86,11 +87,7 @@ class Chip extends Widget {
       );
     }
 
-    final text = Label(
-      label,
-      color: _fg,
-      fontSize: fontSize,
-    );
+    final text = Label(label, color: _fg, fontSize: fontSize);
     text.measure(canvas);
     text.x = x + (width - text.width) ~/ 2;
     text.y = y + (height - text.height) ~/ 2;

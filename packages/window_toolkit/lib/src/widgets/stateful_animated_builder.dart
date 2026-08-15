@@ -23,10 +23,7 @@ class StatefulAnimatedBuilder extends StatefulWidget {
   final Animation<dynamic> animation;
   final Widget Function(double value) builder;
 
-  StatefulAnimatedBuilder({
-    required this.animation,
-    required this.builder,
-  });
+  StatefulAnimatedBuilder({required this.animation, required this.builder});
 
   @override
   State createState() => _AnimatedBuilderState();
@@ -40,7 +37,7 @@ class _AnimatedBuilderState extends State<StatefulAnimatedBuilder> {
   }
 
   void _onTick() {
-    Widget.onNeedsRepaint?.call();
+    setState(() {});
   }
 
   @override
@@ -75,7 +72,11 @@ class _AnimatedBuilderRender extends Widget {
   @override
   void draw(Painter canvas) {
     final built = builder(value);
-    built..x = x..y = y..width = width..height = height;
+    built
+      ..x = x
+      ..y = y
+      ..width = width
+      ..height = height;
     built.draw(canvas);
   }
 
@@ -88,7 +89,11 @@ class _AnimatedBuilderRender extends Widget {
   bool hitTest(int px, int py) {
     if (!super.hitTest(px, py)) return false;
     final built = builder(value);
-    built..x = x..y = y..width = width..height = height;
+    built
+      ..x = x
+      ..y = y
+      ..width = width
+      ..height = height;
     return built.hitTest(px, py);
   }
 }

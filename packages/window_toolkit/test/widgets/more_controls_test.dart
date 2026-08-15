@@ -1,7 +1,6 @@
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
-
 void main() {
   test('Switch toggles and changes its thumb position', () {
     var calls = 0;
@@ -47,7 +46,7 @@ void main() {
     expect(painter.commands.ofType<DrawCircleCommand>(), hasLength(3));
   });
 
-  test('IconButton reacts to hover and presses', () {
+  test('IconButton reacts to hover and presses', () async {
     var presses = 0;
     final button = IconButton(IconShape.triangle, onPressed: () => presses++);
     button.x = 4;
@@ -56,13 +55,19 @@ void main() {
     final painter = RecordingPainter();
     button.draw(painter);
     final idleFill = painter.commands.ofType<DrawRectCommand>().first;
-    expect(idleFill.paint.color, button.backgroundColor);
+    expect(
+      idleFill.paint.color.toArgb8888(),
+      button.backgroundColor.toArgb8888(),
+    );
 
-    button.onMouseEnter?.call();
+    final window = WidgetWindow(button);
+    window.onMouseMotion(MouseMotionEvent(8, 8));
+    await Future<void>.delayed(const Duration(milliseconds: 180));
+    EventLoop.instance.processOnce();
     painter.clearCommands();
     button.draw(painter);
     final hoverFill = painter.commands.ofType<DrawRectCommand>().first;
-    expect(hoverFill.paint.color, button.hoverColor);
+    expect(hoverFill.paint.color.toArgb8888(), button.hoverColor.toArgb8888());
 
     button.press();
     expect(presses, 1);

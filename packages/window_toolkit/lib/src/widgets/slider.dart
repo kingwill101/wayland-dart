@@ -1,9 +1,12 @@
 import '../drawing/color.dart';
+import '../interaction.dart';
+import '../mixins/hoverable.dart';
+import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
 
 import '../widget.dart';
 
-class Slider extends Widget {
+class Slider extends Widget with Hoverable, HoverAnimated {
   double min;
   double max;
   double value;
@@ -28,13 +31,13 @@ class Slider extends Widget {
     this.showValue = true,
     this.onChanged,
     WidgetKey? key,
-  })  : assert(max > min, 'Slider max must be > min'),
-        assert(trackHeight > 0, 'Slider trackHeight must be > 0'),
-        assert(thumbRadius > 0, 'Slider thumbRadius must be > 0'),
-        value = value.clamp(min, max).toDouble(),
-        _trackColor = trackColor,
-        _fillColor = fillColor,
-        _thumbColor = thumbColor {
+  }) : assert(max > min, 'Slider max must be > min'),
+       assert(trackHeight > 0, 'Slider trackHeight must be > 0'),
+       assert(thumbRadius > 0, 'Slider thumbRadius must be > 0'),
+       value = value.clamp(min, max).toDouble(),
+       _trackColor = trackColor,
+       _fillColor = fillColor,
+       _thumbColor = thumbColor {
     width = 160;
     height = thumbRadius * 2 > trackHeight ? thumbRadius * 2 : trackHeight;
   }
@@ -44,9 +47,13 @@ class Slider extends Widget {
   Color get thumbColor => _thumbColor ?? palette.light;
 
   @override
+  bool get acceptsFocus => true;
+
+  @override
   void onMouseDown(int x, int y, int button) {
     if (button == 272) {
       setState(() => _dragging = true);
+      setInteractionState(WidgetState.dragging, true);
       setFraction((x - this.x) / width);
     }
   }
@@ -61,6 +68,7 @@ class Slider extends Widget {
   @override
   void onMouseUp(int x, int y, int button) {
     setState(() => _dragging = false);
+    setInteractionState(WidgetState.dragging, false);
   }
 
   double get fraction {
@@ -85,31 +93,58 @@ class Slider extends Widget {
 
   @override
   void draw(Painter canvas) {
+    final valueText = value.round().toString();
+    final valueWidth = showValue
+        ? canvas.measureText(valueText, size: 16).width.ceil()
+        : 0;
+    const valueGap = 8;
+    final trackWidth = showValue
+        ? (width - valueWidth - valueGap).clamp(0, width)
+        : width;
     final trackY = y + (height - trackHeight) ~/ 2;
     final thumbCenterY = y + height ~/ 2;
-    final fillWidth = (width * fraction).round();
+    final fillWidth = (trackWidth * fraction).round();
+    final thumb = transitionHover(
+      thumbColor,
+      Color.blend(thumbColor, const Color(255, 255, 255, 28)),
+    );
 
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), trackY.toDouble(), width.toDouble(), trackHeight.toDouble()),
+      Rect.fromLTWH(
+        x.toDouble(),
+        trackY.toDouble(),
+        trackWidth.toDouble(),
+        trackHeight.toDouble(),
+      ),
       Paint()..color = trackColor,
     );
 
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), trackY.toDouble(), fillWidth.toDouble(), trackHeight.toDouble()),
+      Rect.fromLTWH(
+        x.toDouble(),
+        trackY.toDouble(),
+        fillWidth.toDouble(),
+        trackHeight.toDouble(),
+      ),
       Paint()..color = fillColor,
     );
 
     canvas.drawCircle(
       Offset((x + fillWidth).toDouble(), thumbCenterY.toDouble()),
       thumbRadius.toDouble(),
-      Paint()..color = thumbColor,
+      Paint()
+        ..color = _dragging
+            ? Color.blend(thumb, const Color(255, 255, 255, 20))
+            : thumb,
     );
 
     if (showValue) {
-      final text = value.round().toString();
       canvas.drawText(
-        text,
-        Offset((x + width + 8).toDouble(), (y + (height - 16) ~/ 2).toDouble()),
+        valueText,
+        Offset(
+          (x + trackWidth + valueGap).toDouble(),
+          (y + (height - 16) ~/ 2).toDouble(),
+        ),
         size: 16,
       );
     }

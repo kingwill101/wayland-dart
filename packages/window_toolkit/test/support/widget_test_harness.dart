@@ -41,8 +41,11 @@ class WidgetHarness<T extends Widget> {
   /// and return it.
   C singleCommand<C extends PaintCommand>() {
     final matching = painter.commands.whereType<C>().toList();
-    expect(matching.length, 1,
-        reason: 'Expected exactly one ${C.runtimeType}, got ${matching.length}');
+    expect(
+      matching.length,
+      1,
+      reason: 'Expected exactly one ${C.runtimeType}, got ${matching.length}',
+    );
     return matching.first;
   }
 

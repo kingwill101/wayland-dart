@@ -2,7 +2,6 @@ import 'dart:io' show stderr;
 
 import 'package:window_toolkit/window_toolkit.dart';
 
-import 'bar_text.dart';
 import 'metrics.dart';
 import 'modules/module.dart';
 
@@ -20,10 +19,18 @@ import 'modules/module.dart';
 class ModuleWidget extends Widget {
   final BarModule module;
 
+  /// Expose the module's widget tree to toolkit hit-testing and interaction
+  /// traversal. The module wrapper is a real tree boundary, not a drawing
+  /// shortcut.
+  @override
+  List<Widget> get children =>
+      module.widget == null ? const <Widget>[] : <Widget>[module.widget!];
+
   Object? _measuredToken;
   int _measuredPadL = -1;
   int _measuredPadR = -1;
   double _measuredContentW = 0;
+  late final TextRuns _textRuns = TextRuns('');
 
   static bool debugLayout = false;
   static bool _debugLogged = false;
@@ -34,10 +41,53 @@ class ModuleWidget extends Widget {
     styleId = module.name;
     addClass('module');
     addClass(module.name);
+
+    // Every ordinary module owns a toolkit text widget.  Keeping this at the
+    // wrapper boundary means modules only publish state (`output`) while the
+    // toolkit owns font selection, measurement, clipping, CSS, and drawing.
+    // Modules with genuine graphics or their own composite widget opt out.
+    if (_canUseToolkitText && module.widget == null) {
+      module.widget = _textRuns;
+    }
   }
 
   int get _padL => module.paddingLeft + module.marginLeft;
   int get _padR => module.paddingRight + module.marginRight;
+
+  bool get _canUseToolkitText =>
+      !module.showsGraphics && module.name != 'sni' && module.name != 'tray';
+
+  // This is retained for dynamic modules that deliberately clear their
+  // widget while unavailable (for example a missing Hyprland IPC socket).
+  bool get _usesToolkitText => module.widget == null && _canUseToolkitText;
+
+  void _syncTextRuns(Painter painter, {Color? color}) {
+    _textRuns.text = module.output;
+    _textRuns.textFont = Font.ui(pixelSize: BarMetrics.current.fontSize);
+    _textRuns.iconFont = Font.icon(pixelSize: BarMetrics.current.iconFontSize);
+    _textRuns.runSpacing = BarMetrics.current.iconTextGap.toDouble();
+    _textRuns.color = color;
+    _textRuns.measure(painter);
+  }
+
+  void _measureWidget(Painter painter, Widget widget) {
+    if (widget is TextRuns) {
+      _syncTextRuns(painter);
+      widget.measure(painter);
+      final content = BarMetrics.current.isIconOutput(module.output)
+          ? widget.width.toDouble().clamp(
+              BarMetrics.current.iconSlot.toDouble(),
+              100000,
+            )
+          : widget.width.toDouble() + BarMetrics.current.contentFudge;
+      width = content.round() + _padL + _padR;
+    } else {
+      widget.measure(painter);
+      width = widget.width + _padL + _padR;
+    }
+    final barH = painter.height.round();
+    height = barH > 0 ? barH : widget.height;
+  }
 
   @override
   void performLayout(int containerWidth) {
@@ -47,10 +97,20 @@ class ModuleWidget extends Widget {
   @override
   void measure(Painter painter) {
     if (module.widget != null) {
-      module.widget!.measure(painter);
-      width = module.widget!.width + _padL + _padR;
+      _measureWidget(painter, module.widget!);
+      return;
+    }
+
+    if (_usesToolkitText) {
+      _syncTextRuns(painter);
+      final measured =
+          _textRuns.width.toDouble() + BarMetrics.current.contentFudge;
+      _measuredContentW = BarMetrics.current.isIconOutput(module.output)
+          ? measured.clamp(BarMetrics.current.iconSlot.toDouble(), 100000)
+          : measured;
+      width = _measuredContentW.round() + _padL + _padR;
       final barH = painter.height.round();
-      height = barH > 0 ? barH : module.widget!.height;
+      height = barH > 0 ? barH : 14;
       return;
     }
 
@@ -61,16 +121,10 @@ class ModuleWidget extends Widget {
       _measuredToken = token;
       _measuredPadL = _padL;
       _measuredPadR = _padR;
-      // Ensure PUA icons (power) get icon font width even if module forgot.
-      // Skip the shortcut for graphics modules — they draw bars/graphs
-      // beyond the text and their own [BarModule.measure] knows the full
-      // extent (e.g. audio level bar, sliders). A text-only measure made
-      // the bar bleed into the next module.
-      if (!module.showsGraphics && BarText.hasIconGlyphs(module.output)) {
-        _measuredContentW = BarText.measure(painter, module.output);
-      } else {
-        _measuredContentW = module.measure(painter);
-      }
+      // Every module owns its intrinsic measurement, and the base text path
+      // delegates to window_toolkit's shared mixed-font renderer. Graphics
+      // modules can override it to include bars/images beyond their label.
+      _measuredContentW = module.measure(painter);
     }
     width = _measuredContentW.round() + _padL + _padR;
     final barH = painter.height.round();
@@ -139,6 +193,7 @@ class ModuleWidget extends Widget {
 
       if (module.widget != null) {
         final w = module.widget!;
+        if (w is TextRuns) _syncTextRuns(painter, color: ctx.parsedColor);
         w.measure(painter);
         w.x = x + _padL;
         // Center widget tree in the bar (groups, window title, workspaces).
@@ -158,6 +213,15 @@ class ModuleWidget extends Widget {
           module.draw(painter, contentX, originY);
           return;
         }
+        if (_usesToolkitText) {
+          _syncTextRuns(painter, color: styleFg);
+          _textRuns.x = contentX.round();
+          _textRuns.y = 0;
+          _textRuns.width = (width - _padL - _padR).clamp(1, width);
+          _textRuns.height = barH.round();
+          _textRuns.draw(painter);
+          return;
+        }
         if (module.showsGraphics) {
           // Modules that draw graphs / level bars / images do so in
           // [BarModule.draw]. A CSS foreground must only tint their text —
@@ -168,26 +232,14 @@ class ModuleWidget extends Widget {
         }
         if (styleFg != null) {
           // CSS color overrides module's hardcoded _color (waybar style.css).
-          // Use BarText.fontFor so PUA icons (power) get Hack Nerd Font, not sans.
-          final font = BarText.fontFor(module.output);
-          painter.drawTextFont(
+          painter.drawTextRuns(
             module.output,
             Offset(contentX, originY),
-            font: font,
+            textFont: Font.ui(pixelSize: BarMetrics.current.fontSize),
+            iconFont: Font.icon(pixelSize: BarMetrics.current.iconFontSize),
             color: styleFg,
           );
         } else {
-          // Even without CSS, ensure PUA gets icon font for measure/draw consistency.
-          if (BarText.hasIconGlyphs(module.output)) {
-            final f = BarText.iconFont();
-            module.cssForeground = null;
-            painter.drawTextFont(
-              module.output,
-              Offset(contentX, originY),
-              font: f,
-            );
-            return;
-          }
           module.cssForeground = null;
           module.draw(painter, contentX, originY);
         }

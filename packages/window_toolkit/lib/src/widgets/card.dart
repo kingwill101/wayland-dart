@@ -1,10 +1,10 @@
 import '../drawing/color.dart';
 import '../painter/painter.dart';
+import '../style.dart';
 import '../widget.dart';
 
 class Card extends Widget {
   @override
-
   String? title;
   @override
   List<Widget> children;
@@ -25,6 +25,14 @@ class Card extends Widget {
     this.spacing = 8,
     this.titleColor = const Color(255, 255, 255),
   }) : children = children ?? [];
+
+  @override
+  Style styleRole() => Style(
+    color: titleColor,
+    backgroundColor: backgroundColor,
+    borderColor: borderColor,
+    borderWidth: borderWidth.toDouble(),
+  );
 
   @override
   void performLayout(int containerWidth) {
@@ -51,28 +59,55 @@ class Card extends Widget {
   @override
   void draw(Painter canvas) {
     layoutChildren();
+    final style = resolvedStyle();
+    final border = style.borderWidth.round();
 
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
-      Paint()..color = backgroundColor,
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
+      Paint()..color = style.backgroundColor!,
     );
 
-    if (borderWidth > 0) {
+    if (border > 0) {
       canvas.drawRect(
-        Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), borderWidth.toDouble()),
-        Paint()..color = borderColor,
+        Rect.fromLTWH(
+          x.toDouble(),
+          y.toDouble(),
+          width.toDouble(),
+          border.toDouble(),
+        ),
+        Paint()..color = style.borderColor,
       );
       canvas.drawRect(
-        Rect.fromLTWH(x.toDouble(), (y + height - borderWidth).toDouble(), width.toDouble(), borderWidth.toDouble()),
-        Paint()..color = borderColor,
+        Rect.fromLTWH(
+          x.toDouble(),
+          (y + height - border).toDouble(),
+          width.toDouble(),
+          border.toDouble(),
+        ),
+        Paint()..color = style.borderColor,
       );
       canvas.drawRect(
-        Rect.fromLTWH(x.toDouble(), y.toDouble(), borderWidth.toDouble(), height.toDouble()),
-        Paint()..color = borderColor,
+        Rect.fromLTWH(
+          x.toDouble(),
+          y.toDouble(),
+          border.toDouble(),
+          height.toDouble(),
+        ),
+        Paint()..color = style.borderColor,
       );
       canvas.drawRect(
-        Rect.fromLTWH((x + width - borderWidth).toDouble(), y.toDouble(), borderWidth.toDouble(), height.toDouble()),
-        Paint()..color = borderColor,
+        Rect.fromLTWH(
+          (x + width - border).toDouble(),
+          y.toDouble(),
+          border.toDouble(),
+          height.toDouble(),
+        ),
+        Paint()..color = style.borderColor,
       );
     }
 
@@ -80,7 +115,7 @@ class Card extends Widget {
       canvas.drawText(
         title!,
         Offset((x + padding).toDouble(), (y + padding).toDouble()),
-        color: titleColor,
+        color: style.color,
         size: 16,
       );
     }

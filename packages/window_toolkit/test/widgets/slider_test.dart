@@ -35,9 +35,15 @@ void main() {
     });
 
     test('draw records commands', () {
-      final harness = WidgetHarness(Slider());
+      final slider = Slider(value: 40);
+      final harness = WidgetHarness(slider);
       harness.draw();
       expect(harness.painter.commands, isNotEmpty);
+
+      final value = harness.painter.commands
+          .whereType<DrawTextCommand>()
+          .single;
+      expect(value.position.dx + 16, lessThanOrEqualTo(slider.width));
     });
   });
 }

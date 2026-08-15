@@ -33,15 +33,15 @@ class Font {
 
   /// UI body text defaults.
   const Font.ui({double pixelSize = 13, int weight = FontWeight.normal})
-      : this(role: FontRole.ui, pixelSize: pixelSize, weight: weight);
+    : this(role: FontRole.ui, pixelSize: pixelSize, weight: weight);
 
   /// Icon / symbol font (Font Awesome, Nerd Font, emoji).
   const Font.icon({double pixelSize = 14})
-      : this(role: FontRole.icon, pixelSize: pixelSize);
+    : this(role: FontRole.icon, pixelSize: pixelSize);
 
   /// Monospace (tooltips, code).
   const Font.mono({double pixelSize = 12})
-      : this(role: FontRole.mono, pixelSize: pixelSize);
+    : this(role: FontRole.mono, pixelSize: pixelSize);
 
   Font copyWith({
     String? family,

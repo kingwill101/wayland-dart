@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:window_toolkit/window_toolkit.dart';
 
+import '../metrics.dart';
 import 'module.dart';
 
 /// Image display module.
@@ -20,6 +21,9 @@ import 'module.dart';
 class ImageModule extends BarModule {
   @override
   String get name => 'image';
+
+  @override
+  bool get showsGraphics => true;
 
   String _path = '';
   int _size = 16;
@@ -49,17 +53,18 @@ class ImageModule extends BarModule {
 
   @override
   double draw(Painter painter, double x, double y) {
+    final glyph = BarMetrics.current.fontSize.round();
+    final yOffset = y + (_size < glyph ? (glyph - _size) / 2 : 0);
     if (_path.isEmpty || !File(_path).existsSync()) {
-      // Draw placeholder rectangle
+      // Draw placeholder square (CSS foreground for consistency)
       painter.drawRect(
-        Rect.fromLTWH(x, y, _size.toDouble(), _size.toDouble()),
-        Paint()..color = const Color(0x60, 0x40, 0x40),
+        Rect.fromLTWH(x, yOffset, _size.toDouble(), _size.toDouble()),
+        Paint()..color = cssForeground ?? const Color(0x3a, 0x3a, 0x3a),
       );
       return _size.toDouble();
     }
 
     // Center the image vertically within the bar height
-    final yOffset = y + (_size < 14 ? (14 - _size) / 2 : 0);
     painter.drawImage(_path, x, yOffset, width: _size.toDouble(), height: _size.toDouble());
     return _size.toDouble();
   }

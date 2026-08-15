@@ -10,11 +10,17 @@ void main() {
     });
 
     test('constructor asserts barHeight > 0', () {
-      expect(() => ProgressBar(barWidth: 100, barHeight: 0), throwsA(isA<AssertionError>()));
+      expect(
+        () => ProgressBar(barWidth: 100, barHeight: 0),
+        throwsA(isA<AssertionError>()),
+      );
     });
 
     test('constructor asserts max > min', () {
-      expect(() => ProgressBar(barWidth: 100, min: 50, max: 25), throwsA(isA<AssertionError>()));
+      expect(
+        () => ProgressBar(barWidth: 100, min: 50, max: 25),
+        throwsA(isA<AssertionError>()),
+      );
     });
 
     test('default values', () {

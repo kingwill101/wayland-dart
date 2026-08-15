@@ -75,9 +75,10 @@ class CustomModule extends BarModule {
     // Short icon labels (FontAwesome / emoji) get a fixed slot so bad
     // glyph metrics don't create huge gaps in groups.
     if (m.isIconOutput(output)) return m.iconContentWidth();
-    final w = painter.measureTextFont(
+    final w = painter.measureTextRuns(
       output,
-      Font.ui(pixelSize: m.fontSize),
+      textFont: Font.ui(pixelSize: m.fontSize),
+      iconFont: Font.icon(pixelSize: m.iconFontSize),
     );
     return m.textContentWidth(w, min: 8);
   }
@@ -87,23 +88,26 @@ class CustomModule extends BarModule {
     final m = BarMetrics.current;
     if (m.isIconOutput(output)) {
       // Icon role → FontDatabase icon family (config icon_font_family).
-      painter.drawTextFont(
+      painter.drawTextRuns(
         output,
         Offset(x, y),
-        font: Font.icon(pixelSize: m.iconFontSize),
+        textFont: Font.ui(pixelSize: m.fontSize),
+        iconFont: Font.icon(pixelSize: m.iconFontSize),
         color: _color,
       );
       return m.iconContentWidth();
     }
-    painter.drawTextFont(
+    painter.drawTextRuns(
       output,
       Offset(x, y),
-      font: Font.ui(pixelSize: m.fontSize),
+      textFont: Font.ui(pixelSize: m.fontSize),
+      iconFont: Font.icon(pixelSize: m.iconFontSize),
       color: _color,
     );
-    final w = painter.measureTextFont(
+    final w = painter.measureTextRuns(
       output,
-      Font.ui(pixelSize: m.fontSize),
+      textFont: Font.ui(pixelSize: m.fontSize),
+      iconFont: Font.icon(pixelSize: m.iconFontSize),
     );
     return m.textContentWidth(w, min: 8);
   }

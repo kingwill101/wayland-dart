@@ -1,9 +1,13 @@
 import '../drawing/color.dart';
+import '../mixins/hoverable.dart';
+import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
+import '../style.dart';
+import '../style/style_patch.dart';
 import '../widget.dart';
 import 'image_icon.dart';
 
-class IconButton extends Widget {
+class IconButton extends Widget with Hoverable, HoverAnimated {
   IconShape shape;
   Color iconColor;
   Color backgroundColor;
@@ -11,8 +15,6 @@ class IconButton extends Widget {
   Color borderColor;
   int iconSize;
   VoidCallback? onPressed;
-
-  bool _hovered = false;
 
   IconButton(
     this.shape, {
@@ -22,12 +24,14 @@ class IconButton extends Widget {
     this.borderColor = const Color(30, 30, 30),
     this.iconSize = 16,
     this.onPressed,
-  })  : assert(iconSize > 0, 'IconButton iconSize must be > 0') {
+  }) : assert(iconSize > 0, 'IconButton iconSize must be > 0') {
     width = iconSize + 12;
     height = iconSize + 12;
-    onClick = () { press(); return true; };
-    onMouseEnter = () => setState(() => _hovered = true);
-    onMouseLeave = () => setState(() => _hovered = false);
+    onClick = () {
+      press();
+      return true;
+    };
+    tabIndex = 1;
   }
 
   void press() {
@@ -35,8 +39,22 @@ class IconButton extends Widget {
   }
 
   @override
+  bool get acceptsFocus => true;
+
+  @override
+  Style styleRole() => Style(
+    color: iconColor,
+    backgroundColor: backgroundColor,
+    borderColor: borderColor,
+  );
+
+  @override
   void draw(Painter canvas) {
-    final fill = _hovered ? hoverColor : backgroundColor;
+    final base = resolvedStyle();
+    final hover = resolvedStyleOn(const [
+      'hover',
+    ], local: StylePatch(backgroundColor: hoverColor));
+    final fill = transitionHover(base.backgroundColor!, hover.backgroundColor!);
     canvas.drawRect(
       Rect.fromLTWH(
         x.toDouble(),
@@ -49,7 +67,7 @@ class IconButton extends Widget {
 
     canvas.drawRect(
       Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), 1),
-      Paint()..color = borderColor,
+      Paint()..color = base.borderColor,
     );
     canvas.drawRect(
       Rect.fromLTWH(
@@ -58,13 +76,13 @@ class IconButton extends Widget {
         width.toDouble(),
         1,
       ),
-      Paint()..color = borderColor,
+      Paint()..color = base.borderColor,
     );
 
     final cx = x + width ~/ 2;
     final cy = y + height ~/ 2;
     final half = iconSize ~/ 2;
-    final paint = Paint()..color = iconColor;
+    final paint = Paint()..color = base.color;
 
     switch (shape) {
       case IconShape.circle:

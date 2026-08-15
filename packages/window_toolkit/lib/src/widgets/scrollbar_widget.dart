@@ -8,7 +8,11 @@ import 'package:layout_engine/layout_engine.dart' as le;
 
 import '../drawing/color.dart';
 import '../mixins/event.dart';
+import '../interaction.dart';
+import '../mixins/hoverable.dart';
+import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
+import '../style.dart';
 import '../widget.dart';
 
 /// A vertical scrollbar that tracks a [le.ScrollController].
@@ -20,14 +24,13 @@ import '../widget.dart';
 /// final ctrl = ViewportScrollController();
 /// Scrollbar(controller: ctrl, viewportHeight: 300)
 /// ```
-class Scrollbar extends Widget {
+class Scrollbar extends Widget with Hoverable, HoverAnimated {
   le.ScrollController controller;
   int thickness;
   int viewportHeight = 0;
   final Color? trackColor;
   final Color? thumbColor;
   final Color? hoverColor;
-  bool hovered = false;
   bool _dragging = false;
   int _dragStartScroll = 0;
   int _dragStartY = 0;
@@ -41,14 +44,17 @@ class Scrollbar extends Widget {
     this.hoverColor,
   });
 
-  Color get _trackColor => trackColor ?? palette.mid;
-  Color get _thumbColor => _dragging
-      ? (hoverColor ?? palette.windowText)
-      : (hovered ? (hoverColor ?? palette.light) : (thumbColor ?? palette.light));
-  Color get _hoverTrackColor => trackColor ?? palette.mid;
+  @override
+  Style styleRole() => Style(
+    color: thumbColor ?? palette.light,
+    backgroundColor: trackColor ?? palette.mid,
+    borderColor: palette.mid,
+  );
 
   le.ScrollbarMetrics _computeMetrics() {
-    final trackH = viewportHeight > 0 ? viewportHeight.toDouble() : height.toDouble();
+    final trackH = viewportHeight > 0
+        ? viewportHeight.toDouble()
+        : height.toDouble();
     return le.ScrollbarMetrics.from(controller, trackH);
   }
 
@@ -56,6 +62,7 @@ class Scrollbar extends Widget {
   void draw(Painter canvas) {
     final metrics = _computeMetrics();
     if (!metrics.visible) return;
+    final style = resolvedStyle();
 
     final xPos = (x + width - thickness).toDouble();
     final yPos = y.toDouble();
@@ -64,14 +71,14 @@ class Scrollbar extends Widget {
     // Track
     canvas.drawRect(
       Rect.fromLTWH(xPos, yPos, thickness.toDouble(), trackH),
-      Paint()..color = _trackColor,
+      Paint()..color = style.backgroundColor!,
     );
 
     // Thumb
     final thumbY = yPos + metrics.thumbOffset;
     canvas.drawRect(
       Rect.fromLTWH(xPos, thumbY, thickness.toDouble(), metrics.thumbSize),
-      Paint()..color = _thumbColor,
+      Paint()..color = style.color,
     );
   }
 
@@ -88,13 +95,18 @@ class Scrollbar extends Widget {
     if (!metrics.visible) return;
 
     final sbx = this.x + width - thickness;
-    if (x < sbx || x >= sbx + thickness || y < this.y || y >= this.y + metrics.trackSize.round()) return;
+    if (x < sbx ||
+        x >= sbx + thickness ||
+        y < this.y ||
+        y >= this.y + metrics.trackSize.round())
+      return;
 
     final thumbStart = (this.y + metrics.thumbOffset).round();
     final thumbEnd = (thumbStart + metrics.thumbSize).round();
 
     if (y >= thumbStart && y < thumbEnd) {
       setState(() => _dragging = true);
+      setInteractionState(WidgetState.dragging, true);
       _dragStartScroll = controller.offset;
       _dragStartY = y;
     } else {
@@ -107,6 +119,7 @@ class Scrollbar extends Widget {
   @override
   void onMouseUp(int x, int y, int button) {
     setState(() => _dragging = false);
+    setInteractionState(WidgetState.dragging, false);
   }
 
   @override
@@ -117,8 +130,11 @@ class Scrollbar extends Widget {
     final dragRange = (metrics.trackSize - metrics.thumbSize).round();
     if (dragRange <= 0) return;
     final delta = y - _dragStartY;
-    final newOffset = (_dragStartScroll + delta * controller.maxOffset ~/ dragRange)
-        .clamp(0, controller.maxOffset);
+    final newOffset =
+        (_dragStartScroll + delta * controller.maxOffset ~/ dragRange).clamp(
+          0,
+          controller.maxOffset,
+        );
     controller.jumpTo(newOffset);
   }
 
@@ -126,6 +142,9 @@ class Scrollbar extends Widget {
   bool hitTest(int px, int py) {
     final metrics = _computeMetrics();
     if (!metrics.visible) return false;
-    return px >= x && px < x + width && py >= y && py < y + metrics.trackSize.round();
+    return px >= x &&
+        px < x + width &&
+        py >= y &&
+        py < y + metrics.trackSize.round();
   }
 }

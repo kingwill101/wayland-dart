@@ -21,8 +21,109 @@ import 'painter/painter.dart';
 import 'painter/skia_painter.dart';
 import 'painter/skia_text_engine.dart';
 import 'palette.dart';
-import 'style/style_context.dart';
+import 'style.dart';
 import 'widget.dart';
+
+/// Measurement-only [Painter] used to find a tooltip content widget's
+/// intrinsic size before the SHM buffer exists. Text metrics are real (Skia),
+/// drawing is a no-op.
+class _MeasurePainter implements Painter {
+  @override
+  double get width => 0;
+  @override
+  double get height => 0;
+  @override
+  Size get size => Size.zero();
+
+  @override
+  void clear(Color color) {}
+  @override
+  void drawRect(Rect rect, Paint paint) {}
+  @override
+  void drawCircle(Offset center, double radius, Paint paint) {}
+  @override
+  void drawLine(Offset from, Offset to, Paint paint) {}
+  @override
+  void drawArc(
+    Rect oval,
+    double startAngle,
+    double sweepAngle,
+    bool useCenter,
+    Paint paint,
+  ) {}
+  @override
+  void drawRRect(Rect rect, double radiusX, double radiusY, Paint paint) {}
+  @override
+  void drawText(
+    String text,
+    Offset position, {
+    Color? color,
+    double size = 14,
+    String fontFamily = 'sans',
+  }) {}
+  @override
+  void drawImage(
+    String filePath,
+    double x,
+    double y, {
+    double? width,
+    double? height,
+  }) {}
+  @override
+  void clipRect(Rect rect) {}
+  @override
+  void save() {}
+  @override
+  void restore() {}
+  @override
+  void translate(double dx, double dy) {}
+  @override
+  void scale(double sx, double sy) {}
+  @override
+  void flush() {}
+  @override
+  void dispose() {}
+
+  @override
+  void drawLinearGradient(
+    Rect rect,
+    Color color0,
+    Color color1, {
+    double angle = 0.0,
+  }) {}
+  @override
+  Size measureText(
+    String text, {
+    double size = 14,
+    String fontFamily = 'sans',
+  }) => SkiaTextEngine.shared.measureText(
+    text,
+    size: size,
+    fontFamily: fontFamily,
+  );
+
+  @override
+  double measureTextAdvance(
+    String text, {
+    double size = 14,
+    String fontFamily = 'sans',
+  }) => SkiaTextEngine.shared.measureTextAdvance(
+    text,
+    size: size,
+    fontFamily: fontFamily,
+  );
+
+  @override
+  Rect measureTextBounds(
+    String text, {
+    double size = 14,
+    String fontFamily = 'sans',
+  }) => SkiaTextEngine.shared.measureTextBounds(
+    text,
+    size: size,
+    fontFamily: fontFamily,
+  );
+}
 
 class TooltipOverlay {
   final WaylandConnection connection;
@@ -30,7 +131,6 @@ class TooltipOverlay {
   int parentWidth;
   int parentHeight;
   Anchor barAnchor;
-
   Palette? palette;
   Color? backgroundColor;
   Color? textColor;
@@ -43,6 +143,12 @@ class TooltipOverlay {
   int paddingVertical;
   int gap;
 
+  /// Optional content widget for this tip. When set, the overlay sizes the
+  /// surface to the widget's intrinsic size and lays it out / paints it
+  /// through the widget & CSS style system (instead of the default plain-text
+  /// [text]).
+  Widget? content;
+
   WlSurface? _surface;
   LayerSurfaceV1? _layer;
   WlSurface? parentSurface;
@@ -53,6 +159,7 @@ class TooltipOverlay {
   /// SHM / buffer dimensions (may be larger than content).
   int _bufW = 0;
   int _bufH = 0;
+
   /// Content size last requested of the compositor.
   int _w = 0;
   int _h = 0;
@@ -85,13 +192,12 @@ class TooltipOverlay {
     this.paddingHorizontal = 10,
     this.paddingVertical = 6,
     this.gap = 0,
+    this.content,
   });
 
-  ColorGroup get _colors =>
-      (palette ?? Palette.current).forState(true, true);
+  ColorGroup get _colors => (palette ?? Palette.current).forState(true, true);
 
-  Color get resolvedBackground =>
-      backgroundColor ?? _colors.tooltipBase;
+  Color get resolvedBackground => backgroundColor ?? _colors.tooltipBase;
 
   Color get resolvedText => textColor ?? _colors.tooltipText;
 
@@ -101,36 +207,50 @@ class TooltipOverlay {
   int get height => _h;
   bool get isVisible => _visible;
 
-  /// Size for [text]. Uses Skia metrics when available so height matches paint
-  /// (over-tall estimates pushed tips too far from the bar). Calendar title larger.
+  /// Size for [text] as plain text. Uses Skia metrics when available so
+  /// height matches paint (over-tall estimates pushed tips too far from the bar).
   ///
   /// [maxWidth] caps the tip to the output width.
   Size estimateSize(String text, {int? maxWidth}) {
     final lines = text.split('\n');
     final cap = (maxWidth ?? parentWidth).clamp(48, 7680);
     final family = fontFamily == 'sans' ? 'monospace' : fontFamily;
-    final isCal = text.contains('Su Mo');
-    final titleSz = fontSize + 5;
 
     var maxW = 1.0;
     var totalH = 0.0;
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i].isEmpty ? ' ' : lines[i];
-      final sz = isCal && RegExp(r'^[A-Za-z]+ \d{4}$').hasMatch(line.trim()) ? titleSz : fontSize;
-      final lineGap = isCal && RegExp(r'^[A-Za-z]+ \d{4}$').hasMatch(line.trim()) ? 6 : fontSize * 0.25;
-      final bounds = SkiaTextEngine.shared.measureTextBounds(line.replaceAll('*', ' '), size: sz, fontFamily: family);
+      final bounds = SkiaTextEngine.shared.measureTextBounds(
+        line,
+        size: fontSize,
+        fontFamily: family,
+      );
       if (bounds.width > maxW) maxW = bounds.width;
-      final adv = SkiaTextEngine.shared.measureTextAdvance(line.replaceAll('*', ' '), size: sz, fontFamily: family);
+      final adv = SkiaTextEngine.shared.measureTextAdvance(
+        line,
+        size: fontSize,
+        fontFamily: family,
+      );
       if (adv > maxW) maxW = adv;
-      totalH += bounds.height > 0 ? bounds.height : sz;
-      if (i < lines.length - 1) totalH += lineGap;
+      totalH += bounds.height > 0 ? bounds.height : fontSize;
+      if (i < lines.length - 1) totalH += fontSize * 0.25;
     }
-    // Calendar should fill available tooltip: ensure airy min width
-    if (isCal && maxW < 280) maxW = 280;
     final w = (maxW + paddingHorizontal * 2).round().clamp(48, cap);
     final h = (totalH + paddingVertical * 2).round().clamp(18, 480);
     return Size(w.toDouble(), h.toDouble());
   }
+
+  /// Intrinsic size of a [content] widget, including padding. Used to size
+  /// the surface for widgets built through the style system.
+  Size estimateContent(Widget widget, {int? maxWidth}) {
+    final cap = (maxWidth ?? parentWidth).clamp(48, 7680);
+    widget.measure(_measurePainter);
+    final w = (widget.width + paddingHorizontal * 2).round().clamp(48, cap);
+    final h = (widget.height + paddingVertical * 2).round().clamp(18, 480);
+    return Size(w.toDouble(), h.toDouble());
+  }
+
+  static final _measurePainter = _MeasurePainter();
 
   /// Show tip at bar-local ([x], [y]). Never blocks the event loop.
   void show(String text, {int x = 0, int y = -24}) {
@@ -150,13 +270,16 @@ class TooltipOverlay {
     }
 
     final maxTipW = (parentWidth - 8).clamp(48, 7680);
-    final estimated = estimateSize(text, maxWidth: maxTipW);
+    final estimated = content != null
+        ? estimateContent(content!, maxWidth: maxTipW)
+        : estimateSize(text, maxWidth: maxTipW);
     final wantW = estimated.width.round().clamp(48, maxTipW);
     final wantH = estimated.height.round();
 
     // Grow pool if needed; always attach a buffer matching content size
     // (larger buffer + smaller setSize stretches and squishes the tip).
-    final needNewPool = _surface == null ||
+    final needNewPool =
+        _surface == null ||
         _layer == null ||
         _pool == null ||
         _bufW < wantW ||
@@ -247,12 +370,12 @@ class TooltipOverlay {
           _surface!,
           connection.output,
           LayerShellV1Layer.overlay.enumValue,
-          'bardash-tooltip',
+          'tooltip',
         )
         .getOrElse((e) {
-      stderr.writeln('[tooltip] getLayerSurface: $e');
-      return LayerSurfaceV1(connection.context);
-    });
+          stderr.writeln('[tooltip] getLayerSurface: $e');
+          return LayerSurfaceV1(connection.context);
+        });
 
     _layer!.setSize(_w, _h);
     _layer!.setExclusiveZone(0);
@@ -359,7 +482,9 @@ class TooltipOverlay {
     final maxLeft = (pw - _w).clamp(0, pw);
     final left = parentX.clamp(0, maxLeft);
     final right = (pw - left - _w).clamp(0, pw);
-    stderr.writeln('[tooltip] _applyPlacement on-top anchor=$barAnchor ph=$ph gap=$gap left=$left right=$right w=$_w h=$_h parentX=$parentX');
+    stderr.writeln(
+      '[tooltip] _applyPlacement on-top anchor=$barAnchor ph=$ph gap=$gap left=$left right=$right w=$_w h=$_h parentX=$parentX',
+    );
 
     switch (barAnchor) {
       case Anchor.bottom:
@@ -383,12 +508,7 @@ class TooltipOverlay {
     }
   }
 
-  void _placeHorizontal(
-    int left,
-    int right, {
-    int? topEdge,
-    int? bottomEdge,
-  }) {
+  void _placeHorizontal(int left, int right, {int? topEdge, int? bottomEdge}) {
     // Prefer anchoring to the side with more margin (keeps tip on-screen).
     final preferRight = right <= left;
     if (preferRight) {
@@ -416,11 +536,7 @@ class TooltipOverlay {
     }
   }
 
-  void _placeVertical(
-    int top, {
-    int? leftEdge,
-    int? rightEdge,
-  }) {
+  void _placeVertical(int top, {int? leftEdge, int? rightEdge}) {
     final bottom = (parentHeight - top - _h).clamp(0, 8192);
     final preferBottom = bottom <= top;
     if (preferBottom) {
@@ -451,20 +567,16 @@ class TooltipOverlay {
   void _paint(String text) {
     if (_fd < 0 || _buffer == null) return;
 
-    // Resolve tooltip colors from CSS (tooltip / tooltip label) with palette fallback - keeps calendar cohesive with bar
+    // Resolve tooltip chrome through the single style cascade (provider/CSS
+    // addon) with tooltip palette as the role defaults, so tips stay cohesive.
     Color bg = resolvedBackground;
     Color fg = resolvedText;
     Color border = resolvedBorder;
     try {
-      final dummy = _TooltipStyleWidget();
-      final ctx = StyleContext.forWidget(dummy);
-      final bgCss = ctx.parsedBackgroundColor;
-      if (bgCss != null) bg = bgCss;
-      final fgCss = ctx.parsedColor;
-      // tooltip label color often set on descendant
-      if (fgCss != null) fg = fgCss;
-      final borderCss = ctx.parsedBorderColor;
-      if (borderCss != null) border = borderCss;
+      final st = _TooltipStyleWidget().resolvedStyle();
+      if (st.backgroundColor != null) bg = st.backgroundColor!;
+      fg = st.color;
+      border = st.borderColor;
     } catch (_) {}
 
     // Paint at exact content size (matches attached buffer).
@@ -490,130 +602,71 @@ class TooltipOverlay {
         );
       }
 
-      final lines = text.split('\n');
-      final family = fontFamily == 'sans' ? 'monospace' : fontFamily;
-      final isCalendar = text.contains('Su Mo') || text.contains('Mo Tu');
-      // Distribute calendar grid to fill available width, title larger
-      final titleSize = fontSize + 5;
-      // Pre-measure so calendar can fill
-      final lineBounds = <Rect>[];
-      final lineSizes = <double>[];
-      var contentH = 0.0;
-      final outerW = _w.toDouble();
-      final innerW = (outerW - paddingHorizontal * 2).clamp(20, 700).toDouble();
-      for (var i = 0; i < lines.length; i++) {
-        final raw = lines[i].isEmpty ? ' ' : lines[i];
-        final bool isTitle = isCalendar && RegExp(r'^[A-Za-z]+ \d{4}$').hasMatch(raw.trim());
-        final bool isWeekday = raw.trim().startsWith('Su Mo') || raw.trim().startsWith('Mo Tu');
-        final bool isDayRow = isCalendar && !isTitle && !isWeekday && raw.trim().isNotEmpty && RegExp(r'[\d]').hasMatch(raw);
-        final sz = isTitle ? titleSize : fontSize;
-        lineSizes.add(sz);
-        final lineGap = isTitle ? 8 : (isWeekday ? 4 : fontSize * 0.2);
-        final bounds = isDayRow
-            ? Rect.fromLTWH(0, 0, innerW, sz + 4)
-            : painter.measureTextBounds(raw.replaceAll('*', ' '), size: sz, fontFamily: family);
-        lineBounds.add(bounds);
-        final lh = isDayRow ? sz + 6 : (bounds.height > 0 ? bounds.height : sz);
-        contentH += lh + (i < lines.length - 1 ? lineGap : 0);
-      }
-      final availInnerH = (_h - paddingVertical * 2).clamp(0, _h).toDouble();
-      var yCursor = paddingVertical.toDouble() + (availInnerH > contentH ? (availInnerH - contentH) / 2.0 : 0.0);
-
-      for (var i = 0; i < lines.length; i++) {
-        final rawLine = lines[i].isEmpty ? ' ' : lines[i];
-        final bounds = lineBounds[i];
-        final sz = lineSizes[i];
-        final bool isTitleLine = isCalendar && RegExp(r'^[A-Za-z]+ \d{4}$').hasMatch(rawLine.trim());
-        final bool isWeekday = rawLine.trim().startsWith('Su Mo') || rawLine.trim().startsWith('Mo Tu');
-        final bool isDayRow = isCalendar && !isTitleLine && !isWeekday && rawLine.trim().isNotEmpty && RegExp(r'[\d ]{3,}').hasMatch(rawLine);
-        final lh = bounds.height > 0 ? bounds.height : sz;
-        final lineGap = isTitleLine ? 8 : (isWeekday ? 4 : fontSize * 0.2);
-        if (isDayRow) {
-          // Grid fill: 7 columns across innerW
-          final gap = innerW / 7;
-          final yMid = yCursor + lh / 2;
-          // Weekday header already handled separately; this is day numbers
-          // Extract 7 cells (3 chars each) from rawLine padded to 21 chars
-          final padded = rawLine.padRight(21);
-          for (int col = 0; col < 7; col++) {
-            final cellRaw = padded.substring(col * 3, (col * 3 + 3).clamp(0, padded.length)).trim();
-            if (cellRaw.isEmpty) continue;
-            final isToday = rawLine.contains('*') && rawLine.indexOf('*') ~/ 3 == col;
-            final cellX = paddingHorizontal.toDouble() + col * gap;
-            final cellCx = cellX + gap / 2;
-            final text = cellRaw.replaceAll('*', '');
-            final tb = painter.measureTextBounds(text, size: sz, fontFamily: family);
-            if (isToday) {
-              final bgW = gap - 4;
-              final bgH = lh + 2;
-              painter.drawRRect(
-                Rect.fromLTWH(cellCx - bgW / 2, yCursor - 1, bgW, bgH),
-                6,
-                6,
-                Paint()..color = Color(137, 180, 250),
-              );
-            }
-            final adv = SkiaTextEngine.shared.measureTextAdvance(text, size: sz, fontFamily: family);
-            final tx = cellCx - adv / 2 - tb.left;
-            final originY = TextLayout.baselineForBounds(yCursor, lh.toDouble(), tb);
-            painter.drawText(
-              text,
-              Offset(tx, originY),
-              color: isToday ? Color(30, 30, 46) : fg,
-              size: sz,
-              fontFamily: family,
-            );
-            // unused yMid kept for future
-          }
-        } else {
-          final originY = TextLayout.baselineForBounds(yCursor, lh.toDouble(), bounds);
-          Color lineColor = fg;
-          String drawLine = rawLine;
-          if (isCalendar) {
-            if (isWeekday) lineColor = Color(fg.r, fg.g, fg.b, 140);
-            if (isTitleLine) lineColor = fg;
-            // Today handled via grid, just draw as normal if not day row
-            if (rawLine.contains('*') && !isDayRow) {
-              drawLine = rawLine.replaceAll('*', ' ');
-              lineColor = Color(137, 180, 250);
-            }
-          }
-          final drawSize = isTitleLine ? titleSize : sz;
-          // Center title, left-align weekdays via grid already, so center others
-          double xOff = paddingHorizontal.toDouble() - bounds.left;
-          if (isTitleLine) {
-            // Center title across innerW
-            final titleW = painter.measureTextBounds(drawLine, size: drawSize, fontFamily: family).width;
-            xOff = paddingHorizontal.toDouble() + (innerW - titleW) / 2 - bounds.left;
-          } else if (isWeekday) {
-            // Weekday header also as grid
-            final gap = innerW / 7;
-            // Draw weekday as grid to fill
-            final days = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-            for (int c = 0; c < 7; c++) {
-              final cx = paddingHorizontal.toDouble() + c * gap + gap / 2;
-              final tb = painter.measureTextBounds(days[c], size: sz, fontFamily: family);
-              final adv = SkiaTextEngine.shared.measureTextAdvance(days[c], size: sz, fontFamily: family);
-              final tx = cx - adv / 2 - tb.left;
-              final oy = TextLayout.baselineForBounds(yCursor, lh.toDouble(), tb);
-              painter.drawText(days[c], Offset(tx, oy), color: Color(fg.r, fg.g, fg.b, 140), size: sz, fontFamily: family);
-            }
-            yCursor += lh + (i < lines.length - 1 ? lineGap : 0);
-            continue;
-          }
-          painter.drawText(
-            drawLine,
-            Offset(xOff, originY),
-            color: lineColor,
-            size: drawSize,
-            fontFamily: family,
-          );
-        }
-        yCursor += lh + (i < lines.length - 1 ? lineGap : 0);
+      final content = this.content;
+      if (content != null) {
+        // Lay the styled widget inside the padded box, then draw it through
+        // the widget / CSS style system.
+        content
+          ..x = paddingHorizontal
+          ..y = paddingVertical;
+        final innerW = (_w - paddingHorizontal * 2).clamp(0, _w);
+        content.performLayout(innerW);
+        content.draw(painter);
+      } else {
+        _paintPlainText(painter, text, textColor: fg);
       }
       painter.flush();
     } finally {
       painter.dispose();
+    }
+  }
+
+  /// Left-aligned plain text, vertically centered within the padded box.
+  void _paintPlainText(
+    SkiaPainter painter,
+    String text, {
+    required Color textColor,
+  }) {
+    final lines = text.split('\n');
+    final family = fontFamily == 'sans' ? 'monospace' : fontFamily;
+
+    final lineBounds = <Rect>[];
+    var contentH = 0.0;
+    for (final raw in lines) {
+      final line = raw.isEmpty ? ' ' : raw;
+      final bounds = painter.measureTextBounds(
+        line,
+        size: fontSize,
+        fontFamily: family,
+      );
+      lineBounds.add(bounds);
+      final lh = bounds.height > 0 ? bounds.height : fontSize;
+      contentH += lh + fontSize * 0.25;
+    }
+
+    final availInnerH = (_h - paddingVertical * 2).clamp(0, _h).toDouble();
+    var yCursor =
+        paddingVertical.toDouble() +
+        (availInnerH > contentH ? (availInnerH - contentH) / 2.0 : 0.0);
+
+    for (var i = 0; i < lines.length; i++) {
+      final rawLine = lines[i].isEmpty ? ' ' : lines[i];
+      final bounds = lineBounds[i];
+      final lh = bounds.height > 0 ? bounds.height : fontSize;
+      final originY = TextLayout.baselineForBounds(
+        yCursor,
+        lh.toDouble(),
+        bounds,
+      );
+      final xOff = paddingHorizontal.toDouble() - bounds.left;
+      painter.drawText(
+        rawLine,
+        Offset(xOff, originY),
+        color: textColor,
+        size: fontSize,
+        fontFamily: family,
+      );
+      yCursor += lh + fontSize * 0.25;
     }
   }
 
@@ -640,6 +693,16 @@ class _TooltipStyleWidget extends Widget {
     styleId = 'tooltip';
     addClass('tooltip');
   }
+
+  /// Tooltip role defaults from the palette (CSS/provider overrides on top).
+  @override
+  Style styleRole() => Style(
+    color: palette.tooltipText,
+    backgroundColor: palette.tooltipBase,
+    borderColor: palette.tooltipText,
+    borderRadius: 10,
+  );
+
   @override
   void performLayout(int containerWidth) {}
   @override

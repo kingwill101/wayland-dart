@@ -6,18 +6,14 @@ import '../widget.dart';
 /// Wrap layout that flows children into multiple rows, backed by [le.RenderWrap].
 class WrapLayout extends Widget {
   @override
-
   final List<Widget> children;
   int spacing;
   int runSpacing;
   final le.RenderWrap _renderWrap = le.RenderWrap();
   final List<_WrapChildBox> _renderChildren = [];
 
-  WrapLayout({
-    this.spacing = 0,
-    this.runSpacing = 0,
-    List<Widget>? children,
-  }) : children = children ?? [];
+  WrapLayout({this.spacing = 0, this.runSpacing = 0, List<Widget>? children})
+    : children = children ?? [];
 
   void _ensureRenderTree() {
     _renderWrap.children.clear();
@@ -43,10 +39,12 @@ class WrapLayout extends Widget {
       r.size = le.Size(r.widget.width.toDouble(), r.widget.height.toDouble());
     }
 
-    _renderWrap.layout(le.BoxConstraints(
-      maxWidth: containerWidth.toDouble(),
-      maxHeight: double.infinity,
-    ));
+    _renderWrap.layout(
+      le.BoxConstraints(
+        maxWidth: containerWidth.toDouble(),
+        maxHeight: double.infinity,
+      ),
+    );
 
     width = _renderWrap.size.width.round();
     height = _renderWrap.size.height.round();

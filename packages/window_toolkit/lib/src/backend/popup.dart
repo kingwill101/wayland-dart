@@ -187,7 +187,9 @@ class PopupBackend implements Backend {
   Future<void> init() async {}
 
   @override
-  void start() { _running = true; }
+  void start() {
+    _running = true;
+  }
 
   @override
   void destroy() {
@@ -204,5 +206,7 @@ class PopupBackend implements Backend {
   @override
   Function()? get onClose => onDismiss;
   @override
-  set onClose(Function()? callback) { onDismiss = callback; }
+  set onClose(Function()? callback) {
+    onDismiss = callback;
+  }
 }

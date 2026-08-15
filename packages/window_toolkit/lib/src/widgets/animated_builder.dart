@@ -1,5 +1,6 @@
 /// AnimatedBuilder: rebuild on every animation tick.
 library;
+
 import '../animation/animation.dart';
 import '../painter/painter.dart';
 import '../widget.dart';
@@ -29,7 +30,7 @@ class AnimatedBuilder extends Widget {
   }
 
   void _onAnimationTick() {
-    Widget.onNeedsRepaint?.call();
+    requestRepaint();
   }
 
   @override

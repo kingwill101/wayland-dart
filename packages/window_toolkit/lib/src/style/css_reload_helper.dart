@@ -25,7 +25,12 @@ class CssReloadHelper {
   final CssReloadCallback? onReload;
   StreamSubscription<FileSystemEvent>? _sub;
 
-  CssReloadHelper(this.provider, {required this.path, this.isScss = false, this.onReload});
+  CssReloadHelper(
+    this.provider, {
+    required this.path,
+    this.isScss = false,
+    this.onReload,
+  });
 
   Future<void> start() async {
     final file = File(path);
@@ -36,7 +41,7 @@ class CssReloadHelper {
         final ok = provider.loadFromPath(path, isScss: isScss);
         onReload?.call(ok);
         // Trigger a global repaint so widgets re-query StyleContext.
-        // window_toolkit widgets listen via Widget.onNeedsRepaint.
+        // The owning widget host binds repaint callbacks to each widget.
         try {
           // ignore: avoid_dynamic_calls
           final dynamic w = provider;

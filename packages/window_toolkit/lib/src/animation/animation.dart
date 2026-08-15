@@ -5,12 +5,7 @@
 library;
 
 /// The status of an animation.
-enum AnimationStatus {
-  dismissed,
-  forward,
-  reverse,
-  completed,
-}
+enum AnimationStatus { dismissed, forward, reverse, completed }
 
 /// Signature for listeners receiving [AnimationStatus] changes.
 typedef AnimationStatusListener = void Function(AnimationStatus status);

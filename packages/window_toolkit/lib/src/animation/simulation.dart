@@ -41,15 +41,16 @@ class FrictionSimulation extends Simulation {
     required double initialPosition,
     required double initialVelocity,
     double friction = 0.05,
-  })  : _initialPosition = initialPosition,
-        _initialVelocity = initialVelocity,
-        _friction = friction;
+  }) : _initialPosition = initialPosition,
+       _initialVelocity = initialVelocity,
+       _friction = friction;
 
   @override
   double x(double t) {
     if (t < 0) return _initialPosition;
     if (isDone(t)) return _finalPosition;
-    return _initialPosition + _initialVelocity * (1 - math.exp(-_friction * t)) / _friction;
+    return _initialPosition +
+        _initialVelocity * (1 - math.exp(-_friction * t)) / _friction;
   }
 
   @override
@@ -183,13 +184,15 @@ class SpringSimulation extends Simulation {
     double springConstant = 100.0,
     double damping = 10.0,
     double mass = 1.0,
-  })  : _initialPosition = initialPosition,
-        _initialVelocity = initialVelocity,
-        _finalPosition = finalPosition,
-        _w0 = math.sqrt(springConstant / mass),
-        _zeta = damping / (2 * math.sqrt(springConstant * mass)) {
+  }) : _initialPosition = initialPosition,
+       _initialVelocity = initialVelocity,
+       _finalPosition = finalPosition,
+       _w0 = math.sqrt(springConstant / mass),
+       _zeta = damping / (2 * math.sqrt(springConstant * mass)) {
     _wd = _zeta < 1.0
-        ? math.sqrt(springConstant / mass - damping * damping / (4 * mass * mass))
+        ? math.sqrt(
+            springConstant / mass - damping * damping / (4 * mass * mass),
+          )
         : 0.0;
   }
 
@@ -205,7 +208,8 @@ class SpringSimulation extends Simulation {
       final A = x0;
       final B = (_initialVelocity + _zeta * _w0 * x0) / _wd;
       final envelope = math.exp(-_zeta * _w0 * t);
-      return _finalPosition + envelope * (A * math.cos(_wd * t) + B * math.sin(_wd * t));
+      return _finalPosition +
+          envelope * (A * math.cos(_wd * t) + B * math.sin(_wd * t));
     } else if (_zeta == 1.0) {
       // Critically damped
       final A = x0;

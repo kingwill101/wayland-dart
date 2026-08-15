@@ -23,11 +23,7 @@ Widget buildSliderExample() {
     all: 24,
     child: VBoxLayout(
       spacing: 24,
-      children: [
-        Slider(value: 20),
-        Slider(value: 50),
-        Slider(value: 80),
-      ],
+      children: [Slider(value: 20), Slider(value: 50), Slider(value: 80)],
     ),
   );
 }
@@ -36,14 +32,12 @@ Widget buildCardExample() {
   final card = Card(
     title: 'Controls',
     children: [
-      Checkbox(checked: true),
+      HBox(
+        spacing: 10,
+        children: [Checkbox(checked: true), Label('Enable notifications')],
+      ),
       Slider(value: 40),
     ],
   );
-  card.width = 260;
-  card.height = 180;
-  return Padding(
-    all: 24,
-    child: card,
-  );
+  return Center(child: SizedBox(width: 420, height: 190, child: card));
 }

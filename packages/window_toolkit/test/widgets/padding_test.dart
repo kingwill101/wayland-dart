@@ -6,8 +6,14 @@ import '../support/widget_test_harness.dart';
 void main() {
   group('Padding', () {
     test('constructor asserts non-negative values', () {
-      expect(() => Padding(child: Button('x'), left: -1), throwsA(isA<AssertionError>()));
-      expect(() => Padding(child: Button('x'), top: -1), throwsA(isA<AssertionError>()));
+      expect(
+        () => Padding(child: Button('x'), left: -1),
+        throwsA(isA<AssertionError>()),
+      );
+      expect(
+        () => Padding(child: Button('x'), top: -1),
+        throwsA(isA<AssertionError>()),
+      );
     });
 
     test('constructor accepts all shortcut', () {
@@ -27,8 +33,16 @@ void main() {
 
       expect(btn.x, 15, reason: 'child.x = parent.x + left');
       expect(btn.y, 25, reason: 'child.y = parent.y + top');
-      expect(btn.width, 380, reason: 'child.width = parent.width - left - right');
-      expect(pad.height, btn.height + 40, reason: 'parent.height = top + child + bottom');
+      expect(
+        btn.width,
+        380,
+        reason: 'child.width = parent.width - left - right',
+      );
+      expect(
+        pad.height,
+        btn.height + 40,
+        reason: 'parent.height = top + child + bottom',
+      );
     });
 
     test('zero padding passes through', () {
@@ -48,17 +62,20 @@ void main() {
       pad.performLayout(400);
 
       expect(btn.x, 8);
-      expect(pad.hitTest(btn.x + 2, btn.y + 2), isTrue,
-          reason: 'click on button inside padding');
-      expect(pad.hitTest(4, 4), isFalse,
-          reason: 'click in padding margin misses button');
+      expect(
+        pad.hitTest(btn.x + 2, btn.y + 2),
+        isTrue,
+        reason: 'click on button inside padding',
+      );
+      expect(
+        pad.hitTest(4, 4),
+        isFalse,
+        reason: 'click in padding margin misses button',
+      );
     });
 
     test('draw renders child', () {
-      final harness = WidgetHarness(Padding(
-        child: Button('Padded'),
-        all: 12,
-      ));
+      final harness = WidgetHarness(Padding(child: Button('Padded'), all: 12));
       harness.draw();
       final commands = harness.painter.commands;
       expect(commands, isNotEmpty);

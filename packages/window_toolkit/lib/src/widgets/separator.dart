@@ -1,5 +1,6 @@
 import '../drawing/color.dart';
 import '../painter/painter.dart';
+import '../style.dart';
 import '../widget.dart';
 
 class Separator extends Widget {
@@ -16,11 +17,24 @@ class Separator extends Widget {
   }
 
   @override
+  Style styleRole() => Style(
+    color: color,
+    backgroundColor: const Color(0, 0, 0, 0),
+    borderColor: color,
+  );
+
+  @override
   void draw(Painter canvas) {
+    final lineColor = resolvedStyle().color;
     final lineX = (x + margin).toDouble();
     canvas.drawRect(
-        Rect.fromLTWH(lineX, y.toDouble(), lineWidth.toDouble(),
-            height.toDouble()),
-        Paint()..color = color);
+      Rect.fromLTWH(
+        lineX,
+        y.toDouble(),
+        lineWidth.toDouble(),
+        height.toDouble(),
+      ),
+      Paint()..color = lineColor,
+    );
   }
 }

@@ -1,8 +1,11 @@
 import '../drawing/color.dart';
+import '../interaction.dart';
+import '../mixins/hoverable.dart';
+import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
 import '../widget.dart';
 
-class ToggleButton extends Widget {
+class ToggleButton extends Widget with Hoverable, HoverAnimated {
   String label;
   bool selected;
   Color textColor;
@@ -11,8 +14,6 @@ class ToggleButton extends Widget {
   Color borderColor;
   Color hoverColor;
   VoidCallback? onChanged;
-
-  bool _hovered = false;
 
   ToggleButton(
     this.label, {
@@ -26,21 +27,37 @@ class ToggleButton extends Widget {
   }) {
     width = label.length * 8 + 16;
     height = 24;
-    onClick = () { toggle(); return true; };
-    onMouseEnter = () => setState(() => _hovered = true);
-    onMouseLeave = () => setState(() => _hovered = false);
+    setInteractionState(WidgetState.selected, selected);
+    onClick = () {
+      toggle();
+      return true;
+    };
+    tabIndex = 1;
   }
 
   void toggle() {
-    setState(() => selected = !selected);
+    setState(() {
+      selected = !selected;
+      setInteractionState(WidgetState.selected, selected);
+    });
     onChanged?.call();
   }
 
   @override
+  bool get acceptsFocus => true;
+
+  @override
   void draw(Painter canvas) {
-    final fill = selected ? selectedColor : (_hovered ? hoverColor : unselectedColor);
+    final fill = selected
+        ? selectedColor
+        : transitionHover(unselectedColor, hoverColor);
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
       Paint()..color = fill,
     );
     canvas.drawRect(
@@ -48,7 +65,12 @@ class ToggleButton extends Widget {
       Paint()..color = borderColor,
     );
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), (y + height - 1).toDouble(), width.toDouble(), 1),
+      Rect.fromLTWH(
+        x.toDouble(),
+        (y + height - 1).toDouble(),
+        width.toDouble(),
+        1,
+      ),
       Paint()..color = borderColor,
     );
     canvas.drawText(
@@ -60,7 +82,7 @@ class ToggleButton extends Widget {
   }
 }
 
-class SegmentedControl extends Widget {
+class SegmentedControl extends Widget with Hoverable, HoverAnimated {
   List<String> labels;
   int selectedIndex;
   Color textColor;
@@ -68,6 +90,7 @@ class SegmentedControl extends Widget {
   Color unselectedColor;
   Color borderColor;
   VoidCallback? onChanged;
+  int _hoverIndex = -1;
 
   SegmentedControl({
     this.labels = const [],
@@ -79,6 +102,25 @@ class SegmentedControl extends Widget {
     this.onChanged,
   }) {
     height = 24;
+    setInteractionState(WidgetState.selected, selectedIndex >= 0);
+    onClick = () {
+      if (_hoverIndex < 0) return false;
+      select(_hoverIndex);
+      return true;
+    };
+  }
+
+  @override
+  bool get acceptsFocus => true;
+
+  @override
+  void onMouseMove(int x, int y) {
+    final next = segmentAt(x, y);
+    if (next == _hoverIndex) return;
+    setState(() {
+      _hoverIndex = next;
+      setInteractionState(WidgetState.hovered, next >= 0);
+    });
   }
 
   int get _segmentWidth => labels.isEmpty ? 0 : (width ~/ labels.length);
@@ -91,16 +133,35 @@ class SegmentedControl extends Widget {
     for (var i = 0; i < labels.length; i++) {
       final sx = x + i * sw;
       final isSelected = i == selectedIndex;
+      final isHovered = i == _hoverIndex;
       canvas.drawRect(
-        Rect.fromLTWH(sx.toDouble(), y.toDouble(), sw.toDouble(), height.toDouble()),
-        Paint()..color = isSelected ? selectedColor : unselectedColor,
+        Rect.fromLTWH(
+          sx.toDouble(),
+          y.toDouble(),
+          sw.toDouble(),
+          height.toDouble(),
+        ),
+        Paint()
+          ..color = isSelected
+              ? selectedColor
+              : (isHovered
+                    ? Color.blend(
+                        unselectedColor,
+                        const Color(255, 255, 255, 18),
+                      )
+                    : unselectedColor),
       );
       canvas.drawRect(
         Rect.fromLTWH(sx.toDouble(), y.toDouble(), sw.toDouble(), 1),
         Paint()..color = borderColor,
       );
       canvas.drawRect(
-        Rect.fromLTWH(sx.toDouble(), (y + height - 1).toDouble(), sw.toDouble(), 1),
+        Rect.fromLTWH(
+          sx.toDouble(),
+          (y + height - 1).toDouble(),
+          sw.toDouble(),
+          1,
+        ),
         Paint()..color = borderColor,
       );
       if (i == 0) {
@@ -110,12 +171,20 @@ class SegmentedControl extends Widget {
         );
       }
       canvas.drawRect(
-        Rect.fromLTWH((sx + sw - 1).toDouble(), y.toDouble(), 1, height.toDouble()),
+        Rect.fromLTWH(
+          (sx + sw - 1).toDouble(),
+          y.toDouble(),
+          1,
+          height.toDouble(),
+        ),
         Paint()..color = borderColor,
       );
       canvas.drawText(
         labels[i],
-        Offset((sx + (sw - labels[i].length * 8) ~/ 2).toDouble(), (y + 4).toDouble()),
+        Offset(
+          (sx + (sw - labels[i].length * 8) ~/ 2).toDouble(),
+          (y + 4).toDouble(),
+        ),
         color: textColor,
         size: 16,
       );
@@ -133,7 +202,8 @@ class SegmentedControl extends Widget {
     if (labels.isEmpty || width <= 0) return -1;
     final sw = _segmentWidth;
     final idx = (px - x) ~/ sw;
-    if (idx >= 0 && idx < labels.length && py >= y && py < y + height) return idx;
+    if (idx >= 0 && idx < labels.length && py >= y && py < y + height)
+      return idx;
     return -1;
   }
 }

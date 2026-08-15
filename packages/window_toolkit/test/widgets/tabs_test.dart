@@ -11,19 +11,15 @@ void main() {
     });
 
     test('tabs are drawn', () {
-      final harness = WidgetHarness(TabBar(
-        labels: ['One', 'Two', 'Three'],
-        activeIndex: 0,
-      ));
+      final harness = WidgetHarness(
+        TabBar(labels: ['One', 'Two', 'Three'], activeIndex: 0),
+      );
       harness.draw();
       expect(harness.painter.commands, isNotEmpty);
     });
 
     test('draws tabs and indicator at active index', () {
-      final tabs = TabBar(
-        labels: ['One', 'Two'],
-        activeIndex: 0,
-      );
+      final tabs = TabBar(labels: ['One', 'Two'], activeIndex: 0);
       tabs.x = 5;
       tabs.y = 6;
       tabs.width = 120;
@@ -41,19 +37,22 @@ void main() {
   });
 
   group('TabView', () {
-    test('pages are stored', () {
+    test('header and pages are exposed for interaction routing', () {
       final tv = TabView(
         header: TabBar(labels: ['A', 'B']),
         pages: [Label('Page A'), Label('Page B')],
       );
-      expect(tv.children.length, 2);
+      expect(tv.children.length, 3);
+      expect(identical(tv.children.first, tv.header), isTrue);
     });
 
     test('draw records commands', () {
-      final harness = WidgetHarness(TabView(
-        header: TabBar(labels: ['X', 'Y']),
-        pages: [Button('X'), Button('Y')],
-      ));
+      final harness = WidgetHarness(
+        TabView(
+          header: TabBar(labels: ['X', 'Y']),
+          pages: [Button('X'), Button('Y')],
+        ),
+      );
       harness.draw();
       expect(harness.painter.commands, isNotEmpty);
     });

@@ -30,7 +30,10 @@ class RasterImage {
     final b = color.b;
     final a = color.a;
     for (var i = 0; i < pixels.length; i += 4) {
-      pixels[i] = r; pixels[i+1] = g; pixels[i+2] = b; pixels[i+3] = a;
+      pixels[i] = r;
+      pixels[i + 1] = g;
+      pixels[i + 2] = b;
+      pixels[i + 3] = a;
     }
   }
 
@@ -42,8 +45,10 @@ class RasterImage {
     for (var row = iy; row < iy + ih; row++) {
       for (var col = ix; col < ix + iw; col++) {
         final i = (row * width + col) * 4;
-        pixels[i] = color.r; pixels[i+1] = color.g;
-        pixels[i+2] = color.b; pixels[i+3] = color.a;
+        pixels[i] = color.r;
+        pixels[i + 1] = color.g;
+        pixels[i + 2] = color.b;
+        pixels[i + 3] = color.a;
       }
     }
   }
@@ -60,12 +65,20 @@ class RasterImage {
     var err = dx + dy;
     while (true) {
       final i = (iy0 * width + ix0) * 4;
-      pixels[i] = color.r; pixels[i+1] = color.g;
-      pixels[i+2] = color.b; pixels[i+3] = color.a;
+      pixels[i] = color.r;
+      pixels[i + 1] = color.g;
+      pixels[i + 2] = color.b;
+      pixels[i + 3] = color.a;
       if (ix0 == ix1 && iy0 == iy1) break;
       final e2 = 2 * err;
-      if (e2 >= dy) { err += dy; ix0 += sx; }
-      if (e2 <= dx) { err += dx; iy0 += sy; }
+      if (e2 >= dy) {
+        err += dy;
+        ix0 += sx;
+      }
+      if (e2 <= dx) {
+        err += dx;
+        iy0 += sy;
+      }
     }
   }
 
@@ -77,11 +90,13 @@ class RasterImage {
     final iy2 = (cy + radius).round().clamp(0, height - 1);
     for (var row = iy; row <= iy2; row++) {
       for (var col = ix; col <= ix2; col++) {
-        final d2 = (col - cx)*(col - cx) + (row - cy)*(row - cy);
+        final d2 = (col - cx) * (col - cx) + (row - cy) * (row - cy);
         if (d2 <= r2) {
           final i = (row * width + col) * 4;
-          pixels[i] = color.r; pixels[i+1] = color.g;
-          pixels[i+2] = color.b; pixels[i+3] = color.a;
+          pixels[i] = color.r;
+          pixels[i + 1] = color.g;
+          pixels[i + 2] = color.b;
+          pixels[i + 3] = color.a;
         }
       }
     }
@@ -110,14 +125,18 @@ class RasterImage {
     }
 
     final info = SkImageInfo(
-      width: width, height: height,
+      width: width,
+      height: height,
       colorType: SkColorType.rgba8888,
       alphaType: SkAlphaType.premul,
     );
     final surface = SkSurface.rasterDirect(info, nativePixels.cast(), rowBytes);
     if (surface != null) {
       SkiaTextEngine.shared.drawText(
-        surface.canvas, text, x, y,
+        surface.canvas,
+        text,
+        x,
+        y,
         color: color,
         size: resolved.pixelSize,
         fontFamily: resolved.family,

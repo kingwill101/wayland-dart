@@ -3,14 +3,18 @@ import 'package:window_toolkit/window_toolkit.dart';
 
 void main() {
   test('AnimatedBuilder rebuilds on animation tick', () async {
-    final controller = AnimationController(duration: const Duration(milliseconds: 50));
+    final controller = AnimationController(
+      duration: const Duration(milliseconds: 50),
+    );
     final builder = AnimatedBuilder(
       animation: controller,
       builder: (v) => Label('${v.round()}'),
     );
 
     int drawCount = 0;
-    Widget.onNeedsRepaint = () { drawCount++; };
+    Widget.onNeedsRepaint = () {
+      drawCount++;
+    };
 
     final painter = RecordingPainter();
     controller.forward();
@@ -35,7 +39,9 @@ void main() {
   });
 
   test('AnimatedBuilder builds with animation value', () {
-    final controller = AnimationController(duration: const Duration(milliseconds: 100));
+    final controller = AnimationController(
+      duration: const Duration(milliseconds: 100),
+    );
 
     // Test at t=0.5 with linear curve
     controller.forward();
@@ -62,7 +68,9 @@ void main() {
   });
 
   test('AnimatedBuilder hitTest delegates to built widget', () {
-    final controller = AnimationController(duration: const Duration(milliseconds: 100));
+    final controller = AnimationController(
+      duration: const Duration(milliseconds: 100),
+    );
     controller.forward();
     controller.tick(const Duration(milliseconds: 50));
 

@@ -11,10 +11,7 @@ class PopupHost {
   final XdgSurface parentSurface;
   PopupWindow? _active;
 
-  PopupHost({
-    required this.connection,
-    required this.parentSurface,
-  });
+  PopupHost({required this.connection, required this.parentSurface});
 
   bool get hasActivePopup => _active != null && _active!.visible;
 

@@ -14,14 +14,20 @@ void main() {
     });
 
     test('borderWidth > 0 draws border', () {
-      final db = DecoratedBox(borderWidth: 2, borderColor: const Color(0, 0, 0));
+      final db = DecoratedBox(
+        borderWidth: 2,
+        borderColor: const Color(0, 0, 0),
+      );
       final harness = WidgetHarness(db);
       harness.draw();
       expect(harness.painter.commands, isNotEmpty);
     });
 
     test('draws child when provided', () {
-      final db = DecoratedBox(child: Button('Inside'), color: const Color(50, 50, 50));
+      final db = DecoratedBox(
+        child: Button('Inside'),
+        color: const Color(50, 50, 50),
+      );
       final harness = WidgetHarness(db);
       harness.draw();
       expect(harness.painter.commands, isNotEmpty);

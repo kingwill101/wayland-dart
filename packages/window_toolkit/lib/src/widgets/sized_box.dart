@@ -8,10 +8,10 @@ class SizedBox extends Widget {
   final int? fixedHeight;
 
   SizedBox({this.child, int? width, int? height})
-      : assert(width == null || width > 0, 'SizedBox width must be > 0'),
-        assert(height == null || height > 0, 'SizedBox height must be > 0'),
-        fixedWidth = width,
-        fixedHeight = height {
+    : assert(width == null || width > 0, 'SizedBox width must be > 0'),
+      assert(height == null || height > 0, 'SizedBox height must be > 0'),
+      fixedWidth = width,
+      fixedHeight = height {
     if (width != null) this.width = width;
     if (height != null) this.height = height;
   }

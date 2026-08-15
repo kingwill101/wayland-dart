@@ -24,8 +24,10 @@ class Padding extends Widget {
     this.bottom = 0,
     int? all,
     super.key,
-  })  : assert(left >= 0 && top >= 0 && right >= 0 && bottom >= 0,
-            'Padding values must be >= 0') {
+  }) : assert(
+         left >= 0 && top >= 0 && right >= 0 && bottom >= 0,
+         'Padding values must be >= 0',
+       ) {
     if (all != null) {
       left = all;
       top = all;
@@ -53,14 +55,21 @@ class Padding extends Widget {
     if (height > 0) {
       child.height = (height - top - bottom).clamp(0, height);
     }
-    _renderChild.size = le.Size(child.width.toDouble(), child.height.toDouble());
+    _renderChild.size = le.Size(
+      child.width.toDouble(),
+      child.height.toDouble(),
+    );
 
-    _renderPadding.layout(le.BoxConstraints(
-      maxWidth: containerWidth.toDouble(),
-      maxHeight: double.infinity,
-    ));
+    _renderPadding.layout(
+      le.BoxConstraints(
+        maxWidth: containerWidth.toDouble(),
+        maxHeight: double.infinity,
+      ),
+    );
 
-    width = containerWidth > 0 ? containerWidth : _renderPadding.size.width.round();
+    width = containerWidth > 0
+        ? containerWidth
+        : _renderPadding.size.width.round();
     height = _renderPadding.size.height.round();
     child.x = x + left;
     child.y = y + top;
@@ -93,7 +102,11 @@ class _RenderWidgetBox extends le.RenderBox {
   @override
   void layout(le.BoxConstraints constraints) {
     if (widget == null) return;
-    widget!.performLayout((constraints.hasBoundedWidth ? constraints.maxWidth.round() : widget!.width));
+    widget!.performLayout(
+      (constraints.hasBoundedWidth
+          ? constraints.maxWidth.round()
+          : widget!.width),
+    );
     size = le.Size(widget!.width.toDouble(), widget!.height.toDouble());
   }
 }

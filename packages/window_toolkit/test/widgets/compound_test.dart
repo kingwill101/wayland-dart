@@ -1,14 +1,10 @@
 import 'package:test/test.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
-
 void main() {
   group('Dropdown', () {
     test('draws closed and calculates item positions', () {
-      final dd = Dropdown(
-        items: ['Alpha', 'Beta', 'Gamma'],
-        selectedIndex: 1,
-      );
+      final dd = Dropdown(items: ['Alpha', 'Beta', 'Gamma'], selectedIndex: 1);
       dd.x = 5;
       dd.y = 6;
       dd.width = 140;

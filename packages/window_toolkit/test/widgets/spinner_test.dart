@@ -21,8 +21,10 @@ void main() {
       final harness = WidgetHarness(Spinner(active: false));
       harness.draw();
       // Inactive spinner may still draw a static representation.
-      expect(harness.painter.commands.length, lessThanOrEqualTo(
-          Spinner().dotCount));
+      expect(
+        harness.painter.commands.length,
+        lessThanOrEqualTo(Spinner().dotCount),
+      );
     });
   });
 }

@@ -40,7 +40,12 @@ void main() {
 
   test('handleKey dispatches to insert and delete', () {
     final ctrl = TextEditingController();
-    final mods = ModifierState(modsDepressed: 0, modsLatched: 0, modsLocked: 0, group: 0);
+    final mods = ModifierState(
+      modsDepressed: 0,
+      modsLatched: 0,
+      modsLocked: 0,
+      group: 0,
+    );
     ctrl.handleKey(KeyEvent(0, true, mods, character: 'A'));
     expect(ctrl.text, 'A');
     ctrl.handleKey(KeyEvent(0, true, mods, character: 'b'));

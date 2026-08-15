@@ -22,10 +22,16 @@ void main() {
       final host = ElementHost(child: _TestButton());
       host.performLayout(200);
 
-      expect(host.children, hasLength(1),
-          reason: 'ElementHost should expose built widget');
-      expect(host.children.first, isA<_TestButtonRender>(),
-          reason: 'built widget should be the render output');
+      expect(
+        host.children,
+        hasLength(1),
+        reason: 'ElementHost should expose built widget',
+      );
+      expect(
+        host.children.first,
+        isA<_TestButtonRender>(),
+        reason: 'built widget should be the render output',
+      );
     });
 
     test('onClick fires through element tree', () {
@@ -55,10 +61,16 @@ void main() {
     host.performLayout(200);
 
     // ElementHost should reflect the renderable widget's size
-    expect(host.width, greaterThan(0),
-        reason: 'width should be set from renderable widget');
-    expect(host.height, greaterThan(0),
-        reason: 'height should be set from renderable widget');
+    expect(
+      host.width,
+      greaterThan(0),
+      reason: 'width should be set from renderable widget',
+    );
+    expect(
+      host.height,
+      greaterThan(0),
+      reason: 'height should be set from renderable widget',
+    );
 
     // The renderable widget should have received the position
     final render = host.children.first;
@@ -75,13 +87,15 @@ void main() {
     host.performLayout(400);
 
     // The ScrollArea should have non-zero height from the host
-    expect(host.height, 300,
-        reason: 'height should match the host height');
+    expect(host.height, 300, reason: 'height should match the host height');
 
     // The renderable should be a ScrollArea
     final render = host.children.first;
-    expect(render, isA<ScrollArea>(),
-        reason: 'renderable should be ScrollArea');
+    expect(
+      render,
+      isA<ScrollArea>(),
+      reason: 'renderable should be ScrollArea',
+    );
   });
 }
 
@@ -123,13 +137,21 @@ class _TestButtonState extends State<_TestButton> {
 class _TestButtonRender extends Widget {
   final VoidCallback? onTap;
   _TestButtonRender({VoidCallback? onClick}) : onTap = onClick {
-    this.onClick = () { onTap?.call(); return true; };
+    this.onClick = () {
+      onTap?.call();
+      return true;
+    };
   }
 
   @override
   void draw(Painter canvas) {
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
       Paint()..color = const Color(100, 100, 100),
     );
   }

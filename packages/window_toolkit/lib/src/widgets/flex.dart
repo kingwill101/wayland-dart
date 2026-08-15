@@ -5,13 +5,19 @@ enum Axis { horizontal, vertical }
 
 enum FlexFit { tight, loose }
 
-enum MainAxisAlignment { start, center, end, spaceBetween, spaceAround, spaceEvenly }
+enum MainAxisAlignment {
+  start,
+  center,
+  end,
+  spaceBetween,
+  spaceAround,
+  spaceEvenly,
+}
 
 enum CrossAxisAlignment { start, center, end, stretch }
 
 class Flexible extends Widget {
   @override
-
   final Widget child;
   int flex;
   FlexFit fit;
@@ -44,7 +50,6 @@ class Flexible extends Widget {
     _syncChildBounds();
     return child.hitTest(px, py);
   }
-
 }
 
 class Expanded extends Flexible {
@@ -170,7 +175,11 @@ class Flex extends Widget {
       final intrinsic = _mainExtent(child);
       final size = _fitOf(child) == FlexFit.tight
           ? share
-          : (intrinsic == 0 ? share : intrinsic > share ? share : intrinsic);
+          : (intrinsic == 0
+                ? share
+                : intrinsic > share
+                ? share
+                : intrinsic);
       allocatedMain[child] = size;
       if (actual is Spacer) {
         allocatedMain[actual] = size;

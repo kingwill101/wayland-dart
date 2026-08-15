@@ -32,9 +32,9 @@ class FontMetrics {
     required double Function(String text) horizontalAdvance,
     required Rect Function(String text) boundingRect,
     Rect Function(String text)? tightBoundingRect,
-  })  : _advanceOf = horizontalAdvance,
-        _boundsOf = boundingRect,
-        _tightBoundsOf = tightBoundingRect ?? boundingRect;
+  }) : _advanceOf = horizontalAdvance,
+       _boundsOf = boundingRect,
+       _tightBoundsOf = tightBoundingRect ?? boundingRect;
 
   /// Typographic width for layout (QFontMetrics::horizontalAdvance).
   double horizontalAdvance(String text) => _advanceOf(text);

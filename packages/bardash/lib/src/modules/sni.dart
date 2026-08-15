@@ -835,6 +835,7 @@ class SniModule extends BarModule {
 
   Future<void> _discoverItems() async {
     if (_bus == null) return;
+    final seen = <String>{};
     try {
       final watcher = DBusRemoteObject(
         _bus!,
@@ -845,7 +846,6 @@ class SniModule extends BarModule {
         'org.kde.StatusNotifierWatcher',
         'RegisteredStatusNotifierItems',
       );
-      final seen = <String>{};
       if (result is DBusArray) {
         for (final item in result.children) {
           if (item is! DBusString) continue;
@@ -854,6 +854,19 @@ class SniModule extends BarModule {
           await _addItem(busName, objectPath);
         }
       }
+
+      // Some SNI clients (including ApexShot) can start before a watcher
+      // exists. They expose the standard well-known item name but never get
+      // replayed through RegisteredStatusNotifierItems when a watcher starts.
+      // Waybar still sees these clients; discover the same names directly so
+      // launching Bardash after the client does not hide its tray icon.
+      for (final name in await _bus!.listNames()) {
+        if (!name.startsWith('org.kde.StatusNotifierItem-')) continue;
+        const objectPath = '/StatusNotifierItem';
+        seen.add('$name$objectPath');
+        await _addItem(name, objectPath);
+      }
+
       // Drop items no longer registered.
       final removed = _items.where((i) => !seen.contains(i.key)).toList();
       for (final i in removed) {

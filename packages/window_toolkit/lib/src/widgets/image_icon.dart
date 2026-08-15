@@ -9,10 +9,12 @@ class ImageIcon extends Widget {
   Color iconColor;
   int size;
 
-  ImageIcon(this.shape,
-      {this.iconColor = const Color(255, 255, 255), this.size = 16})
-      : assert(size > 0, 'ImageIcon size must be > 0'),
-        super() {
+  ImageIcon(
+    this.shape, {
+    this.iconColor = const Color(255, 255, 255),
+    this.size = 16,
+  }) : assert(size > 0, 'ImageIcon size must be > 0'),
+       super() {
     width = size;
     height = size;
   }
@@ -26,19 +28,31 @@ class ImageIcon extends Widget {
     switch (shape) {
       case IconShape.circle:
         final radius = size ~/ 2;
-        canvas.drawCircle(Offset(cx.toDouble(), cy.toDouble()),
-            radius.toDouble(),
-            Paint()..color = c);
+        canvas.drawCircle(
+          Offset(cx.toDouble(), cy.toDouble()),
+          radius.toDouble(),
+          Paint()..color = c,
+        );
       case IconShape.square:
         canvas.drawRect(
-            Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(),
-                height.toDouble()),
-            Paint()..color = c);
+          Rect.fromLTWH(
+            x.toDouble(),
+            y.toDouble(),
+            width.toDouble(),
+            height.toDouble(),
+          ),
+          Paint()..color = c,
+        );
       case IconShape.triangle:
         canvas.drawRect(
-            Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(),
-                height.toDouble()),
-            Paint()..color = c);
+          Rect.fromLTWH(
+            x.toDouble(),
+            y.toDouble(),
+            width.toDouble(),
+            height.toDouble(),
+          ),
+          Paint()..color = c,
+        );
     }
   }
 }

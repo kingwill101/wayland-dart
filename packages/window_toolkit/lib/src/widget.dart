@@ -1,11 +1,14 @@
 import 'package:layout_engine/layout_engine.dart' as le;
 
-import 'layer_window.dart';
-import 'backend/layer.dart';
+import 'drawing/color.dart';
 import 'mixins/event.dart';
+import 'interaction.dart';
 import 'painter/painter.dart';
+import 'metrics.dart';
 import 'palette.dart';
 import 'style.dart';
+import 'style/style_context.dart';
+import 'style/style_patch.dart';
 
 // Re-export so widget implementations can type-check KeyEvent.
 export 'mixins/event.dart' show KeyEvent;
@@ -32,8 +35,14 @@ export 'package:layout_engine/layout_engine.dart'
 typedef VoidCallback = void Function();
 
 abstract class Widget extends le.ElementWidget {
-  /// Set by [WidgetWindow] so animated widgets can trigger repaints.
+  /// Legacy fallback for widgets not attached to a host.
+  ///
+  /// Widget windows bind [repaintCallback] per tree. This remains for small
+  /// standalone widget tests and older integrations.
   static VoidCallback? onNeedsRepaint;
+
+  /// Repaint callback owned by the widget host containing this widget.
+  VoidCallback? repaintCallback;
 
   /// Parent pointer — set by containers when they lay out children.
   Widget? parent;
@@ -49,10 +58,58 @@ abstract class Widget extends le.ElementWidget {
   /// Pseudo-classes — mirrors `add_class("hidden")`, `:hover`, etc.
   final Set<String> pseudoClasses = {};
 
+  /// Canonical interaction state for this widget.
+  final InteractionState interaction = InteractionState();
+
+  bool _enabled = true;
+
+  /// Whether this widget accepts interaction events.
+  bool get enabled => _enabled;
+  set enabled(bool value) {
+    if (_enabled == value) return;
+    _enabled = value;
+    setInteractionState(WidgetState.disabled, !value);
+  }
+
+  bool get isHovered => hasInteractionState(WidgetState.hovered);
+  bool get isFocused => hasInteractionState(WidgetState.focused);
+  bool get isPressed => hasInteractionState(WidgetState.pressed);
+  bool get isDisabled => !enabled;
+
+  bool hasInteractionState(WidgetState state) => interaction.contains(state);
+
+  /// Updates a state and mirrors it into the CSS pseudo-class set.
+  ///
+  /// The state is deliberately owned by [Widget], so all controls and
+  /// composites use the same state-to-style path.
+  bool setInteractionState(WidgetState state, bool active) {
+    final changed = interaction.update(state, active);
+    if (!changed) return false;
+    if (active) {
+      addPseudoClass(state.pseudoClass);
+    } else {
+      removePseudoClass(state.pseudoClass);
+    }
+    requestRepaint();
+    return true;
+  }
+
+  /// Clears transient interaction state when a widget is unmounted.
+  void clearInteractionState() {
+    for (final state in interaction.values.toList()) {
+      setInteractionState(state, false);
+    }
+  }
+
   bool hasClass(String name) => styleClasses.contains(name);
-  bool hasPseudoClass(String name) => pseudoClasses.contains(name) || styleClasses.contains(name);
+  bool hasPseudoClass(String name) =>
+      pseudoClasses.contains(name) || styleClasses.contains(name);
   void addClass(String name) => styleClasses.add(name);
-  void removeClass(String name) { styleClasses.remove(name); pseudoClasses.remove(name); }
+  void removeClass(String name) {
+    styleClasses.remove(name);
+    pseudoClasses.remove(name);
+  }
+
   void addPseudoClass(String name) => pseudoClasses.add(name);
   void removePseudoClass(String name) => pseudoClasses.remove(name);
 
@@ -72,10 +129,17 @@ abstract class Widget extends le.ElementWidget {
   /// Triggers a repaint on the next frame.
   void setState(void Function() fn) {
     fn();
-    onNeedsRepaint?.call();
+    requestRepaint();
+  }
+
+  /// Requests a repaint from the owning widget host.
+  void requestRepaint() {
+    final callback = repaintCallback ?? onNeedsRepaint;
+    callback?.call();
   }
 
   int x = 0, y = 0, width = 0, height = 0;
+
   /// Click handler. Return true to consume the event and stop propagation.
   /// The click bubbles up the widget tree: deepest widget is called first,
   /// then its parent, grandparent, etc., until a handler returns true.
@@ -86,19 +150,104 @@ abstract class Widget extends le.ElementWidget {
   /// Convenience accessor for the active palette colors.
   ColorGroup get palette => Palette.current.forState(true, true);
 
-  /// Convenience accessor for the active style.
-  Style get style => Style.current;
+  // ── General style system resolvers ────────────────────────────────────
+  //
+  // A widget's typed [StylePatch] is the merge of every registered
+  // [StyleProvider] (theme defaults, programmatic presets, CSS…). CSS is just
+  // one addon that injects via `StyleContext.addProviderForScreen`. These
+  // helpers make that resolver uniform on every widget: a widget asks
+  // `widgetStyle` / `widgetStyleOn(...)`, then falls back to palette/explicit
+  // values when a property is unset.
+
+  /// Resolved typed style for this widget from all registered providers.
+  /// Unset properties stay null → the widget falls back to palette defaults.
+  StylePatch get widgetStyle => StyleContext.forWidget(this).style;
+
+  /// [widgetStyle] resolved as if [pseudos] were active (e.g. `['hover']`).
+  /// The pseudo-classes are applied for the lookup only and restored after.
+  StylePatch widgetStyleOn(Iterable<String> pseudos) {
+    final prev = <String, bool>{};
+    for (final p in pseudos) {
+      prev[p] = hasPseudoClass(p);
+      addPseudoClass(p);
+    }
+    final s = StyleContext.forWidget(this).style;
+    for (final p in pseudos) {
+      removePseudoClass(p);
+      if (prev[p]!) addPseudoClass(p);
+    }
+    return s;
+  }
+
+  /// CSS `color` (foreground) else [fallback] (explicit/constructor or palette).
+  Color colorFromStyle(Color fallback) => widgetStyle.color ?? fallback;
+
+  /// CSS `background-color` else [fallback].
+  Color backgroundFromStyle(Color fallback) =>
+      widgetStyle.backgroundColor ?? fallback;
+
+  /// CSS `font-size` else [fallback].
+  double fontSizeFromStyle(double fallback) => widgetStyle.fontSize ?? fallback;
+
+  /// The inherited global-palette defaults, folded into a concrete
+  /// [Style]. Override per widget so [resolvedStyle] knows its
+  /// baseline. CSS/providers and local overrides apply on top of this.
+  Style styleRole() => Style(
+    color: palette.text,
+    backgroundColor: palette.base,
+    borderColor: palette.mid,
+    borderRadius: ThemeMetrics.current.borderRadiusSm.toDouble(),
+    fontSize: ThemeMetrics.current.fontSize,
+  );
+
+  /// The fully-resolved style this widget actually draws with. Single point
+  /// of the cascade: role palette → CSS/providers → [local] override.
+  /// Widgets read only concrete values (`resolvedStyle.color` ...); they never
+  /// re-implement the merge.
+  Style resolvedStyle({StylePatch? local}) {
+    var overrides = localOverrides();
+    if (local != null) overrides = overrides.apply(local);
+    return StyleContext.resolveStyle(this, role: styleRole(), local: overrides);
+  }
+
+  /// [resolvedStyle] with [pseudos] (e.g. `['hover']`) active, applying the
+  /// widget-local [local] overrides for that state.
+  Style resolvedStyleOn(Iterable<String> pseudos, {StylePatch? local}) {
+    var overrides = localOverrides();
+    if (local != null) overrides = overrides.apply(local);
+    return StyleContext.resolveStyle(
+      this,
+      role: styleRole(),
+      local: overrides,
+      pseudos: pseudos.toList(),
+    );
+  }
+
+  /// The widget's own explicit style values (constructor fields), registered
+  /// in one place. Folds into [`resolvedStyle`]/[`resolvedStyleOn`] so every
+  /// basic widget's own look flows through the same single cascade.
+  StylePatch localOverrides() => const StylePatch();
 
   /// Positioned mouse callbacks. Override in interactive widgets.
   /// Called by WidgetWindow when events reach this widget via hit-test.
   void onMouseDown(int x, int y, int button) {}
   void onMouseUp(int x, int y, int button) {}
   void onMouseDrag(int x, int y) {}
+  void onMouseMove(int x, int y) {}
+
+  /// Called when the pointer is captured by this widget and moves outside it.
+  void onPointerCancel() {}
 
   /// Keyboard input. Override in widgets that need text input.
   /// Called by WidgetWindow when this widget has keyboard focus.
   void onKeyPressed(KeyEvent event) {}
   void onKeyReleased(KeyEvent event) {}
+
+  /// Activates the widget from keyboard input. Return true when consumed.
+  bool activate() {
+    if (!enabled || onClick == null) return false;
+    return onClick!();
+  }
 
   /// The child widgets of this widget, for hit-test traversal and layout.
   /// Override in composite widgets that contain children.
@@ -106,6 +255,9 @@ abstract class Widget extends le.ElementWidget {
 
   /// Called when this widget gains or loses keyboard focus.
   void onFocusChanged(bool focused) {}
+
+  /// Called after the canonical hover state changes.
+  void onHoverChanged(bool hovering) {}
 
   /// Whether this widget accepts keyboard focus (e.g. Button, TextField).
   bool get acceptsFocus => false;
@@ -133,9 +285,11 @@ abstract class Widget extends le.ElementWidget {
   }
 
   bool hitTest(int px, int py) {
-    assert(width >= 0 && height >= 0,
-        'Widget $runtimeType hit-tested before layout (width=$width height=$height). '
-        'Call performLayout() or pump() before hit-testing.');
+    assert(
+      width >= 0 && height >= 0,
+      'Widget $runtimeType hit-tested before layout (width=$width height=$height). '
+      'Call performLayout() or pump() before hit-testing.',
+    );
     return px >= x && px < x + width && py >= y && py < y + height;
   }
 
@@ -157,7 +311,12 @@ abstract class Widget extends le.ElementWidget {
     buf.writeln('$indent$conn${node._widgetLabel()}');
     final childIndent = indent + (isLast ? '    ' : '│   ');
     for (var i = 0; i < node.children.length; i++) {
-      _writeTree(node.children[i], buf, childIndent, i == node.children.length - 1);
+      _writeTree(
+        node.children[i],
+        buf,
+        childIndent,
+        i == node.children.length - 1,
+      );
     }
   }
 
@@ -171,127 +330,45 @@ abstract class Widget extends le.ElementWidget {
 }
 
 class Container extends Widget {
-  int spacing;
+  @override
+  final List<Widget> children;
 
-  final List<Widget> left = [];
-  final List<Widget> center = [];
-  final List<Widget> right = [];
+  /// Transparent generic child host.
+  ///
+  /// Region-specific placement belongs to a domain widget (for example,
+  /// Bardash's bar layout), while [Container] only owns composition and
+  /// child traversal. Use [HBox], [VBox], [Flex], or [Stack] when a specific
+  /// layout policy is required.
+  Container({List<Widget>? children, super.key}) : children = children ?? [];
 
-  Container({this.spacing = 0});
+  @override
+  void performLayout(int containerWidth) {
+    width = containerWidth;
+    var contentHeight = 0;
+    for (final child in children) {
+      child.parent = this;
+      child.performLayout(child.width > 0 ? child.width : containerWidth);
+      final bottom = child.y - y + child.height;
+      if (bottom > contentHeight) contentHeight = bottom;
+    }
+    if (height <= 0) height = contentHeight;
+  }
 
   @override
   void draw(Painter canvas) {
-    for (var w in left) {
-      w.measure(canvas);
-    }
-    for (var w in center) {
-      w.measure(canvas);
-    }
-    for (var w in right) {
-      w.measure(canvas);
-    }
-
-    layout(width, height);
-    for (var w in left) {
-      w.draw(canvas);
-    }
-    for (var w in center) {
-      w.draw(canvas);
-    }
-    for (var w in right) {
-      w.draw(canvas);
+    if (width > 0) performLayout(width);
+    for (final child in children) {
+      child.draw(canvas);
     }
   }
 
   @override
   bool hitTest(int px, int py) {
-    layout(width, height);
-    return super.hitTest(px, py);
-  }
-
-  void layout(int containerWidth, int containerHeight) {
-    height = containerHeight;
-
-    int fixedLeft = 0, fixedCenter = 0, fixedRight = 0;
-    int spacerLeft = 0, spacerCenter = 0, spacerRight = 0;
-
-    for (var w in left) {
-      if (w is Spacer) {
-        spacerLeft++;
-      } else {
-        fixedLeft += w.width;
-      }
+    if (!super.hitTest(px, py)) return false;
+    for (final child in children.reversed) {
+      if (child.hitTest(px, py)) return true;
     }
-    for (var w in center) {
-      if (w is Spacer) {
-        spacerCenter++;
-      } else {
-        fixedCenter += w.width;
-      }
-    }
-    for (var w in right) {
-      if (w is Spacer) {
-        spacerRight++;
-      } else {
-        fixedRight += w.width;
-      }
-    }
-
-    fixedLeft += (left.length - 1) * spacing;
-    fixedCenter += (center.length - 1) * spacing;
-    fixedRight += (right.length - 1) * spacing;
-
-    int totalSpacers = spacerLeft + spacerCenter + spacerRight;
-    int remaining = containerWidth - (fixedLeft + fixedCenter + fixedRight);
-    int spacerUnit = totalSpacers > 0
-        ? (remaining ~/ totalSpacers).clamp(0, remaining)
-        : 0;
-
-    for (var w in left.whereType<Spacer>()) {
-      w.width = spacerUnit;
-    }
-    for (var w in center.whereType<Spacer>()) {
-      w.width = spacerUnit;
-    }
-    for (var w in right.whereType<Spacer>()) {
-      w.width = spacerUnit;
-    }
-
-    int sectionCenter = _sectionWidth(center);
-    int sectionRight = _sectionWidth(right);
-
-    int cx = x;
-    for (var child in left) {
-      child.x = cx;
-      child.y = y;
-      child.height = containerHeight;
-      cx += child.width + spacing;
-    }
-
-    cx = x + (containerWidth - sectionCenter) ~/ 2;
-    for (var child in center) {
-      child.x = cx;
-      child.y = y;
-      child.height = containerHeight;
-      cx += child.width + spacing;
-    }
-
-    cx = x + containerWidth - sectionRight;
-    for (var child in right) {
-      child.x = cx;
-      child.y = y;
-      child.height = containerHeight;
-      cx += child.width + spacing;
-    }
-  }
-
-  int _sectionWidth(List<Widget> widgets) {
-    if (widgets.isEmpty) return 0;
-    int total = 0;
-    for (var w in widgets) {
-      total += w.width;
-    }
-    return total + (widgets.length - 1) * spacing;
+    return true;
   }
 }
 
@@ -305,139 +382,4 @@ class Spacer extends Widget {
 
   @override
   bool hitTest(int px, int py) => false;
-}
-
-class BarLayout {
-  final List<Widget> left = [];
-  final List<Widget> center = [];
-  final List<Widget> right = [];
-
-  void layout(int barWidth, int barHeight) {
-    int fixedLeft = 0, fixedCenter = 0, fixedRight = 0;
-    int spacerLeft = 0, spacerCenter = 0, spacerRight = 0;
-
-    for (var w in left) {
-      if (w is Spacer) {
-        spacerLeft++;
-      } else {
-        fixedLeft += w.width;
-      }
-    }
-    for (var w in center) {
-      if (w is Spacer) {
-        spacerCenter++;
-      } else {
-        fixedCenter += w.width;
-      }
-    }
-    for (var w in right) {
-      if (w is Spacer) {
-        spacerRight++;
-      } else {
-        fixedRight += w.width;
-      }
-    }
-
-    int totalSpacers = spacerLeft + spacerCenter + spacerRight;
-    int remaining = barWidth - (fixedLeft + fixedCenter + fixedRight);
-    int spacerUnit = totalSpacers > 0
-        ? (remaining ~/ totalSpacers).clamp(0, remaining)
-        : 0;
-
-    for (var w in left.whereType<Spacer>()) {
-      w.width = spacerUnit;
-    }
-    for (var w in center.whereType<Spacer>()) {
-      w.width = spacerUnit;
-    }
-    for (var w in right.whereType<Spacer>()) {
-      w.width = spacerUnit;
-    }
-
-    int sectionCenter = _sectionWidth(center);
-    int sectionRight = _sectionWidth(right);
-
-    int cx = 0;
-    for (var child in left) {
-      child.x = cx;
-      child.y = 0;
-      child.height = barHeight;
-      cx += child.width;
-    }
-
-    cx = (barWidth - sectionCenter) ~/ 2;
-    for (var child in center) {
-      child.x = cx;
-      child.y = 0;
-      child.height = barHeight;
-      cx += child.width;
-    }
-
-    cx = barWidth - sectionRight;
-    for (var child in right) {
-      child.x = cx;
-      child.y = 0;
-      child.height = barHeight;
-      cx += child.width;
-    }
-  }
-
-  void draw(Painter canvas) {
-    for (var w in left) {
-      w.draw(canvas);
-    }
-    for (var w in center) {
-      w.draw(canvas);
-    }
-    for (var w in right) {
-      w.draw(canvas);
-    }
-  }
-
-  Widget? hitTest(int px, int py) {
-    for (var section in [left, center, right]) {
-      for (var child in section) {
-        if (child.hitTest(px, py)) return child;
-      }
-    }
-    return null;
-  }
-
-  static int _sectionWidth(List<Widget> widgets) {
-    if (widgets.isEmpty) return 0;
-    int total = 0;
-    for (var w in widgets) {
-      total += w.width;
-    }
-    return total;
-  }
-}
-
-class BarApp extends LayerWindow {
-  final BarLayout layout = BarLayout();
-
-  BarApp({
-    super.anchor = Anchor.top,
-    super.barHeight = 30,
-    super.exclusiveZone = 30,
-    super.namespace = 'wayland-toolkit',
-  });
-
-  void addLeft(Widget widget) => layout.left.add(widget);
-
-  void addCenter(Widget widget) => layout.center.add(widget);
-
-  void addRight(Widget widget) => layout.right.add(widget);
-
-  @override
-  void draw(Painter canvas) {
-    layout.layout(width, height);
-    layout.draw(canvas);
-  }
-
-  @override
-  void onMouseButtonPressed(MouseButtonEvent event) {
-    final widget = layout.hitTest(event.x.toInt(), event.y.toInt());
-    widget?.onClick?.call();
-  }
 }

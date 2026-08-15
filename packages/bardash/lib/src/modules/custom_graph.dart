@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:window_toolkit/window_toolkit.dart';
 
+import '../metrics.dart';
 import 'module.dart';
 
 /// Custom command with sparkline graph.
@@ -35,6 +36,9 @@ class CustomGraphModule extends BarModule {
   @override
   String get name => 'custom/graph';
 
+  @override
+  bool get showsGraphics => true;
+
   String _exec = "echo '50'";
   final List<double> _history = [];
   double _currentValue = 0;
@@ -45,6 +49,8 @@ class CustomGraphModule extends BarModule {
   double? _fixedMin;
   double? _fixedMax;
   Color _lineColor = const Color(0xa3, 0xbe, 0x8c);
+  late final TextRuns _textWidget;
+  late final Sparkline _graphWidget;
 
   @override
   void init(Map<String, String> config) {
@@ -61,6 +67,22 @@ class CustomGraphModule extends BarModule {
     if (config.containsKey('color')) {
       _lineColor = parseColor(config['color']!);
     }
+    _textWidget = TextRuns('');
+    _graphWidget = Sparkline(
+      values: _history,
+      width: _graphWidth,
+      height: _graphHeight,
+      lineColor: _lineColor,
+      minValue: _fixedMin,
+      maxValue: _fixedMax,
+    );
+    widget = HBox(spacing: 4, children: [_textWidget, _graphWidget]);
+  }
+
+  void _syncWidget() {
+    _textWidget.text = output;
+    _graphWidget.values = _history;
+    requestRepaint?.call();
   }
 
   @override
@@ -69,12 +91,14 @@ class CustomGraphModule extends BarModule {
       final result = Process.runSync(_exec, [], runInShell: true);
       if (result.exitCode != 0) {
         output = 'ERR';
+        _syncWidget();
         return;
       }
       final stdout = result.stdout as String;
       final match = RegExp(_pattern).firstMatch(stdout);
       if (match == null) {
         output = 'N/A';
+        _syncWidget();
         return;
       }
 
@@ -86,6 +110,7 @@ class CustomGraphModule extends BarModule {
 
       if (_history.isEmpty) {
         output = format.replaceAll('{value}', '0');
+        _syncWidget();
         return;
       }
 
@@ -98,27 +123,39 @@ class CustomGraphModule extends BarModule {
           .replaceAll('{min}', min.toStringAsFixed(1))
           .replaceAll('{max}', max.toStringAsFixed(1))
           .replaceAll('{avg}', avg.toStringAsFixed(1));
+      _syncWidget();
     } catch (_) {
       output = 'ERR';
+      _syncWidget();
     }
   }
 
   @override
   double measure(Painter painter) {
-    final textWidth = painter.measureText(output, size: 14).width;
+    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
+    final textWidth = painter.measureTextFont(output, font);
     return textWidth + 4 + _graphWidth.toDouble();
   }
 
   @override
   double draw(Painter painter, double x, double y) {
-    painter.drawText(output, Offset(x, y), color: const Color(0xc8, 0xc8, 0xc8));
-    final textWidth = painter.measureText(output).width;
+    final m = BarMetrics.current;
+    final font = Font.ui(pixelSize: m.fontSize);
+    final textColor = cssForeground ?? const Color(0xc8, 0xc8, 0xc8);
+    painter.drawTextFont(output, Offset(x, y), font: font, color: textColor);
+    final textWidth = painter.measureTextFont(output, font);
 
     final graphX = x + textWidth + 4;
-    final graphY = y + (_graphHeight > 14 ? (_graphHeight - 14) ~/ 2 : 0);
+    final glyphSize = m.fontSize.round();
+    final graphY =
+        y + (_graphHeight > glyphSize ? (_graphHeight - glyphSize) ~/ 2 : 0);
 
-    final minVal = _fixedMin ?? (_history.isEmpty ? 0.0 : _history.reduce((a, b) => a < b ? a : b));
-    final maxVal = _fixedMax ?? (_history.isEmpty ? 100.0 : _history.reduce((a, b) => a > b ? a : b));
+    final minVal =
+        _fixedMin ??
+        (_history.isEmpty ? 0.0 : _history.reduce((a, b) => a < b ? a : b));
+    final maxVal =
+        _fixedMax ??
+        (_history.isEmpty ? 100.0 : _history.reduce((a, b) => a > b ? a : b));
     final range = (maxVal - minVal).clamp(0.1, double.infinity);
 
     if (_history.length >= 2) {
@@ -131,7 +168,8 @@ class CustomGraphModule extends BarModule {
       for (int i = 1; i < _history.length; i++) {
         final x1 = graphX + (i - 1) * step;
         final x2 = graphX + i * step;
-        final y1 = graphY + _graphHeight * (1 - (_history[i - 1] - minVal) / range);
+        final y1 =
+            graphY + _graphHeight * (1 - (_history[i - 1] - minVal) / range);
         final y2 = graphY + _graphHeight * (1 - (_history[i] - minVal) / range);
         painter.drawLine(Offset(x1, y1), Offset(x2, y2), paint);
       }

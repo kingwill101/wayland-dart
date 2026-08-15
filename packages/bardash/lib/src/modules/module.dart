@@ -18,6 +18,12 @@ abstract class BarModule {
   /// Modules may apply this when building [tooltip].
   String tooltipFormat = '';
 
+  /// Optional custom tooltip content widget (e.g. the clock's calendar
+  /// grid). When non-null the bar lays it out and paints it through the
+  /// widget & CSS style system on the tooltip surface; the overlay still
+  /// draws the shared background/border.
+  Widget? get tooltipContent => null;
+
   int interval = 5;
 
   String onClickCmd = '';
@@ -66,15 +72,26 @@ abstract class BarModule {
 
   void update() {}
 
-  double draw(Painter painter, double x, double y);
+  double draw(Painter painter, double x, double y) {
+    return painter.drawTextRuns(
+      output,
+      Offset(x, y),
+      textFont: Font.ui(pixelSize: BarMetrics.current.fontSize),
+      iconFont: Font.icon(pixelSize: BarMetrics.current.iconFontSize),
+      color: cssForeground,
+      runSpacing: BarMetrics.current.iconTextGap.toDouble(),
+    );
+  }
 
   double measure(Painter painter) {
     final m = BarMetrics.current;
     if (m.isIconOutput(output)) return m.iconContentWidth();
-    // FontDatabase advance (Qt horizontalAdvance) — not loose ink bounds.
-    final w = painter.measureTextFont(
+    // Toolkit text-run advance — icon glyphs never fall through the UI font.
+    final w = painter.measureTextRuns(
       output,
-      Font.ui(pixelSize: m.fontSize),
+      textFont: Font.ui(pixelSize: m.fontSize),
+      iconFont: Font.icon(pixelSize: m.iconFontSize),
+      runSpacing: m.iconTextGap.toDouble(),
     );
     return m.textContentWidth(w);
   }
@@ -109,7 +126,10 @@ abstract class BarModule {
   }
 
   String resolveFormat(
-      Map<String, String> config, String defaultFormat, String state) {
+    Map<String, String> config,
+    String defaultFormat,
+    String state,
+  ) {
     if (state.isNotEmpty && config.containsKey('format-$state')) {
       return config['format-$state']!;
     }
@@ -142,6 +162,34 @@ abstract class BarModule {
     final val = int.parse(hex, radix: 16);
     return Color.fromArgb8888(val);
   }
+
+  /// Whether this module paints custom graphics (graphs, level bars,
+  /// images) in [draw] rather than only glyphs. [ModuleWidget] will not
+  /// short-circuit a CSS foreground color for these, so the visuals keep
+  /// rendering; the color is instead exposed via [cssForeground] so the
+  /// module can tint the text it emits.
+  bool get showsGraphics => false;
+
+  /// CSS foreground color resolved by [ModuleWidget] right before [draw]
+  /// when this module reports [showsGraphics]. Graphics (lines/bars) stay
+  /// config-driven; text drawn by the module may use this to stay themed.
+  Color? cssForeground;
+
+  /// Whether this module needs the live layer connection to spawn its own
+  /// overlay surfaces (tray menu, audio panel, ...). When true, the bar
+  /// calls [attachPopupOverlay] on first paint (and after reconnects) with
+  /// the connection and bar geometry. Modules opt in with a flag; the bar
+  /// has no per-module type checks.
+  bool get needsPopupOverlay => false;
+
+  /// Called by the bar when [needsPopupOverlay] is true. Override to stash
+  /// the connection / geometry and open overlays on click.
+  void attachPopupOverlay(
+    WaylandConnection connection, {
+    int parentWidth = 0,
+    int parentHeight = 0,
+    bool openUpward = true,
+  }) {}
 
   int parseInt(Map<String, String> config, String key, int defaultVal) {
     return int.tryParse(config[key] ?? '') ?? defaultVal;

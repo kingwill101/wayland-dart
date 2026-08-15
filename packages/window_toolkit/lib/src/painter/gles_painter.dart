@@ -43,7 +43,6 @@ class _GlesShared {
   late final int uGradRect = gradProgram.getUniformLocation('uRect');
   late final int uGradAngle = gradProgram.getUniformLocation('uAngle');
 
-
   /// Reusable VBO pool — avoids glGenBuffers/glDeleteBuffers per draw call.
   final List<VertexBuffer> _vboPool = [];
   int _vboIndex = 0;
@@ -63,99 +62,115 @@ class _GlesShared {
   final Float32List _quadVerts = Float32List(16);
 
   _GlesShared()
-      : gl = GL.create(width: 1, height: 1),
-        rectProgram = _buildRectProgram(),
-        rrectProgram = _buildRRectProgram(),
-        textProgram = _buildTextProgram(),
-        imageProgram = _buildImageProgram(),
-        gradProgram = _buildGradProgram() {
+    : gl = GL.create(width: 1, height: 1),
+      rectProgram = _buildRectProgram(),
+      rrectProgram = _buildRRectProgram(),
+      textProgram = _buildTextProgram(),
+      imageProgram = _buildImageProgram(),
+      gradProgram = _buildGradProgram() {
     rectProgram.use();
   }
 
   static Program _buildRectProgram() {
     return Program()
-      ..attach(Shader.vertex(
-        'attribute vec2 aPos;'
-        'void main() { gl_Position = vec4(aPos, 0.0, 1.0); }',
-      ))
-      ..attach(Shader.fragment(
-        'precision mediump float;'
-        'uniform vec4 uColor;'
-        'void main() { gl_FragColor = uColor; }',
-      ))
+      ..attach(
+        Shader.vertex(
+          'attribute vec2 aPos;'
+          'void main() { gl_Position = vec4(aPos, 0.0, 1.0); }',
+        ),
+      )
+      ..attach(
+        Shader.fragment(
+          'precision mediump float;'
+          'uniform vec4 uColor;'
+          'void main() { gl_FragColor = uColor; }',
+        ),
+      )
       ..link();
   }
 
   static Program _buildRRectProgram() {
     return Program()
-      ..attach(Shader.vertex(
-        'attribute vec2 aPos;'
-        'void main() { gl_Position = vec4(aPos, 0.0, 1.0); }',
-      ))
-      ..attach(Shader.fragment(
-        'precision mediump float;'
-        'uniform vec4 uColor;'
-        'uniform vec4 uRect;'   // screen (l, t, r, b)
-        'uniform vec2 uRadius;' // screen (rx, ry)
-        'uniform float uHeight;' // screen height
-        'void main() {'
-        '  vec2 sp = vec2(gl_FragCoord.x, uHeight - gl_FragCoord.y);'
-        '  vec2 halfSize = (uRect.zw - uRect.xy) * 0.5;'
-        '  vec2 center = (uRect.xy + uRect.zw) * 0.5;'
-        '  vec2 r = min(uRadius, halfSize);'
-        '  vec2 p = abs(sp - center) - halfSize + r;'
-        '  float d = length(max(p, 0.0)) + min(max(p.x, p.y), 0.0) - min(r.x, r.y);'
-        '  float a = 1.0 - smoothstep(-0.5, 1.5, max(d, 0.0));'
-        '  gl_FragColor = vec4(uColor.rgb, uColor.a * a);'
-        '}',
-      ))
+      ..attach(
+        Shader.vertex(
+          'attribute vec2 aPos;'
+          'void main() { gl_Position = vec4(aPos, 0.0, 1.0); }',
+        ),
+      )
+      ..attach(
+        Shader.fragment(
+          'precision mediump float;'
+          'uniform vec4 uColor;'
+          'uniform vec4 uRect;' // screen (l, t, r, b)
+          'uniform vec2 uRadius;' // screen (rx, ry)
+          'uniform float uHeight;' // screen height
+          'void main() {'
+          '  vec2 sp = vec2(gl_FragCoord.x, uHeight - gl_FragCoord.y);'
+          '  vec2 halfSize = (uRect.zw - uRect.xy) * 0.5;'
+          '  vec2 center = (uRect.xy + uRect.zw) * 0.5;'
+          '  vec2 r = min(uRadius, halfSize);'
+          '  vec2 p = abs(sp - center) - halfSize + r;'
+          '  float d = length(max(p, 0.0)) + min(max(p.x, p.y), 0.0) - min(r.x, r.y);'
+          '  float a = 1.0 - smoothstep(-0.5, 1.5, max(d, 0.0));'
+          '  gl_FragColor = vec4(uColor.rgb, uColor.a * a);'
+          '}',
+        ),
+      )
       ..link();
   }
 
   static Program _buildGradProgram() {
     return Program()
-      ..attach(Shader.vertex(
-        'attribute vec2 aPos;'
-        'void main() { gl_Position = vec4(aPos, 0.0, 1.0); }',
-      ))
-      ..attach(Shader.fragment(
-        'precision mediump float;'
-        'uniform vec4 uColor0;'
-        'uniform vec4 uColor1;'
-        'uniform vec4 uRect;'    // screen (l, t, r, b)
-        'uniform float uAngle;'  // radians
-        'void main() {'
-        '  vec2 pos = gl_FragCoord.xy - uRect.xy;'
-        '  vec2 dim = uRect.zw - uRect.xy;'
-        '  float ca = cos(uAngle);'
-        '  float sa = sin(uAngle);'
-        '  float t = (pos.x * ca + pos.y * sa) / (dim.x * ca + dim.y * sa);'
-        '  t = clamp(t, 0.0, 1.0);'
-        '  gl_FragColor = mix(uColor0, uColor1, t);'
-        '}',
-      ))
+      ..attach(
+        Shader.vertex(
+          'attribute vec2 aPos;'
+          'void main() { gl_Position = vec4(aPos, 0.0, 1.0); }',
+        ),
+      )
+      ..attach(
+        Shader.fragment(
+          'precision mediump float;'
+          'uniform vec4 uColor0;'
+          'uniform vec4 uColor1;'
+          'uniform vec4 uRect;' // screen (l, t, r, b)
+          'uniform float uAngle;' // radians
+          'void main() {'
+          '  vec2 pos = gl_FragCoord.xy - uRect.xy;'
+          '  vec2 dim = uRect.zw - uRect.xy;'
+          '  float ca = cos(uAngle);'
+          '  float sa = sin(uAngle);'
+          '  float t = (pos.x * ca + pos.y * sa) / (dim.x * ca + dim.y * sa);'
+          '  t = clamp(t, 0.0, 1.0);'
+          '  gl_FragColor = mix(uColor0, uColor1, t);'
+          '}',
+        ),
+      )
       ..link();
   }
 
   static Program _buildImageProgram() {
     return Program()
-      ..attach(Shader.vertex(
-        'attribute vec2 aPos;'
-        'attribute vec2 aTexCoord;'
-        'varying vec2 vTexCoord;'
-        'void main() {'
-        '  gl_Position = vec4(aPos, 0.0, 1.0);'
-        '  vTexCoord = aTexCoord;'
-        '}',
-      ))
-      ..attach(Shader.fragment(
-        'precision mediump float;'
-        'varying vec2 vTexCoord;'
-        'uniform sampler2D uTexture;'
-        'void main() {'
-        '  gl_FragColor = texture2D(uTexture, vTexCoord);'
-        '}',
-      ))
+      ..attach(
+        Shader.vertex(
+          'attribute vec2 aPos;'
+          'attribute vec2 aTexCoord;'
+          'varying vec2 vTexCoord;'
+          'void main() {'
+          '  gl_Position = vec4(aPos, 0.0, 1.0);'
+          '  vTexCoord = aTexCoord;'
+          '}',
+        ),
+      )
+      ..attach(
+        Shader.fragment(
+          'precision mediump float;'
+          'varying vec2 vTexCoord;'
+          'uniform sampler2D uTexture;'
+          'void main() {'
+          '  gl_FragColor = texture2D(uTexture, vTexCoord);'
+          '}',
+        ),
+      )
       ..link();
   }
 
@@ -220,8 +235,7 @@ class GlesPainter implements Painter {
   // Transformed: x' = a*x + c*y + tx,  y' = b*x + d*y + ty.
   (double, double) _transform(double x, double y) {
     final m = _currentMatrix;
-    return (m[0] * x + m[2] * y + m[4],
-            m[1] * x + m[3] * y + m[5]);
+    return (m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]);
   }
 
   /// Screen (x, y) → clip-space (cx, cy) with current transform applied.
@@ -238,10 +252,10 @@ class GlesPainter implements Painter {
   Size get size => Size(width, height);
 
   GlesPainter(this.fd, int width, int height)
-      : _width = width,
-        _height = height,
-        _sx = 2.0 / width,
-        _sy = 2.0 / height {
+    : _width = width,
+      _height = height,
+      _sx = 2.0 / width,
+      _sy = 2.0 / height {
     _currentMatrix = Float64List(6);
     _currentMatrix[0] = 1; // identity
     _currentMatrix[3] = 1;
@@ -254,6 +268,13 @@ class GlesPainter implements Painter {
         throw Exception('EGL context lost');
       }
       _gles!.gl.viewport(0, 0, width, height);
+      // The shared EGL context survives across painters/frames.  A previous
+      // widget draw may have left GL_SCISSOR_TEST enabled for its module
+      // clip, which would make the first clear of this frame clear only that
+      // small rectangle.  The stale pixels then look like duplicated or
+      // ghosted text as modules change width.  Every painter starts a frame
+      // with a full-surface clear, so reset this leaked state here.
+      _gles!.gl.disable(GL_SCISSOR_TEST);
       _gles!.gl.enable(GL_BLEND);
       _gles!.gl.blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
       _vbo = VertexBuffer();
@@ -292,8 +313,12 @@ class GlesPainter implements Painter {
     }
   }
 
-  List<double> _glColor(Color c) =>
-      [c.r / 255.0, c.g / 255.0, c.b / 255.0, c.a / 255.0];
+  List<double> _glColor(Color c) => [
+    c.r / 255.0,
+    c.g / 255.0,
+    c.b / 255.0,
+    c.a / 255.0,
+  ];
 
   // ── Text texture cache ───────────────────────────────────────────
   // Cache rendered text textures so repeated strings (clock, module
@@ -307,7 +332,12 @@ class GlesPainter implements Painter {
     return _textCache[key];
   }
 
-  void _cacheText(String text, double size, String font, _TextCacheEntry entry) {
+  void _cacheText(
+    String text,
+    double size,
+    String font,
+    _TextCacheEntry entry,
+  ) {
     final key = '$font|${size.toStringAsFixed(1)}|$text';
     if (_textCache.length >= _maxTextCache) {
       final oldest = _textCacheOrder.removeAt(0);
@@ -336,8 +366,12 @@ class GlesPainter implements Painter {
   void clear(Color color) {
     if (_failed) return;
     final c = _glColor(color);
+    // Clear the complete backing surface even if a prior frame left a
+    // module clip active in the shared GL context.
+    _gles!.gl.disable(GL_SCISSOR_TEST);
     _gles!.gl.clearColor(c[0], c[1], c[2], c[3]);
     _gles!.gl.clear();
+    _applyScissor();
   }
 
   @override
@@ -364,12 +398,24 @@ class GlesPainter implements Painter {
     if (sw <= 0) return;
     // Four thin rects for the border edges.
     final edges = [
-      Rect.fromLTRB(rect.left, rect.top, rect.right, rect.top + sw),    // top
-      Rect.fromLTRB(rect.left, rect.bottom - sw, rect.right, rect.bottom), // bottom
-      Rect.fromLTRB(rect.left, rect.top, rect.left + sw, rect.bottom),     // left
-      Rect.fromLTRB(rect.right - sw, rect.top, rect.right, rect.bottom),   // right
+      Rect.fromLTRB(rect.left, rect.top, rect.right, rect.top + sw), // top
+      Rect.fromLTRB(
+        rect.left,
+        rect.bottom - sw,
+        rect.right,
+        rect.bottom,
+      ), // bottom
+      Rect.fromLTRB(rect.left, rect.top, rect.left + sw, rect.bottom), // left
+      Rect.fromLTRB(
+        rect.right - sw,
+        rect.top,
+        rect.right,
+        rect.bottom,
+      ), // right
     ];
-    for (final e in edges) { _drawRectFill(e, paint); }
+    for (final e in edges) {
+      _drawRectFill(e, paint);
+    }
   }
 
   @override
@@ -390,7 +436,8 @@ class GlesPainter implements Painter {
     final (ccx, ccy) = _toClip(center.dx, center.dy);
     const segs = 32;
     final verts = Float32List((segs + 2) * 2);
-    verts[0] = ccx; verts[1] = ccy;
+    verts[0] = ccx;
+    verts[1] = ccy;
     final r = radius * (_sx + _sy) * 0.5;
     for (var i = 0; i <= segs; i++) {
       final a = i * 2 * pi / segs;
@@ -415,7 +462,8 @@ class GlesPainter implements Painter {
     final verts = Float32List((segs + 1) * 4);
     for (var i = 0; i <= segs; i++) {
       final a = i * 2 * pi / segs;
-      final ca = cos(a); final sa = sin(a);
+      final ca = cos(a);
+      final sa = sin(a);
       verts[i * 4] = ccx + ca * r;
       verts[i * 4 + 1] = ccy + sa * r;
       verts[i * 4 + 2] = ccx + ca * r2;
@@ -444,10 +492,19 @@ class GlesPainter implements Painter {
 
     _gles!.rectProgram.use();
     _gles!.gl.uniform4f(_gles!.uColor, c[0], c[1], c[2], c[3]);
-    _drawVerts(Float32List.fromList([
-      x1 + nx, y1 + ny,  x2 + nx, y2 + ny,
-      x2 - nx, y2 - ny,  x1 - nx, y1 - ny,
-    ]), GL_TRIANGLE_FAN);
+    _drawVerts(
+      Float32List.fromList([
+        x1 + nx,
+        y1 + ny,
+        x2 + nx,
+        y2 + ny,
+        x2 - nx,
+        y2 - ny,
+        x1 - nx,
+        y1 - ny,
+      ]),
+      GL_TRIANGLE_FAN,
+    );
   }
 
   @override
@@ -466,12 +523,12 @@ class GlesPainter implements Painter {
 
     g.rrectProgram.use();
     g.gl.uniform4f(g.uRRColor, c[0], c[1], c[2], c[3]);
-    g.gl.uniform4f(g.uRRRect,
-        rect.left, rect.top,
-        rect.right, rect.bottom);
-    g.gl.uniform2f(g.uRRRadius,
-        radiusX.clamp(0, rect.width * 0.5),
-        radiusY.clamp(0, rect.height * 0.5));
+    g.gl.uniform4f(g.uRRRect, rect.left, rect.top, rect.right, rect.bottom);
+    g.gl.uniform2f(
+      g.uRRRadius,
+      radiusX.clamp(0, rect.width * 0.5),
+      radiusY.clamp(0, rect.height * 0.5),
+    );
     g.gl.uniform1f(g.uRRHeight, _height.toDouble());
 
     vbo.attribPointer(g.aRRPos, 2, GL_FLOAT, false, 0, 0);
@@ -482,18 +539,26 @@ class GlesPainter implements Painter {
   }
 
   @override
-  void drawLinearGradient(Rect rect, Color color0, Color color1,
-      {double angle = 0.0}) {
+  void drawLinearGradient(
+    Rect rect,
+    Color color0,
+    Color color1, {
+    double angle = 0.0,
+  }) {
     if (_failed || _disposed) return;
     final g = _gles!;
     final c0 = _glColor(color0);
     final c1 = _glColor(color1);
 
     final verts = Float32List.fromList([
-      rect.left * _sx - 1, 1 - rect.bottom * _sy,
-      rect.right * _sx - 1, 1 - rect.bottom * _sy,
-      rect.right * _sx - 1, 1 - rect.top * _sy,
-      rect.left * _sx - 1, 1 - rect.top * _sy,
+      rect.left * _sx - 1,
+      1 - rect.bottom * _sy,
+      rect.right * _sx - 1,
+      1 - rect.bottom * _sy,
+      rect.right * _sx - 1,
+      1 - rect.top * _sy,
+      rect.left * _sx - 1,
+      1 - rect.top * _sy,
     ]);
     final vbo = _vbo!;
     vbo.setData(verts, usage: GL_STREAM_DRAW);
@@ -502,9 +567,7 @@ class GlesPainter implements Painter {
     g.gradProgram.use();
     g.gl.uniform4f(g.uGradColor0, c0[0], c0[1], c0[2], c0[3]);
     g.gl.uniform4f(g.uGradColor1, c1[0], c1[1], c1[2], c1[3]);
-    g.gl.uniform4f(g.uGradRect,
-        rect.left, rect.top,
-        rect.right, rect.bottom);
+    g.gl.uniform4f(g.uGradRect, rect.left, rect.top, rect.right, rect.bottom);
     g.gl.uniform1f(g.uGradAngle, angle);
 
     vbo.attribPointer(g.aGradPos, 2, GL_FLOAT, false, 0, 0);
@@ -514,8 +577,22 @@ class GlesPainter implements Painter {
   }
 
   @override
-  void drawText(String text, Offset position,
-      {Color? color, double size = 14, String fontFamily = 'sans'}) {
+  void drawArc(
+    Rect oval,
+    double startAngle,
+    double sweepAngle,
+    bool useCenter,
+    Paint paint,
+  ) {}
+
+  @override
+  void drawText(
+    String text,
+    Offset position, {
+    Color? color,
+    double size = 14,
+    String fontFamily = 'sans',
+  }) {
     if (_failed || _disposed || text.isEmpty) return;
 
     final g = _gles!;
@@ -525,8 +602,15 @@ class GlesPainter implements Painter {
     final cacheKey = '$fontFamily|${size.toStringAsFixed(1)}|$text';
     final cached = _textCache[cacheKey];
     if (cached != null) {
-      _drawTexturedQuad(cached.tex, cached.width, cached.height,
-          position.dx, position.dy, g, c);
+      _drawTexturedQuad(
+        cached.tex,
+        cached.width,
+        cached.height,
+        position.dx,
+        position.dy,
+        g,
+        c,
+      );
       return;
     }
 
@@ -537,11 +621,19 @@ class GlesPainter implements Painter {
     final bounds = metrics.boundingRect(text);
     var tw = (advance > bounds.width ? advance : bounds.width).ceil() + 2;
     var th = bounds.height.ceil() + 2;
-    if (tw <= 0 || th <= 0) { tw = 16; th = 16; }
+    if (tw <= 0 || th <= 0) {
+      tw = 16;
+      th = 16;
+    }
 
     final img = RasterImage(tw, th);
-    img.drawText(text, 0, (-bounds.top).roundToDouble(),
-        font: font, color: const Color(255, 255, 255));
+    img.drawText(
+      text,
+      0,
+      (-bounds.top).roundToDouble(),
+      font: font,
+      color: const Color(255, 255, 255),
+    );
     final tex = img.toTexture();
     _textCache[cacheKey] = _TextCacheEntry(tex, tw.toDouble(), th.toDouble());
 
@@ -550,10 +642,22 @@ class GlesPainter implements Painter {
     final (l, t) = _toClip(px, py);
     final (r, b) = _toClip(px + tw.toDouble(), py + th.toDouble());
     final q = g._quadVerts;
-    q[0] = l;  q[1] = b;  q[2] = 0;  q[3] = 1;
-    q[4] = r;  q[5] = b;  q[6] = 1;  q[7] = 1;
-    q[8] = r;  q[9] = t;  q[10] = 1; q[11] = 0;
-    q[12] = l; q[13] = t; q[14] = 0; q[15] = 0;
+    q[0] = l;
+    q[1] = b;
+    q[2] = 0;
+    q[3] = 1;
+    q[4] = r;
+    q[5] = b;
+    q[6] = 1;
+    q[7] = 1;
+    q[8] = r;
+    q[9] = t;
+    q[10] = 1;
+    q[11] = 0;
+    q[12] = l;
+    q[13] = t;
+    q[14] = 0;
+    q[15] = 0;
 
     final vbo = _vbo!;
     vbo.setData(q, usage: GL_STREAM_DRAW);
@@ -575,10 +679,15 @@ class GlesPainter implements Painter {
   }
 
   @override
-  Size measureText(String text, {double size = 14, String fontFamily = 'sans'}) {
+  Size measureText(
+    String text, {
+    double size = 14,
+    String fontFamily = 'sans',
+  }) {
     try {
       final metrics = FontDatabase.instance.metrics(
-          Font(family: fontFamily, pixelSize: size));
+        Font(family: fontFamily, pixelSize: size),
+      );
       return Size(metrics.horizontalAdvance(text), metrics.height);
     } catch (_) {
       return Size(text.length * size * 0.6, size);
@@ -586,10 +695,15 @@ class GlesPainter implements Painter {
   }
 
   @override
-  double measureTextAdvance(String text, {double size = 14, String fontFamily = 'sans'}) {
+  double measureTextAdvance(
+    String text, {
+    double size = 14,
+    String fontFamily = 'sans',
+  }) {
     try {
       final metrics = FontDatabase.instance.metrics(
-          Font(family: fontFamily, pixelSize: size));
+        Font(family: fontFamily, pixelSize: size),
+      );
       return metrics.horizontalAdvance(text);
     } catch (_) {
       return text.length * size * 0.6;
@@ -597,10 +711,15 @@ class GlesPainter implements Painter {
   }
 
   @override
-  Rect measureTextBounds(String text, {double size = 14, String fontFamily = 'sans'}) {
+  Rect measureTextBounds(
+    String text, {
+    double size = 14,
+    String fontFamily = 'sans',
+  }) {
     try {
       final metrics = FontDatabase.instance.metrics(
-          Font(family: fontFamily, pixelSize: size));
+        Font(family: fontFamily, pixelSize: size),
+      );
       return metrics.boundingRect(text);
     } catch (_) {
       return Rect.fromLTWH(0, 0, text.length * size * 0.6, size);
@@ -608,35 +727,56 @@ class GlesPainter implements Painter {
   }
 
   @override
-  void drawImage(String filePath, double x, double y, {double? width, double? height}) {
+  void drawImage(
+    String filePath,
+    double x,
+    double y, {
+    double? width,
+    double? height,
+  }) {
     if (_failed || _disposed) return;
     try {
       final data = SkData.fromFile(filePath);
-      if (data == null) { _drawImgPlaceholder(x, y, width, height); return; }
+      if (data == null) {
+        _drawImgPlaceholder(x, y, width, height);
+        return;
+      }
       final image = SkImage.fromEncoded(data);
       data.dispose();
-      if (image == null) { _drawImgPlaceholder(x, y, width, height); return; }
+      if (image == null) {
+        _drawImgPlaceholder(x, y, width, height);
+        return;
+      }
 
       final imgW = image.width;
       final imgH = image.height;
       final dstW = (width ?? imgW.toDouble()).round();
       final dstH = (height ?? imgH.toDouble()).round();
-      if (dstW <= 0 || dstH <= 0) { image.dispose(); return; }
+      if (dstW <= 0 || dstH <= 0) {
+        image.dispose();
+        return;
+      }
 
       // Render image to an SkSurface at target size.
       final info = SkImageInfo(
-        width: dstW, height: dstH,
+        width: dstW,
+        height: dstH,
         colorType: SkColorType.rgba8888,
         alphaType: SkAlphaType.premul,
       );
       final surface = SkSurface.raster(info);
-      if (surface == null) { image.dispose(); _drawImgPlaceholder(x, y, width, height); return; }
+      if (surface == null) {
+        image.dispose();
+        _drawImgPlaceholder(x, y, width, height);
+        return;
+      }
 
       surface.canvas.clear(SkColor(0x00000000));
       // Scale image to fit the target rect.
       final dstRect = SkRect.fromLTRB(0, 0, dstW.toDouble(), dstH.toDouble());
       surface.canvas.drawImageRect(
-        image, dstRect,
+        image,
+        dstRect,
         sampling: const SkSamplingOptions(),
       );
       image.dispose();
@@ -644,7 +784,13 @@ class GlesPainter implements Painter {
       // Read pixels back.
       final pixels = Uint8List(dstW * dstH * 4);
       final nativePixels = calloc<Uint8>(pixels.length);
-      final ok = surface.readPixels(info, nativePixels.cast(), dstW * 4, srcX: 0, srcY: 0);
+      final ok = surface.readPixels(
+        info,
+        nativePixels.cast(),
+        dstW * 4,
+        srcX: 0,
+        srcY: 0,
+      );
       surface.dispose();
       if (ok) {
         for (var i = 0; i < pixels.length; i++) {
@@ -652,7 +798,10 @@ class GlesPainter implements Painter {
         }
       }
       calloc.free(nativePixels);
-      if (!ok) { _drawImgPlaceholder(x, y, width, height); return; }
+      if (!ok) {
+        _drawImgPlaceholder(x, y, width, height);
+        return;
+      }
 
       // Upload as GL texture and draw textured quad.
       final tex = Texture.fromRgba(pixels, dstW, dstH, smooth: true);
@@ -660,10 +809,22 @@ class GlesPainter implements Painter {
       final (l, t) = _toClip(x, y);
       final (r, b) = _toClip(x + dstW.toDouble(), y + dstH.toDouble());
       final q = g._quadVerts;
-      q[0] = l;  q[1] = b;  q[2] = 0;  q[3] = 1;
-      q[4] = r;  q[5] = b;  q[6] = 1;  q[7] = 1;
-      q[8] = r;  q[9] = t;  q[10] = 1; q[11] = 0;
-      q[12] = l; q[13] = t; q[14] = 0; q[15] = 0;
+      q[0] = l;
+      q[1] = b;
+      q[2] = 0;
+      q[3] = 1;
+      q[4] = r;
+      q[5] = b;
+      q[6] = 1;
+      q[7] = 1;
+      q[8] = r;
+      q[9] = t;
+      q[10] = 1;
+      q[11] = 0;
+      q[12] = l;
+      q[13] = t;
+      q[14] = 0;
+      q[15] = 0;
 
       final vbo = _vbo!;
       vbo.setData(q, usage: GL_STREAM_DRAW);
@@ -684,17 +845,36 @@ class GlesPainter implements Painter {
     }
   }
 
-  void _drawTexturedQuad(Texture tex, double w, double h,
-      double px, double py, _GlesShared g, List<double> c) {
+  void _drawTexturedQuad(
+    Texture tex,
+    double w,
+    double h,
+    double px,
+    double py,
+    _GlesShared g,
+    List<double> c,
+  ) {
     final snapX = px.roundToDouble();
     final snapY = py.roundToDouble();
     final (l, t) = _toClip(snapX, snapY);
     final (r, b) = _toClip(snapX + w, snapY + h);
     final q = g._quadVerts;
-    q[0] = l;  q[1] = b;  q[2] = 0;  q[3] = 1;
-    q[4] = r;  q[5] = b;  q[6] = 1;  q[7] = 1;
-    q[8] = r;  q[9] = t;  q[10] = 1; q[11] = 0;
-    q[12] = l; q[13] = t; q[14] = 0; q[15] = 0;
+    q[0] = l;
+    q[1] = b;
+    q[2] = 0;
+    q[3] = 1;
+    q[4] = r;
+    q[5] = b;
+    q[6] = 1;
+    q[7] = 1;
+    q[8] = r;
+    q[9] = t;
+    q[10] = 1;
+    q[11] = 0;
+    q[12] = l;
+    q[13] = t;
+    q[14] = 0;
+    q[15] = 0;
 
     final vbo = _vbo!;
     vbo.setData(q, usage: GL_STREAM_DRAW);
@@ -713,8 +893,10 @@ class GlesPainter implements Painter {
   }
 
   void _drawImgPlaceholder(double x, double y, double? w, double? h) {
-    drawRect(Rect.fromLTWH(x, y, w ?? 16, h ?? 16),
-        Paint()..color = const Color(0x60, 0x60, 0x70));
+    drawRect(
+      Rect.fromLTWH(x, y, w ?? 16, h ?? 16),
+      Paint()..color = const Color(0x60, 0x60, 0x70),
+    );
   }
 
   @override
@@ -758,8 +940,10 @@ class GlesPainter implements Painter {
     // Append translation: [1, 0, 0, 1, dx, dy] * current.
     final m = _currentMatrix;
     _currentMatrix = Float64List.fromList([
-      m[0], m[1],
-      m[2], m[3],
+      m[0],
+      m[1],
+      m[2],
+      m[3],
       m[0] * dx + m[2] * dy + m[4],
       m[1] * dx + m[3] * dy + m[5],
     ]);
@@ -770,9 +954,12 @@ class GlesPainter implements Painter {
     // Append scale: [sx, 0, 0, sy, 0, 0] * current.
     final m = _currentMatrix;
     _currentMatrix = Float64List.fromList([
-      m[0] * sx, m[1] * sx,
-      m[2] * sy, m[3] * sy,
-      m[4], m[5],
+      m[0] * sx,
+      m[1] * sx,
+      m[2] * sy,
+      m[3] * sy,
+      m[4],
+      m[5],
     ]);
   }
 
@@ -784,12 +971,7 @@ class GlesPainter implements Painter {
     final dst = Uint8List(src.length);
     for (var y = 0; y < _height; y++) {
       final srcRow = _height - 1 - y;
-      dst.setRange(
-        y * rowBytes,
-        (y + 1) * rowBytes,
-        src,
-        srcRow * rowBytes,
-      );
+      dst.setRange(y * rowBytes, (y + 1) * rowBytes, src, srcRow * rowBytes);
     }
     return dst;
   }
@@ -814,7 +996,6 @@ class GlesPainter implements Painter {
     _vbo = null;
   }
 }
-
 
 /// Cached rendered text texture.
 class _TextCacheEntry {

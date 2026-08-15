@@ -1,16 +1,18 @@
 import '../drawing/color.dart';
+import '../mixins/hoverable.dart';
+import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
+import '../style.dart';
+import '../style/style_patch.dart';
 import '../widget.dart';
 
-class MenuItem extends Widget {
+class MenuItem extends Widget with Hoverable, HoverAnimated {
   String label;
   Color textColor;
   Color backgroundColor;
   Color hoverColor;
   int itemHeight;
   VoidCallback? onTriggered;
-
-  bool _hovered = false;
 
   MenuItem(
     this.label, {
@@ -19,26 +21,46 @@ class MenuItem extends Widget {
     this.hoverColor = const Color(55, 55, 55),
     this.itemHeight = 24,
     this.onTriggered,
-  })  : assert(itemHeight > 0, 'MenuItem itemHeight must be > 0') {
+  }) : assert(itemHeight > 0, 'MenuItem itemHeight must be > 0') {
     width = label.length * 8 + 24;
     height = itemHeight;
-    onMouseEnter = () => setState(() => _hovered = true);
-    onMouseLeave = () => setState(() => _hovered = false);
-    onClick = () { onTriggered?.call(); return true; };
+    onClick = () {
+      onTriggered?.call();
+      return true;
+    };
   }
 
   @override
+  bool get acceptsFocus => true;
+
+  @override
+  Style styleRole() => Style(
+    color: textColor,
+    backgroundColor: backgroundColor,
+    borderColor: palette.mid,
+  );
+
+  @override
   void draw(Painter canvas) {
-    final fill = _hovered ? hoverColor : backgroundColor;
+    final base = resolvedStyle();
+    final hover = resolvedStyleOn(const [
+      'hover',
+    ], local: StylePatch(backgroundColor: hoverColor));
+    final fill = transitionHover(base.backgroundColor!, hover.backgroundColor!);
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
       Paint()..color = fill,
     );
 
     canvas.drawText(
       label,
       Offset((x + 12).toDouble(), (y + (itemHeight - 16) ~/ 2).toDouble()),
-      color: textColor,
+      color: base.color,
       size: 16,
     );
   }
@@ -65,27 +87,50 @@ class Menu extends Widget {
   }
 
   @override
+  Style styleRole() => Style(
+    color: palette.text,
+    backgroundColor: palette.base,
+    borderColor: borderColor,
+  );
+
+  @override
   void draw(Painter canvas) {
+    final style = resolvedStyle();
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), height.toDouble()),
-      Paint()..color = const Color(36, 36, 36),
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
+      Paint()..color = style.backgroundColor!,
     );
 
     canvas.drawRect(
       Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), 1),
-      Paint()..color = borderColor,
+      Paint()..color = style.borderColor,
     );
     canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), (y + height - 1).toDouble(), width.toDouble(), 1),
-      Paint()..color = borderColor,
+      Rect.fromLTWH(
+        x.toDouble(),
+        (y + height - 1).toDouble(),
+        width.toDouble(),
+        1,
+      ),
+      Paint()..color = style.borderColor,
     );
     canvas.drawRect(
       Rect.fromLTWH(x.toDouble(), y.toDouble(), 1, height.toDouble()),
-      Paint()..color = borderColor,
+      Paint()..color = style.borderColor,
     );
     canvas.drawRect(
-      Rect.fromLTWH((x + width - 1).toDouble(), y.toDouble(), 1, height.toDouble()),
-      Paint()..color = borderColor,
+      Rect.fromLTWH(
+        (x + width - 1).toDouble(),
+        y.toDouble(),
+        1,
+        height.toDouble(),
+      ),
+      Paint()..color = style.borderColor,
     );
 
     var cy = y + padding;

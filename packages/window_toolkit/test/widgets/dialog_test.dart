@@ -29,9 +29,7 @@ void main() {
     });
 
     test('draw records commands', () {
-      final harness = WidgetHarness(Dialog(
-        message: 'Hello',
-      ));
+      final harness = WidgetHarness(Dialog(message: 'Hello'));
       harness.draw();
       expect(harness.painter.commands, isNotEmpty);
     });

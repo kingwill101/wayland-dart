@@ -9,7 +9,8 @@ import 'font_metrics.dart';
 ///
 /// Qt analogue: a minimal platform font DB that only knows one face.
 class BitmapFontEngine extends FontEngineBase {
-  BitmapFontEngine({BitmapFont? font}) : _font = font ?? BitmapFont.createDefault();
+  BitmapFontEngine({BitmapFont? font})
+    : _font = font ?? BitmapFont.createDefault();
 
   final BitmapFont _font;
 
@@ -33,8 +34,11 @@ class BitmapFontEngine extends FontEngineBase {
       weight: FontWeight.normal,
       italic: false,
       fixedPitch: true,
-      exactMatch: request.family.isEmpty ||
-          families().any((f) => f.toLowerCase() == request.family.toLowerCase()),
+      exactMatch:
+          request.family.isEmpty ||
+          families().any(
+            (f) => f.toLowerCase() == request.family.toLowerCase(),
+          ),
     );
   }
 
@@ -54,12 +58,8 @@ class BitmapFontEngine extends FontEngineBase {
       fixedPitch: true,
       horizontalAdvance: (text) => _font.textWidth(text).toDouble(),
       // Baseline-relative bounds (top negative) so TextLayout v-center matches Skia.
-      boundingRect: (text) => Rect.fromLTRB(
-        0,
-        -h * 0.8,
-        _font.textWidth(text).toDouble(),
-        h * 0.2,
-      ),
+      boundingRect: (text) =>
+          Rect.fromLTRB(0, -h * 0.8, _font.textWidth(text).toDouble(), h * 0.2),
     );
   }
 }

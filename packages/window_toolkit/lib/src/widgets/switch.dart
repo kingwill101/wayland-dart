@@ -1,9 +1,14 @@
 import '../drawing/color.dart';
+import '../interaction.dart';
+import '../mixins/hoverable.dart';
+import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
+import '../style.dart';
+import '../style/style_patch.dart';
 
 import '../widget.dart';
 
-class Switch extends Widget {
+class Switch extends Widget with Hoverable, HoverAnimated {
   bool value;
   final Color? _trackOnColor;
   final Color? _trackOffColor;
@@ -12,8 +17,6 @@ class Switch extends Widget {
   int trackWidth;
   int trackHeight;
   VoidCallback? onChanged;
-
-  bool _hovered = false;
 
   Switch({
     this.value = false,
@@ -25,17 +28,20 @@ class Switch extends Widget {
     this.trackHeight = 22,
     this.onChanged,
     WidgetKey? key,
-  })  : assert(trackWidth > 0, 'Switch trackWidth must be > 0'),
-        assert(trackHeight > 0, 'Switch trackHeight must be > 0'),
-        _trackOnColor = trackOnColor,
-        _trackOffColor = trackOffColor,
-        _thumbColor = thumbColor,
-        _borderColor = borderColor {
+  }) : assert(trackWidth > 0, 'Switch trackWidth must be > 0'),
+       assert(trackHeight > 0, 'Switch trackHeight must be > 0'),
+       _trackOnColor = trackOnColor,
+       _trackOffColor = trackOffColor,
+       _thumbColor = thumbColor,
+       _borderColor = borderColor {
+    setInteractionState(WidgetState.checked, value);
     width = trackWidth;
     height = trackHeight;
-    onClick = () { toggle(); return true; };
-    onMouseEnter = () => setState(() => _hovered = true);
-    onMouseLeave = () => setState(() => _hovered = false);
+    onClick = () {
+      toggle();
+      return true;
+    };
+    tabIndex = 1;
   }
 
   Color get trackOnColor => _trackOnColor ?? palette.success;
@@ -43,17 +49,38 @@ class Switch extends Widget {
   Color get thumbColor => _thumbColor ?? palette.light;
   Color get borderColor => _borderColor ?? palette.shadow;
 
+  @override
+  bool get acceptsFocus => true;
+
+  @override
+  Style styleRole() => Style(
+    color: thumbColor,
+    backgroundColor: value ? trackOnColor : trackOffColor,
+    borderColor: borderColor,
+  );
+
   void toggle() {
-    setState(() => value = !value);
+    setState(() {
+      value = !value;
+      setInteractionState(WidgetState.checked, value);
+    });
     onChanged?.call();
   }
 
   @override
   void draw(Painter canvas) {
-    final trackColor = value ? trackOnColor : trackOffColor;
-    final fill = _hovered
-        ? Color.blend(trackColor, const Color(255, 255, 255, 24))
-        : trackColor;
+    final base = resolvedStyle();
+    final hover = resolvedStyleOn(
+      const ['hover'],
+      local: StylePatch(
+        backgroundColor: Color.blend(
+          value ? trackOnColor : trackOffColor,
+          const Color(255, 255, 255, 24),
+        ),
+      ),
+    );
+    final trackColor = base.backgroundColor!;
+    final fill = transitionHover(trackColor, hover.backgroundColor!);
 
     canvas.drawRect(
       Rect.fromLTWH(
@@ -67,7 +94,7 @@ class Switch extends Widget {
 
     canvas.drawRect(
       Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), 1),
-      Paint()..color = borderColor,
+      Paint()..color = base.borderColor,
     );
     canvas.drawRect(
       Rect.fromLTWH(
@@ -76,7 +103,7 @@ class Switch extends Widget {
         width.toDouble(),
         1,
       ),
-      Paint()..color = borderColor,
+      Paint()..color = base.borderColor,
     );
 
     final knobRadius = (height / 2) - 2;
@@ -85,7 +112,7 @@ class Switch extends Widget {
     canvas.drawCircle(
       Offset(knobCenterX.toDouble(), knobCenterY.toDouble()),
       knobRadius.toDouble(),
-      Paint()..color = thumbColor,
+      Paint()..color = base.color,
     );
   }
 }

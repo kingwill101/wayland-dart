@@ -1,10 +1,10 @@
 import '../drawing/color.dart';
 import '../painter/painter.dart';
+import '../style.dart';
 import '../widget.dart';
 
 class Frame extends Widget {
   @override
-
   Color color;
   int borderWidth;
   Color? borderColor;
@@ -16,8 +16,16 @@ class Frame extends Widget {
     this.borderWidth = 0,
     this.borderColor,
     List<Widget>? children,
-  })  : assert(borderWidth >= 0, 'Frame borderWidth must be >= 0'),
-        children = children ?? [];
+  }) : assert(borderWidth >= 0, 'Frame borderWidth must be >= 0'),
+       children = children ?? [];
+
+  @override
+  Style styleRole() => Style(
+    color: palette.text,
+    backgroundColor: color,
+    borderColor: borderColor ?? palette.mid,
+    borderWidth: borderWidth.toDouble(),
+  );
 
   @override
   void performLayout(int containerWidth) {
@@ -33,31 +41,59 @@ class Frame extends Widget {
 
   @override
   void draw(Painter canvas) {
-    if (color.a > 0) {
+    final style = resolvedStyle();
+    final fill = style.backgroundColor;
+    if (fill != null && fill.a > 0) {
       canvas.drawRect(
-          Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(),
-              height.toDouble()),
-          Paint()..color = color);
+        Rect.fromLTWH(
+          x.toDouble(),
+          y.toDouble(),
+          width.toDouble(),
+          height.toDouble(),
+        ),
+        Paint()..color = fill,
+      );
     }
 
-    final bc = borderColor;
-    if (borderWidth > 0 && bc != null) {
+    final bc = style.borderColor;
+    final borderSize = style.borderWidth.round();
+    if (borderSize > 0) {
       canvas.drawRect(
-          Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(),
-              borderWidth.toDouble()),
-          Paint()..color = bc);
+        Rect.fromLTWH(
+          x.toDouble(),
+          y.toDouble(),
+          width.toDouble(),
+          borderSize.toDouble(),
+        ),
+        Paint()..color = bc,
+      );
       canvas.drawRect(
-          Rect.fromLTWH(x.toDouble(), (y + height - borderWidth).toDouble(),
-              width.toDouble(), borderWidth.toDouble()),
-          Paint()..color = bc);
+        Rect.fromLTWH(
+          x.toDouble(),
+          (y + height - borderSize).toDouble(),
+          width.toDouble(),
+          borderSize.toDouble(),
+        ),
+        Paint()..color = bc,
+      );
       canvas.drawRect(
-          Rect.fromLTWH(x.toDouble(), y.toDouble(), borderWidth.toDouble(),
-              height.toDouble()),
-          Paint()..color = bc);
+        Rect.fromLTWH(
+          x.toDouble(),
+          y.toDouble(),
+          borderSize.toDouble(),
+          height.toDouble(),
+        ),
+        Paint()..color = bc,
+      );
       canvas.drawRect(
-          Rect.fromLTWH((x + width - borderWidth).toDouble(), y.toDouble(),
-              borderWidth.toDouble(), height.toDouble()),
-          Paint()..color = bc);
+        Rect.fromLTWH(
+          (x + width - borderSize).toDouble(),
+          y.toDouble(),
+          borderSize.toDouble(),
+          height.toDouble(),
+        ),
+        Paint()..color = bc,
+      );
     }
 
     for (final child in children) {
@@ -73,6 +109,4 @@ class Frame extends Widget {
     }
     return false;
   }
-
 }
-

@@ -6,6 +6,8 @@ import '../app.dart';
 import '../keymap.dart';
 import '../mixins/event.dart';
 import '../modifier_keys.dart';
+import '../protocol/registry.dart';
+import '../protocol/services.dart';
 
 class WaylandConnection {
   final List<void Function(dynamic global)> _globalHandlers = [];
@@ -20,10 +22,12 @@ class WaylandConnection {
   late WlSeat seat;
   late XdgWmBase xdgWmBase;
   late WlOutput output;
+  final List<WlOutput> outputs = <WlOutput>[];
 
   WlPointer? _pointer;
   double _pointerX = 0;
   double _pointerY = 0;
+
   /// Wayland object id of the surface currently under the pointer, or null.
   int? pointerSurfaceId;
 
@@ -33,6 +37,14 @@ class WaylandConnection {
   /// popups such as tray menus that need a second layer surface.
   LayerShellV1? layerShell;
 
+  /// Optional protocol capabilities advertised by the compositor.
+  ///
+  /// The registry is intentionally separate from the mandatory core objects
+  /// above.  Toolkit services can depend on a capability without making a
+  /// compositor implement every staging or wlroots protocol.
+  WaylandProtocolRegistry? protocols;
+  WaylandServices? services;
+
   /// libxkbcommon keyboard state for character decoding.
   final XkbKeyboard keyboard = XkbKeyboard();
   double _axisDx = 0;
@@ -41,7 +53,7 @@ class WaylandConnection {
 
   WlKeyboard? _keyboard;
 
-  bool get isConnected => _connected;
+  bool get isConnected => _connected && context.isConnected;
 
   void reset() {
     _globalHandlers.clear();
@@ -50,6 +62,9 @@ class WaylandConnection {
     layerShell = null;
     subcompositor = null;
     pointerSurfaceId = null;
+    outputs.clear();
+    protocols?.reset();
+    services = null;
   }
 
   /// Release native resources: xkb keymap/state and Wayland socket.
@@ -74,6 +89,7 @@ class WaylandConnection {
     display = WlDisplay(context);
     display.onError((e) {
       stderr.writeln('[wt] display error: $e');
+      _connected = false;
     });
 
     registry = display.getRegistry().getOrElse((e) {
@@ -81,11 +97,18 @@ class WaylandConnection {
       return WlRegistry(context);
     });
 
+    protocols = WaylandProtocolRegistry(context, registry);
+
     registry.onGlobal(_onGlobal);
-    registry.onGlobalRemove((g) {});
+    registry.onGlobalRemove((g) {
+      protocols?.removeGlobal(g.name);
+    });
 
     _roundtrip();
     _roundtrip();
+
+    services = WaylandServices(context, protocols!, outputs: outputs);
+    protocols!.logSummary();
 
     _connected = true;
   }
@@ -154,14 +177,21 @@ class WaylandConnection {
           );
         }
       case 'wl_output':
-        output = WlOutput(context);
+        final boundOutput = WlOutput(context);
+        output = boundOutput;
+        outputs.add(boundOutput);
         registry.bind(
           global.name,
           global.interface,
           global.version,
-          output.objectId,
+          boundOutput.objectId,
         );
     }
+
+    // Bind optional protocol globals after the mandatory toolkit globals have
+    // been handled.  This keeps the existing connection fields stable while
+    // making every supported protocol discoverable through one registry.
+    protocols?.bind(global);
 
     for (final handler in _globalHandlers) {
       handler(global);
@@ -186,7 +216,9 @@ class WaylandConnection {
     _pointer!.onMotion((e) {
       _pointerX = e.surfaceX;
       _pointerY = e.surfaceY;
-      Application.instance.dispatchEvent(MouseMotionEvent(_pointerX, _pointerY));
+      Application.instance.dispatchEvent(
+        MouseMotionEvent(_pointerX, _pointerY),
+      );
     });
     _pointer!.onButton((e) {
       Application.instance.dispatchEvent(
@@ -212,7 +244,6 @@ class WaylandConnection {
         _accumulatingAxis = false;
       }
     });
-
   }
 
   void _setupKeyboard() {

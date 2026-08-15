@@ -58,14 +58,42 @@ void main() {
     });
 
     test('draw positions children correctly', () {
-      final harness = WidgetHarness(VBox(spacing: 4, children: [
-        Button('A'),
-        Button('B'),
-      ]));
+      final harness = WidgetHarness(
+        VBox(spacing: 4, children: [Button('A'), Button('B')]),
+      );
       harness.draw();
       final commands = harness.painter.commands;
       // Should have drawn button backgrounds + text.
-      expect(commands.whereType<DrawRectCommand>().length, greaterThanOrEqualTo(2));
+      expect(
+        commands.whereType<DrawRectCommand>().length,
+        greaterThanOrEqualTo(2),
+      );
+    });
+
+    test('nested HBox rows do not collapse draw to a single line', () {
+      // A VBox of HBox rows (like the calendar grid): draw must place each
+      // row at its own baseline, not stale-offset all text onto one line.
+      final root = VBox(
+        spacing: 6,
+        children: [
+          for (var r = 0; r < 3; r++)
+            HBox(
+              spacing: 2,
+              children: [for (var c = 0; c < 3; c++) Label('$r$c')],
+            ),
+        ],
+      );
+      final harness = WidgetHarness(root);
+      harness.draw();
+
+      // Every Label baseline must land on one of the 3 distinct row offsets.
+      final rows = <int>{};
+      for (final cmd in harness.painter.commands) {
+        if (cmd is DrawTextCommand) {
+          rows.add(cmd.position.dy.round());
+        }
+      }
+      expect(rows.length, 3, reason: 'each row on its own baseline: $rows');
     });
   });
 }

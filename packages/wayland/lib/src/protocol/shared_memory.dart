@@ -3,8 +3,9 @@ import 'dart:io' show Platform;
 import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
 
-final ffi.DynamicLibrary libc =
-    ffi.DynamicLibrary.open(Platform.isLinux ? 'libc.so.6' : 'libc.dylib');
+final ffi.DynamicLibrary libc = ffi.DynamicLibrary.open(
+  Platform.isLinux ? 'libc.so.6' : 'libc.dylib',
+);
 
 int createAnonymousFile(int size) {
   final sm = SharedMemory();
@@ -45,17 +46,31 @@ void writeToFd(int fd, Uint8List data) {
   }
 }
 
-typedef MemfdCreateNative = ffi.Int32 Function(
-    ffi.Pointer<ffi.Int8> name, ffi.Uint32 flags);
+typedef MemfdCreateNative =
+    ffi.Int32 Function(ffi.Pointer<ffi.Int8> name, ffi.Uint32 flags);
 typedef MemfdCreateDart = int Function(ffi.Pointer<ffi.Int8> name, int flags);
 
 typedef FtruncateNative = ffi.Int32 Function(ffi.Int32 fd, ffi.Int64 length);
 typedef FtruncateDart = int Function(int fd, int length);
 
-typedef MmapNative = ffi.Pointer<ffi.Void> Function(ffi.Pointer<ffi.Void>,
-    ffi.IntPtr, ffi.Int32, ffi.Int32, ffi.Int32, ffi.IntPtr);
-typedef MmapDart = ffi.Pointer<ffi.Void> Function(
-    ffi.Pointer<ffi.Void>, int, int, int, int, int);
+typedef MmapNative =
+    ffi.Pointer<ffi.Void> Function(
+      ffi.Pointer<ffi.Void>,
+      ffi.IntPtr,
+      ffi.Int32,
+      ffi.Int32,
+      ffi.Int32,
+      ffi.IntPtr,
+    );
+typedef MmapDart =
+    ffi.Pointer<ffi.Void> Function(
+      ffi.Pointer<ffi.Void>,
+      int,
+      int,
+      int,
+      int,
+      int,
+    );
 
 typedef MunmapNative = ffi.Int32 Function(ffi.Pointer<ffi.Void>, ffi.IntPtr);
 typedef MunmapDart = int Function(ffi.Pointer<ffi.Void>, int);
@@ -64,20 +79,24 @@ final MemfdCreateDart memfdCreate = libc
     .lookup<ffi.NativeFunction<MemfdCreateNative>>('memfd_create')
     .asFunction();
 
-final FtruncateDart ftruncate =
-    libc.lookup<ffi.NativeFunction<FtruncateNative>>('ftruncate').asFunction();
+final FtruncateDart ftruncate = libc
+    .lookup<ffi.NativeFunction<FtruncateNative>>('ftruncate')
+    .asFunction();
 
-final MmapDart mmap =
-    libc.lookup<ffi.NativeFunction<MmapNative>>('mmap').asFunction();
+final MmapDart mmap = libc
+    .lookup<ffi.NativeFunction<MmapNative>>('mmap')
+    .asFunction();
 
-final MunmapDart munmap =
-    libc.lookup<ffi.NativeFunction<MunmapNative>>('munmap').asFunction();
+final MunmapDart munmap = libc
+    .lookup<ffi.NativeFunction<MunmapNative>>('munmap')
+    .asFunction();
 
 typedef CloseNative = ffi.Int32 Function(ffi.Int32 fd);
 typedef CloseDart = int Function(int fd);
 
-final CloseDart _close =
-    libc.lookup<ffi.NativeFunction<CloseNative>>('close').asFunction();
+final CloseDart _close = libc
+    .lookup<ffi.NativeFunction<CloseNative>>('close')
+    .asFunction();
 
 void closeFd(int fd) {
   if (fd >= 0) _close(fd);

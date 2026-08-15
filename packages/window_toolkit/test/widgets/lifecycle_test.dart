@@ -10,9 +10,7 @@ void main() {
 
     test('initState is called on mount', () {
       bool initCalled = false;
-      final w = _LifecycleTest(
-        onInit: () => initCalled = true,
-      );
+      final w = _LifecycleTest(onInit: () => initCalled = true);
       w.mounted = true;
       if (w.mounted) w.initState();
       expect(initCalled, isTrue);
@@ -20,9 +18,7 @@ void main() {
 
     test('dispose is called on unmount', () {
       bool disposeCalled = false;
-      final w = _LifecycleTest(
-        onDispose: () => disposeCalled = true,
-      );
+      final w = _LifecycleTest(onDispose: () => disposeCalled = true);
       w.mounted = true;
       if (w.mounted) w.initState();
       w.mounted = false;
