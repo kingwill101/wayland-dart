@@ -48,6 +48,9 @@ class LayerBackend with Size, Events implements Backend {
 
   bool _running = false;
   bool _needsPaint = false;
+  // Do not retry a known-broken EGL context on every frame in auto mode.
+  // A new SHM buffer resets this because resize/reconnect may restore GPU use.
+  bool _glesUnavailable = false;
   SkiaRenderer? _skia;
 
   final Anchor anchor;
@@ -175,7 +178,10 @@ class LayerBackend with Size, Events implements Backend {
       return;
     }
 
-    stderr.writeln('[wt:layer] _ensureBuffer: allocating ${size}B buffer (${width}x$height)');
+    stderr.writeln(
+      '[wt:layer] _ensureBuffer: allocating ${size}B buffer (${width}x$height)',
+    );
+    _glesUnavailable = false;
     _skia?.dispose();
     _skia = null;
     _pool?.destroy();
@@ -237,16 +243,21 @@ class LayerBackend with Size, Events implements Backend {
           rethrow;
         }
       case RendererBackend.auto:
-        try {
-          stderr.writeln('[wt:layer] trying GlesPainter...');
-          final p = GlesPainter(_fd, width, height);
-          if (!p.isHealthy) {
-            p.dispose();
-            throw Exception('GlesPainter unhealthy (EGL context lost)');
+        if (!_glesUnavailable) {
+          try {
+            stderr.writeln('[wt:layer] trying GlesPainter...');
+            final p = GlesPainter(_fd, width, height);
+            if (!p.isHealthy) {
+              p.dispose();
+              throw Exception('GlesPainter unhealthy (EGL context lost)');
+            }
+            return p;
+          } catch (e) {
+            _glesUnavailable = true;
+            stderr.writeln(
+              '[wt:layer] disabling GlesPainter for this buffer: $e',
+            );
           }
-          return p;
-        } catch (e) {
-          stderr.writeln('[wt:layer] GlesPainter unavailable: $e');
         }
         try {
           stderr.writeln('[wt:layer] trying SkiaPainter...');
