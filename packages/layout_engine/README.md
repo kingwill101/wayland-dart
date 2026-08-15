@@ -11,8 +11,7 @@ Host toolkits (e.g. [`window_toolkit`](../window_toolkit)) adapt paintables into
 
 ```yaml
 dependencies:
-  layout_engine:
-    path: ../layout_engine   # or your package source
+  layout_engine: ^0.1.0
 ```
 
 ```dart

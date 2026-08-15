@@ -13,6 +13,7 @@ import '../mixins/hoverable.dart';
 import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
 import '../style.dart';
+import '../style/style_patch.dart';
 import '../widget.dart';
 
 /// A vertical scrollbar that tracks a [le.ScrollController].
@@ -63,22 +64,29 @@ class Scrollbar extends Widget with Hoverable, HoverAnimated {
     final metrics = _computeMetrics();
     if (!metrics.visible) return;
     final style = resolvedStyle();
+    final hovered = resolvedStyleOn(const [
+      'hover',
+    ], local: StylePatch(color: hoverColor));
 
     final xPos = (x + width - thickness).toDouble();
     final yPos = y.toDouble();
     final trackH = metrics.trackSize;
 
     // Track
-    canvas.drawRect(
+    canvas.drawRRect(
       Rect.fromLTWH(xPos, yPos, thickness.toDouble(), trackH),
-      Paint()..color = style.backgroundColor!,
+      style.borderRadius,
+      style.borderRadius,
+      Paint()..color = styledColor(style.backgroundColor!, style),
     );
 
     // Thumb
     final thumbY = yPos + metrics.thumbOffset;
-    canvas.drawRect(
+    canvas.drawRRect(
       Rect.fromLTWH(xPos, thumbY, thickness.toDouble(), metrics.thumbSize),
-      Paint()..color = style.color,
+      style.borderRadius,
+      style.borderRadius,
+      Paint()..color = styledColor(hovered.color, hovered),
     );
   }
 

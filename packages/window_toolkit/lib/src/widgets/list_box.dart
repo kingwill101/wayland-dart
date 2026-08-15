@@ -1,4 +1,5 @@
 import '../drawing/color.dart';
+import '../font/font.dart';
 import '../interaction.dart';
 import '../painter/painter.dart';
 import '../style.dart';
@@ -74,29 +75,7 @@ class ListBox extends Widget {
     final hovered = resolvedStyleOn(const [
       'hover',
     ], local: StylePatch(backgroundColor: hoverColor));
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        y.toDouble(),
-        width.toDouble(),
-        height.toDouble(),
-      ),
-      Paint()..color = base.backgroundColor!,
-    );
-
-    canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), 1),
-      Paint()..color = base.borderColor,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        (y + height - 1).toDouble(),
-        width.toDouble(),
-        1,
-      ),
-      Paint()..color = base.borderColor,
-    );
+    drawStyledBox(canvas, style: base);
 
     canvas.save();
     canvas.clipRect(
@@ -123,7 +102,7 @@ class ListBox extends Widget {
             width.toDouble(),
             itemHeight.toDouble(),
           ),
-          Paint()..color = selected.backgroundColor!,
+          Paint()..color = styledColor(selected.backgroundColor!, selected),
         );
       } else if (isHovered) {
         canvas.drawRect(
@@ -133,15 +112,20 @@ class ListBox extends Widget {
             width.toDouble(),
             itemHeight.toDouble(),
           ),
-          Paint()..color = hovered.backgroundColor!,
+          Paint()..color = styledColor(hovered.backgroundColor!, hovered),
         );
       }
 
-      canvas.drawText(
+      drawStyledText(
+        canvas,
         items[i],
-        Offset((x + 4).toDouble(), (iy + 3).toDouble()),
+        Offset(
+          (x + styledPaddingLeft(4)).toDouble(),
+          (iy + styledPaddingTop(3)).toDouble(),
+        ),
+        style: base,
         color: base.color,
-        size: 16,
+        fallback: const Font(pixelSize: 16),
       );
     }
 
@@ -162,7 +146,7 @@ class ListBox extends Widget {
           4,
           barH.toDouble(),
         ),
-        Paint()..color = base.borderColor,
+        Paint()..color = styledColor(base.borderColor, base),
       );
     }
   }

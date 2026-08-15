@@ -6,10 +6,13 @@ import '../app.dart';
 import '../keymap.dart';
 import '../mixins/event.dart';
 import '../modifier_keys.dart';
+import '../platform/platform.dart';
 import '../protocol/registry.dart';
 import '../protocol/services.dart';
 
-class WaylandConnection {
+class WaylandConnection implements PlatformConnection {
+  static final WaylandConnection shared = WaylandConnection();
+
   final List<void Function(dynamic global)> _globalHandlers = [];
   final List<dynamic> _globals = [];
   bool _connected = false;
@@ -53,8 +56,10 @@ class WaylandConnection {
 
   WlKeyboard? _keyboard;
 
+  @override
   bool get isConnected => _connected && context.isConnected;
 
+  @override
   void reset() {
     _globalHandlers.clear();
     _globals.clear();
@@ -298,6 +303,7 @@ class WaylandConnection {
     }
   }
 
+  @override
   void dispatch() {
     context.dispatchTimeout(0);
   }

@@ -11,32 +11,42 @@ library;
 import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:isolate';
 import 'package:ffi/ffi.dart';
 
 // ── libc socket functions ─────────────────────────────────────────
 
-final DynamicLibrary _libc =
-    DynamicLibrary.open(Platform.isLinux ? 'libc.so.6' : 'libc.dylib');
+final DynamicLibrary _libc = DynamicLibrary.open(
+  Platform.isLinux ? 'libc.so.6' : 'libc.dylib',
+);
 
 // int socket(int domain, int type, int protocol)
 final int Function(int, int, int) _socket = _libc
-    .lookupFunction<Int32 Function(Int32, Int32, Int32),
-        int Function(int, int, int)>('socket');
+    .lookupFunction<
+      Int32 Function(Int32, Int32, Int32),
+      int Function(int, int, int)
+    >('socket');
 
 // int connect(int fd, Pointer<Void> addr, int addrlen)
 final int Function(int, Pointer<Void>, int) _connect = _libc
-    .lookupFunction<Int32 Function(Int32, Pointer<Void>, Uint32),
-        int Function(int, Pointer<Void>, int)>('connect');
+    .lookupFunction<
+      Int32 Function(Int32, Pointer<Void>, Uint32),
+      int Function(int, Pointer<Void>, int)
+    >('connect');
 
 // int write(int fd, Pointer<Void> buf, int count)
 final int Function(int, Pointer<Void>, int) _write = _libc
-    .lookupFunction<IntPtr Function(Int32, Pointer<Void>, IntPtr),
-        int Function(int, Pointer<Void>, int)>('write');
+    .lookupFunction<
+      IntPtr Function(Int32, Pointer<Void>, IntPtr),
+      int Function(int, Pointer<Void>, int)
+    >('write');
 
 // int read(int fd, Pointer<Void> buf, int count)
 final int Function(int, Pointer<Void>, int) _read = _libc
-    .lookupFunction<IntPtr Function(Int32, Pointer<Void>, IntPtr),
-        int Function(int, Pointer<Void>, int)>('read');
+    .lookupFunction<
+      IntPtr Function(Int32, Pointer<Void>, IntPtr),
+      int Function(int, Pointer<Void>, int)
+    >('read');
 
 // int close(int fd)
 final int Function(int) _close = _libc
@@ -44,8 +54,10 @@ final int Function(int) _close = _libc
 
 // fcntl + non-blocking I/O
 final int Function(int, int, int) _fcntl = _libc
-    .lookupFunction<Int32 Function(Int32, Int32, Int32),
-        int Function(int, int, int)>('fcntl');
+    .lookupFunction<
+      Int32 Function(Int32, Int32, Int32),
+      int Function(int, int, int)
+    >('fcntl');
 
 const int _F_SETFL = 4;
 const int _O_NONBLOCK = 2048;
@@ -57,6 +69,8 @@ const int _SOCK_STREAM = 1;
 
 String? _cachedPath;
 String? _cachedEventPath;
+String? _cachedBase;
+String? _excludedBase;
 
 String get _socketPath {
   if (_cachedPath != null) return _cachedPath!;
@@ -73,13 +87,85 @@ String get _eventSocketPath {
 }
 
 String _socketBase() {
-  final env = Platform.environment;
-  final sig = env['HYPRLAND_INSTANCE_SIGNATURE'];
-  if (sig == null || sig.isEmpty) {
-    throw UnsupportedError('\$HYPRLAND_INSTANCE_SIGNATURE not set');
+  if (_cachedBase != null &&
+      _cachedBase != _excludedBase &&
+      File('$_cachedBase/.socket.sock').existsSync()) {
+    return _cachedBase!;
   }
+
+  final env = Platform.environment;
   final runtime = env['XDG_RUNTIME_DIR'] ?? '/run/user/${env["UID"] ?? "1000"}';
-  return '$runtime/hypr/$sig';
+  final root = Directory('$runtime/hypr');
+  final sig = env['HYPRLAND_INSTANCE_SIGNATURE'];
+  final preferred = sig == null || sig.isEmpty ? null : '${root.path}/$sig';
+
+  if (preferred != null &&
+      preferred != _excludedBase &&
+      File('$preferred/.socket.sock').existsSync() &&
+      _looksLikeLiveHyprlandInstance(preferred)) {
+    _cachedBase = preferred;
+    _excludedBase = null;
+    return preferred;
+  }
+
+  // A bar launched from a long-lived terminal can retain the environment of
+  // a previous Hyprland process. Prefer the newest instance directory that
+  // actually owns an IPC socket instead of hiding all Hyprland modules.
+  try {
+    final candidates = root
+        .listSync()
+        .whereType<Directory>()
+        .where(
+          (dir) =>
+              dir.path != _excludedBase &&
+              File('${dir.path}/.socket.sock').existsSync() &&
+              _looksLikeLiveHyprlandInstance(dir.path),
+        )
+        .toList();
+    candidates.sort((a, b) {
+      final aTime = File('${a.path}/.socket.sock').statSync().modified;
+      final bTime = File('${b.path}/.socket.sock').statSync().modified;
+      return bTime.compareTo(aTime);
+    });
+    if (candidates.isNotEmpty) {
+      _cachedBase = candidates.first.path;
+      _excludedBase = null;
+      return _cachedBase!;
+    }
+  } catch (_) {
+    // Fall through to the configured signature for a useful failure path.
+  }
+
+  if (preferred != null) {
+    _cachedBase = preferred;
+    _excludedBase = null;
+    return preferred;
+  }
+  throw UnsupportedError('\$HYPRLAND_INSTANCE_SIGNATURE not set');
+}
+
+/// Reject stale instance directories left behind after Hyprland restarts.
+///
+/// The compositor keeps the socket path around long enough for a terminal to
+/// retain an old `HYPRLAND_INSTANCE_SIGNATURE`.  That is especially visible
+/// in `Isolate.run`, where the IPC cache starts fresh and would otherwise
+/// select the dead path again.  Hyprland writes its PID into `hyprland.lock`,
+/// so use that as a cheap liveness check before preferring a signature.
+bool _looksLikeLiveHyprlandInstance(String base) {
+  final lock = File('$base/hyprland.lock');
+  if (!lock.existsSync()) {
+    // Keep compatibility with sessions that do not expose the lock file.
+    return true;
+  }
+
+  try {
+    final pid = int.tryParse(lock.readAsLinesSync().first.trim());
+    if (pid == null || !Directory('/proc/$pid').existsSync()) return false;
+    final comm = File('/proc/$pid/comm').readAsStringSync().trim();
+    return comm == 'Hyprland' || comm == 'hyprland';
+  } catch (_) {
+    return false;
+  }
 }
 
 // ── Public API ────────────────────────────────────────────────────
@@ -89,8 +175,16 @@ String _socketBase() {
 /// If [useJson] is true (default), prefixes with `j/` for JSON response.
 /// Set to false for commands like `dispatch` that expect plain text.
 /// Falls back to `hyprctl $cmd -j` on socket errors.
-dynamic hyprctl(String command, {bool useJson = true}) {
-  final result = _tryDirectIpc(command, useJson: useJson);
+dynamic hyprctl(
+  String command, {
+  bool useJson = true,
+  bool legacyProtocol = false,
+}) {
+  final result = _tryDirectIpc(
+    command,
+    useJson: useJson,
+    legacyProtocol: legacyProtocol,
+  );
   if (result != null) return result;
 
   if (useJson) {
@@ -102,11 +196,78 @@ dynamic hyprctl(String command, {bool useJson = true}) {
       final r = Process.runSync('hyprctl', parts, runInShell: true);
       if (r.exitCode != 0) return null;
       return (r.stdout as String).trim();
-    } catch (_) { return null; }
+    } catch (_) {
+      return null;
+    }
   }
 }
 
-dynamic _tryDirectIpc(String command, {bool useJson = true}) {
+/// Run a Hyprland request away from the UI/event-loop isolate.
+///
+/// The direct FFI implementation intentionally uses blocking `connect`/
+///`read` calls. That is fine for polling, but a pointer callback must return
+/// immediately or every popup and repaint waits behind the socket response.
+Future<dynamic> hyprctlAsync(
+  String command, {
+  bool useJson = true,
+  bool legacyProtocol = false,
+}) {
+  return Isolate.run(
+    () => hyprctl(command, useJson: useJson, legacyProtocol: legacyProtocol),
+  );
+}
+
+/// Dispatch a workspace focus command using the protocol supported by the
+/// running Hyprland version.
+///
+/// Hyprland 0.54 introduced the Lua dispatch form while older versions still
+/// require `dispatch workspace <id>`.  Waybar probes this boundary; do the
+/// same here by trying the current form first and falling back when Hyprland
+/// returns an error.
+Future<bool> focusWorkspaceAsync(int id) async {
+  final lua = await _boundedHyprctlAsync(
+    'dispatch hl.dsp.focus({ workspace = "$id" })',
+    useJson: false,
+  );
+  if (hyprctlResultSucceeded(lua)) return true;
+
+  final legacy = await _boundedHyprctlAsync(
+    'dispatch workspace $id',
+    useJson: false,
+    legacyProtocol: true,
+  );
+  return hyprctlResultSucceeded(legacy);
+}
+
+Future<dynamic> _boundedHyprctlAsync(
+  String command, {
+  bool useJson = true,
+  bool legacyProtocol = false,
+}) {
+  return hyprctlAsync(
+    command,
+    useJson: useJson,
+    legacyProtocol: legacyProtocol,
+  ).timeout(const Duration(milliseconds: 900), onTimeout: () => null);
+}
+
+/// Whether a plain-text Hyprland IPC response represents success.
+bool hyprctlResultSucceeded(dynamic result) {
+  if (result == null) return false;
+  if (result is! String) return true;
+  final value = result.trim().toLowerCase();
+  if (value.isEmpty) return false;
+  return !value.contains('error') &&
+      !value.contains('invalid') &&
+      !value.contains('unknown') &&
+      !value.contains('failed');
+}
+
+dynamic _tryDirectIpc(
+  String command, {
+  bool useJson = true,
+  bool legacyProtocol = false,
+}) {
   try {
     final path = _socketPath;
     final sunPath = path.toNativeUtf8();
@@ -116,7 +277,10 @@ dynamic _tryDirectIpc(String command, {bool useJson = true}) {
     }
 
     final fd = _socket(_AF_UNIX, _SOCK_STREAM, 0);
-    if (fd < 0) { calloc.free(sunPath); return null; }
+    if (fd < 0) {
+      calloc.free(sunPath);
+      return null;
+    }
 
     // Build sockaddr_un
     final addr = calloc<Uint8>(110);
@@ -130,9 +294,21 @@ dynamic _tryDirectIpc(String command, {bool useJson = true}) {
     calloc.free(addr);
     calloc.free(sunPath);
 
-    if (connRet < 0) { _close(fd); return null; }
+    if (connRet < 0) {
+      final failedBase = _cachedBase;
+      _close(fd);
+      _cachedBase = null;
+      _cachedPath = null;
+      _cachedEventPath = null;
+      _excludedBase = failedBase;
+      return null;
+    }
 
-    final cmdStr = useJson ? 'j/' + command : '/' + command;
+    final cmdStr = useJson
+        ? 'j/$command'
+        : legacyProtocol
+        ? command
+        : '/$command';
     final cmdPtr = cmdStr.toNativeUtf8();
     _write(fd, cmdPtr.cast(), cmdStr.length);
     calloc.free(cmdPtr);
@@ -141,7 +317,10 @@ dynamic _tryDirectIpc(String command, {bool useJson = true}) {
     final total = _read(fd, buf.cast(), 65536);
     _close(fd);
 
-    if (total <= 0) { calloc.free(buf); return null; }
+    if (total <= 0) {
+      calloc.free(buf);
+      return null;
+    }
 
     final response = utf8.decode(buf.asTypedList(total));
     calloc.free(buf);
@@ -217,7 +396,10 @@ int _connectEventSocket() {
     }
 
     final fd = _socket(_AF_UNIX, _SOCK_STREAM, 0);
-    if (fd < 0) { calloc.free(sunPath); return -1; }
+    if (fd < 0) {
+      calloc.free(sunPath);
+      return -1;
+    }
 
     final addr = calloc<Uint8>(110);
     addr[0] = _AF_UNIX;
@@ -230,7 +412,10 @@ int _connectEventSocket() {
     calloc.free(addr);
     calloc.free(sunPath);
 
-    if (connRet < 0) { _close(fd); return -1; }
+    if (connRet < 0) {
+      _close(fd);
+      return -1;
+    }
 
     // Set non-blocking so reads never block the event loop.
     _fcntl(fd, _F_SETFL, _O_NONBLOCK);
@@ -299,4 +484,6 @@ void pollEvents() {
 void resetCache() {
   _cachedPath = null;
   _cachedEventPath = null;
+  _cachedBase = null;
+  _excludedBase = null;
 }

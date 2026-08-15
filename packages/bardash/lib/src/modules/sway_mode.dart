@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:window_toolkit/window_toolkit.dart';
-
 import 'module.dart';
 
 /// Sway mode indicator.
@@ -42,11 +40,11 @@ class SwayModeModule extends BarModule {
   @override
   void update() {
     try {
-      final result = Process.runSync(
-        _binary,
-        ['-t', 'get_binding_state', '--raw'],
-        runInShell: true,
-      );
+      final result = Process.runSync(_binary, [
+        '-t',
+        'get_binding_state',
+        '--raw',
+      ], runInShell: true);
       if (result.exitCode != 0) {
         output = '';
         return;
@@ -55,19 +53,15 @@ class SwayModeModule extends BarModule {
       _mode = (result.stdout as String).trim();
       final fmt = _mode == 'default'
           ? resolveFormat(
-              {'format': format, 'format-default': ''}, format, 'default')
+              {'format': format, 'format-default': ''},
+              format,
+              'default',
+            )
           : format;
 
       output = fmt.replaceAll('{mode}', _mode);
     } catch (_) {
       output = '';
     }
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    if (output.isEmpty) return 0;
-    painter.drawText(output, Offset(x, y));
-    return painter.measureText(output).width;
   }
 }

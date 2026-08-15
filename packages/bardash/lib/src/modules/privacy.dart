@@ -1,9 +1,6 @@
 import 'dart:io';
 
-import 'package:window_toolkit/window_toolkit.dart';
-
 import '../command.dart';
-import '../metrics.dart';
 import 'module.dart';
 
 /// Privacy indicators: camera / mic in use.
@@ -49,8 +46,11 @@ class PrivacyModule extends BarModule {
         return;
       }
 
-      final cameraIcon = _cameraActive ? '📷' : '';
-      final micIcon = _micActive ? '🎤' : '';
+      // Keep status icons in the same private-use icon font as every other
+      // ordinary module. Color emoji required a separate painter/font path
+      // and rendered as tofu on some backends.
+      final cameraIcon = _cameraActive ? '\u{f030}' : '';
+      final micIcon = _micActive ? '\u{f130}' : '';
       final combined = [
         if (cameraIcon.isNotEmpty) cameraIcon,
         if (micIcon.isNotEmpty) micIcon,
@@ -106,11 +106,11 @@ class PrivacyModule extends BarModule {
 
   Future<bool> _checkMicAsync() async {
     try {
-      final pactl = await Process.run(
-        'pactl',
-        ['list', 'source-outputs', 'short'],
-        runInShell: false,
-      );
+      final pactl = await Process.run('pactl', [
+        'list',
+        'source-outputs',
+        'short',
+      ], runInShell: false);
       if (pactl.exitCode == 0) {
         final out = (pactl.stdout as String).trim();
         if (out.isNotEmpty) return true;
@@ -118,11 +118,7 @@ class PrivacyModule extends BarModule {
     } catch (_) {}
 
     try {
-      final r = await Process.run(
-        'pw-cli',
-        ['ls', 'Node'],
-        runInShell: false,
-      );
+      final r = await Process.run('pw-cli', ['ls', 'Node'], runInShell: false);
       if (r.exitCode == 0) {
         final out = r.stdout as String;
         // Crude: look for Audio/Source with state running
@@ -157,38 +153,6 @@ class PrivacyModule extends BarModule {
       }
     } catch (_) {}
     return false;
-  }
-
-  @override
-  double measure(Painter painter) {
-    if (output.isEmpty) return 0;
-    final m = BarMetrics.current;
-    // Emoji icons: fixed slots + gap between camera/mic.
-    final n = (_cameraActive ? 1 : 0) + (_micActive ? 1 : 0);
-    if (n == 0) return 0;
-    return n * m.iconContentWidth() +
-        (n > 1 ? m.iconTextGap : 0);
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    if (output.isEmpty) return 0;
-    final m = BarMetrics.current;
-    final emoji = Font(family: m.emojiFamily, pixelSize: m.fontSize);
-    final gap = m.iconTextGap.toDouble();
-    var cx = x;
-    const color = Color(0xff, 0xcc, 0x00);
-    if (_cameraActive) {
-      final w = m.emojiLayoutWidth(painter.measureTextFont('📷', emoji));
-      painter.drawTextFont('📷', Offset(cx, y), font: emoji, color: color);
-      cx += w + (_micActive ? gap : 0);
-    }
-    if (_micActive) {
-      final w = m.emojiLayoutWidth(painter.measureTextFont('🎤', emoji));
-      painter.drawTextFont('🎤', Offset(cx, y), font: emoji, color: color);
-      cx += w;
-    }
-    return cx - x;
   }
 
   @override

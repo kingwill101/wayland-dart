@@ -1,8 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:window_toolkit/window_toolkit.dart';
-
 import 'module.dart';
 
 /// Sway keyboard layout / language indicator.
@@ -45,11 +43,11 @@ class SwayLanguageModule extends BarModule {
   @override
   void update() {
     try {
-      final result = Process.runSync(
-        _binary,
-        ['-t', 'get_inputs', '--raw'],
-        runInShell: true,
-      );
+      final result = Process.runSync(_binary, [
+        '-t',
+        'get_inputs',
+        '--raw',
+      ], runInShell: true);
       if (result.exitCode != 0) {
         output = 'N/A';
         return;
@@ -91,15 +89,13 @@ class SwayLanguageModule extends BarModule {
           .replaceAll('{layout}', _layout)
           .replaceAll('{variant}', _variant)
           .replaceAll(
-              '{short}', _layout.length >= 2 ? _layout.substring(0, 2).toUpperCase() : _layout.toUpperCase());
+            '{short}',
+            _layout.length >= 2
+                ? _layout.substring(0, 2).toUpperCase()
+                : _layout.toUpperCase(),
+          );
     } catch (_) {
       output = 'ERR';
     }
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    painter.drawText(output, Offset(x, y));
-    return painter.measureText(output).width;
   }
 }

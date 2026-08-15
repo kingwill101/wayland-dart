@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:window_toolkit/window_toolkit.dart';
-
 import 'module.dart';
 
 class IdleInhibitorModule extends BarModule {
@@ -29,12 +27,6 @@ class IdleInhibitorModule extends BarModule {
   }
 
   @override
-  double draw(Painter painter, double x, double y) {
-    painter.drawText(output, Offset(x, y));
-    return painter.measureText(output).width;
-  }
-
-  @override
   bool get hasClick => true;
 
   @override
@@ -44,9 +36,10 @@ class IdleInhibitorModule extends BarModule {
     if (_cmdOnClick.isNotEmpty) {
       final parts = _cmdOnClick.split(' ');
       if (parts.isNotEmpty) {
-        Process.run(parts.first, parts.skip(1).toList())
-            .then((_) {})
-            .catchError((_) {});
+        Process.run(
+          parts.first,
+          parts.skip(1).toList(),
+        ).then((_) {}).catchError((_) {});
       }
     }
   }

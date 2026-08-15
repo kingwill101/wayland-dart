@@ -16,7 +16,6 @@ typedef NeedsBuildCallback = void Function();
 /// Manages dirty element tracking and rebuild scheduling.
 class BuildOwner {
   final Set<Element> _dirty = {};
-  bool _inBuild = false;
   bool _needsPaint = false;
 
   /// Callback invoked when any element is marked dirty.
@@ -45,15 +44,11 @@ class BuildOwner {
   /// Returns true if any elements were rebuilt.
   bool buildScope(Element root) {
     if (_dirty.isEmpty) return false;
-    _inBuild = true;
-
     var built = false;
     var safety = 0;
     while (_dirty.isNotEmpty && safety < 1000) {
       safety++;
-      final candidates = _dirty
-          .where((e) => _isDescendantOf(e, root))
-          .toList()
+      final candidates = _dirty.where((e) => _isDescendantOf(e, root)).toList()
         ..sort((a, b) => a.depth.compareTo(b.depth));
 
       if (candidates.isEmpty) break;
@@ -67,7 +62,6 @@ class BuildOwner {
       }
     }
 
-    _inBuild = false;
     _needsPaint = true;
     return built;
   }
@@ -194,7 +188,8 @@ class Element {
     final oldLen = children.length;
     final newLen = newWidgets.length;
     var i = 0;
-    while (i < oldLen && i < newLen &&
+    while (i < oldLen &&
+        i < newLen &&
         ElementWidget.canUpdate(children[i].widget, newWidgets[i])) {
       if (!identical(children[i].widget, newWidgets[i])) {
         children[i].update(newWidgets[i]);
@@ -245,7 +240,6 @@ class Element {
     }
   }
 
-
   // ── Focus navigation ──────────────────────────────────────
 
   /// Whether this element can receive keyboard focus.
@@ -285,7 +279,11 @@ class Element {
     return null;
   }
 
-  static void _searchFocusReverse(Element el, Element? current, void Function(Element) onFound) {
+  static void _searchFocusReverse(
+    Element el,
+    Element? current,
+    void Function(Element) onFound,
+  ) {
     if (identical(el, current)) return;
     if (el.focusable) onFound(el);
     for (var i = el.children.length - 1; i >= 0; i--) {
@@ -301,7 +299,11 @@ class Element {
   /// (e.g., window_toolkit) provides bounds from Widget x/y/w/h.
   ///
   /// Returns the deepest matching element, or null.
-  Element? hitTest(double x, double y, bool Function(ElementWidget w) pointInBounds) {
+  Element? hitTest(
+    double x,
+    double y,
+    bool Function(ElementWidget w) pointInBounds,
+  ) {
     // Use renderWidget for bounds check — StatefulElement/StatelessElement
     // have configuration widgets (e.g., CounterWidget) that don't have
     // rendering bounds. renderWidget returns the built/rendered output.
@@ -339,7 +341,7 @@ class StatelessElement extends Element {
   void performRebuild() {
     final w = widget as StatelessWidget;
     final built = w.build(context);
-    _updateChild(0, built as ElementWidget);
+    _updateChild(0, built);
   }
 
   void _updateChild(int index, ElementWidget newWidget) {
@@ -371,9 +373,7 @@ class StatelessElement extends Element {
 class StatefulElement extends Element {
   final State state;
 
-  StatefulElement(StatefulWidget w)
-      : state = w.createState(),
-        super(w) {
+  StatefulElement(StatefulWidget w) : state = w.createState(), super(w) {
     state.markNeedsBuild = markNeedsBuild;
     (state as dynamic).widgetOverride = w;
     state.contextOverride = context;
@@ -405,7 +405,7 @@ class StatefulElement extends Element {
   @override
   void performRebuild() {
     final built = state.build(context);
-    _updateChild(0, built as ElementWidget);
+    _updateChild(0, built);
   }
 
   void _updateChild(int index, ElementWidget newWidget) {

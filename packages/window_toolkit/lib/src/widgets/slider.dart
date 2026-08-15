@@ -1,8 +1,11 @@
 import '../drawing/color.dart';
+import '../font/font.dart';
 import '../interaction.dart';
 import '../mixins/hoverable.dart';
 import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
+import '../style.dart';
+import '../style/style_patch.dart';
 
 import '../widget.dart';
 
@@ -45,6 +48,22 @@ class Slider extends Widget with Hoverable, HoverAnimated {
   Color get trackColor => _trackColor ?? palette.mid;
   Color get fillColor => _fillColor ?? palette.highlight;
   Color get thumbColor => _thumbColor ?? palette.light;
+
+  @override
+  Style styleRole() => Style(
+    color: fillColor,
+    backgroundColor: trackColor,
+    borderColor: thumbColor,
+    borderWidth: 0,
+    borderRadius: thumbRadius.toDouble(),
+  );
+
+  @override
+  StylePatch localOverrides() => StylePatch(
+    color: _fillColor,
+    backgroundColor: _trackColor,
+    borderTopColor: _thumbColor,
+  );
 
   @override
   bool get acceptsFocus => true;
@@ -93,6 +112,10 @@ class Slider extends Widget with Hoverable, HoverAnimated {
 
   @override
   void draw(Painter canvas) {
+    final style = resolvedStyle();
+    final track = style.backgroundColor ?? trackColor;
+    final fill = style.color;
+    final thumbBase = style.borderColor;
     final valueText = value.round().toString();
     final valueWidth = showValue
         ? canvas.measureText(valueText, size: 16).width.ceil()
@@ -105,47 +128,58 @@ class Slider extends Widget with Hoverable, HoverAnimated {
     final thumbCenterY = y + height ~/ 2;
     final fillWidth = (trackWidth * fraction).round();
     final thumb = transitionHover(
-      thumbColor,
-      Color.blend(thumbColor, const Color(255, 255, 255, 28)),
+      thumbBase,
+      Color.blend(thumbBase, const Color(255, 255, 255, 28)),
     );
 
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        trackY.toDouble(),
-        trackWidth.toDouble(),
-        trackHeight.toDouble(),
-      ),
-      Paint()..color = trackColor,
+    final trackRect = Rect.fromLTWH(
+      x.toDouble(),
+      trackY.toDouble(),
+      trackWidth.toDouble(),
+      trackHeight.toDouble(),
     );
-
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        trackY.toDouble(),
-        fillWidth.toDouble(),
-        trackHeight.toDouble(),
-      ),
-      Paint()..color = fillColor,
+    canvas.drawRRect(
+      trackRect,
+      style.borderRadius,
+      style.borderRadius,
+      Paint()..color = styledColor(track, style),
     );
+    if (fillWidth > 0) {
+      canvas.drawRRect(
+        Rect.fromLTWH(
+          x.toDouble(),
+          trackY.toDouble(),
+          fillWidth.toDouble(),
+          trackHeight.toDouble(),
+        ),
+        style.borderRadius,
+        style.borderRadius,
+        Paint()..color = styledColor(fill, style),
+      );
+    }
 
     canvas.drawCircle(
       Offset((x + fillWidth).toDouble(), thumbCenterY.toDouble()),
       thumbRadius.toDouble(),
       Paint()
-        ..color = _dragging
-            ? Color.blend(thumb, const Color(255, 255, 255, 20))
-            : thumb,
+        ..color = styledColor(
+          _dragging
+              ? Color.blend(thumb, const Color(255, 255, 255, 20))
+              : thumb,
+          style,
+        ),
     );
 
     if (showValue) {
-      canvas.drawText(
+      drawStyledText(
+        canvas,
         valueText,
         Offset(
           (x + trackWidth + valueGap).toDouble(),
           (y + (height - 16) ~/ 2).toDouble(),
         ),
-        size: 16,
+        style: style,
+        fallback: const Font(pixelSize: 16),
       );
     }
   }

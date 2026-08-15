@@ -1,8 +1,11 @@
 import '../drawing/color.dart';
+import '../font/font.dart';
 import '../interaction.dart';
 import '../mixins/hoverable.dart';
 import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
+import '../style.dart';
+import '../style/style_patch.dart';
 import '../widget.dart';
 
 class ToggleButton extends Widget with Hoverable, HoverAnimated {
@@ -47,37 +50,33 @@ class ToggleButton extends Widget with Hoverable, HoverAnimated {
   bool get acceptsFocus => true;
 
   @override
+  Style styleRole() => Style(
+    color: textColor,
+    backgroundColor: selected ? selectedColor : unselectedColor,
+    borderColor: borderColor,
+  );
+
+  @override
   void draw(Painter canvas) {
-    final fill = selected
-        ? selectedColor
-        : transitionHover(unselectedColor, hoverColor);
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        y.toDouble(),
-        width.toDouble(),
-        height.toDouble(),
-      ),
-      Paint()..color = fill,
+    final base = resolvedStyle();
+    final hover = resolvedStyleOn(const [
+      'hover',
+    ], local: StylePatch(backgroundColor: hoverColor));
+    final fill = transitionHover(base.backgroundColor!, hover.backgroundColor!);
+    drawStyledBox(
+      canvas,
+      style: base.overlay(StylePatch(backgroundColor: fill)),
     );
-    canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), 1),
-      Paint()..color = borderColor,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        (y + height - 1).toDouble(),
-        width.toDouble(),
-        1,
-      ),
-      Paint()..color = borderColor,
-    );
-    canvas.drawText(
+    drawStyledText(
+      canvas,
       label,
-      Offset((x + 8).toDouble(), (y + 4).toDouble()),
-      color: textColor,
-      size: 16,
+      Offset(
+        (x + styledPaddingLeft(8)).toDouble(),
+        (y + styledPaddingTop(4)).toDouble(),
+      ),
+      style: base,
+      color: base.color,
+      fallback: const Font(pixelSize: 16),
     );
   }
 }
@@ -114,6 +113,13 @@ class SegmentedControl extends Widget with Hoverable, HoverAnimated {
   bool get acceptsFocus => true;
 
   @override
+  Style styleRole() => Style(
+    color: textColor,
+    backgroundColor: unselectedColor,
+    borderColor: borderColor,
+  );
+
+  @override
   void onMouseMove(int x, int y) {
     final next = segmentAt(x, y);
     if (next == _hoverIndex) return;
@@ -129,64 +135,38 @@ class SegmentedControl extends Widget with Hoverable, HoverAnimated {
   void draw(Painter canvas) {
     if (labels.isEmpty) return;
     final sw = _segmentWidth;
+    final base = resolvedStyle();
 
     for (var i = 0; i < labels.length; i++) {
       final sx = x + i * sw;
       final isSelected = i == selectedIndex;
       final isHovered = i == _hoverIndex;
-      canvas.drawRect(
-        Rect.fromLTWH(
-          sx.toDouble(),
-          y.toDouble(),
-          sw.toDouble(),
-          height.toDouble(),
-        ),
-        Paint()
-          ..color = isSelected
-              ? selectedColor
-              : (isHovered
-                    ? Color.blend(
-                        unselectedColor,
-                        const Color(255, 255, 255, 18),
-                      )
-                    : unselectedColor),
+      final segmentColor = isSelected
+          ? selectedColor
+          : (isHovered
+                ? Color.blend(
+                    base.backgroundColor!,
+                    const Color(255, 255, 255, 18),
+                  )
+                : base.backgroundColor!);
+      final segment = base.overlay(StylePatch(backgroundColor: segmentColor));
+      final segmentRect = Rect.fromLTWH(
+        sx.toDouble(),
+        y.toDouble(),
+        sw.toDouble(),
+        height.toDouble(),
       );
-      canvas.drawRect(
-        Rect.fromLTWH(sx.toDouble(), y.toDouble(), sw.toDouble(), 1),
-        Paint()..color = borderColor,
-      );
-      canvas.drawRect(
-        Rect.fromLTWH(
-          sx.toDouble(),
-          (y + height - 1).toDouble(),
-          sw.toDouble(),
-          1,
-        ),
-        Paint()..color = borderColor,
-      );
-      if (i == 0) {
-        canvas.drawRect(
-          Rect.fromLTWH(sx.toDouble(), y.toDouble(), 1, height.toDouble()),
-          Paint()..color = borderColor,
-        );
-      }
-      canvas.drawRect(
-        Rect.fromLTWH(
-          (sx + sw - 1).toDouble(),
-          y.toDouble(),
-          1,
-          height.toDouble(),
-        ),
-        Paint()..color = borderColor,
-      );
-      canvas.drawText(
+      drawStyledRect(canvas, segmentRect, style: segment);
+      drawStyledText(
+        canvas,
         labels[i],
         Offset(
           (sx + (sw - labels[i].length * 8) ~/ 2).toDouble(),
           (y + 4).toDouble(),
         ),
-        color: textColor,
-        size: 16,
+        style: base,
+        color: base.color,
+        fallback: const Font(pixelSize: 16),
       );
     }
   }

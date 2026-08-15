@@ -27,6 +27,16 @@ class _Styled extends Widget {
   void draw(Painter canvas) {}
 }
 
+class _CountingProvider extends StyleProvider {
+  int calls = 0;
+
+  @override
+  StylePatch styleFor(Widget widget, List<Widget> chain) {
+    calls++;
+    return const StylePatch(color: Color(1, 2, 3));
+  }
+}
+
 StylePatch _styleFor(CssProvider css, {String? id, List<String>? classes}) {
   StyleContext.reset();
   StyleContext.addProvider(css, priority: StyleProviderPriority.user);
@@ -38,14 +48,45 @@ void main() {
   group('CssProvider → StylePatch (GTK property catalog)', () {
     tearDown(StyleContext.reset);
 
+    test(
+      'provider results are cached until selector-visible state changes',
+      () {
+        final provider = _CountingProvider();
+        final widget = _Styled();
+        StyleContext.addProvider(
+          provider,
+          priority: StyleProviderPriority.user,
+        );
+
+        expect(StyleContext.forWidget(widget).style.color, isNotNull);
+        expect(StyleContext.forWidget(widget).style.color, isNotNull);
+        expect(provider.calls, 1);
+
+        widget.addClass('hover');
+        StyleContext.forWidget(widget).style;
+        expect(provider.calls, 2);
+
+        StyleContext.forWidget(widget).style;
+        expect(provider.calls, 2);
+      },
+    );
+
     test('colors: hex, rgb, rgba, named, @define-color', () {
       final css = CssProvider()
         ..loadFromString('''
           @define-color accent #89b4fa;
+          @define-color popup-border rgba(104, 224, 229, 0.5);
           .a { color: #ff0000; background-color: rgba(0,0,0,0.5); }
           .b { color: rgb(10%,20%,30%); border-color: blue; }
-          .c { color: @accent; }
+          .c { color: @accent; border-color: @popup-border; }
         ''');
+      final accepted = CssProvider();
+      expect(
+        accepted.loadFromString(
+          '@define-color accent #89b4fa; .a { color: @accent; }',
+        ),
+        isTrue,
+      );
       final a = _styleFor(css, classes: ['a']);
       expectColor(a.color, 255, 0, 0);
       expect(a.backgroundColor?.a, 128);
@@ -54,6 +95,7 @@ void main() {
       expectColor(b.borderColor, 0, 0, 255);
       final c = _styleFor(css, classes: ['c']);
       expectColor(c.color, 0x89, 0xb4, 0xfa);
+      expectColor(c.borderColor, 0x68, 0xe0, 0xe5, 128);
     });
 
     test('font properties + font shorthand', () {
@@ -72,6 +114,21 @@ void main() {
       expect(b.fontWeight, 700);
       expect(b.fontSize, 12);
       expect(b.fontFamily, 'Sans');
+    });
+
+    test('preserves the complete CSS font fallback stack', () {
+      final css = CssProvider()
+        ..loadFromString(
+          '* { font-family: "Icon Face", "Noto Color Emoji", sans-serif; }',
+        );
+      final style = _styleFor(css);
+      expect(style.fontFamily, 'Icon Face, Noto Color Emoji, sans-serif');
+
+      StyleContext.reset();
+      StyleContext.addProvider(css, priority: StyleProviderPriority.user);
+      final label = Label('󰖩 100%');
+      final font = label.resolvedFont;
+      expect(font.family, 'Icon Face, Noto Color Emoji, sans-serif');
     });
 
     test('box: padding / margin shorthands + per side, min sizes', () {
@@ -141,6 +198,25 @@ void main() {
       expect(st.shadowBlur, 6);
       expect(st.shadowColor?.a, (0.4 * 255).round());
       expect(st.opacity, 0.6);
+
+      final widget = _Styled(classes: ['x']);
+      final resolved = widget.resolvedStyle();
+      expect(resolved.opacity, 0.6);
+      expect(resolved.shadowOffsetX, 2);
+      expect(resolved.shadowOffsetY, 4);
+      expect(resolved.shadowBlur, 6);
+      expect(resolved.shadowColor?.a, (0.4 * 255).round());
+
+      final box = DecoratedBox()..addClass('x');
+      box.width = 20;
+      box.height = 10;
+      final painter = RecordingPainter(width: 40, height: 20);
+      box.draw(painter);
+      // RecordingPainter intentionally records rounded rectangles through the
+      // common rect command so geometry tests remain backend-independent.
+      final surfaces = painter.commands.whereType<DrawRectCommand>().toList();
+      expect(surfaces, hasLength(2));
+      expect(surfaces.last.paint.color.a, (255 * 0.6).round());
     });
 
     test('specificity: more specific selector wins', () {

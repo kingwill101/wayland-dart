@@ -42,59 +42,7 @@ class Frame extends Widget {
   @override
   void draw(Painter canvas) {
     final style = resolvedStyle();
-    final fill = style.backgroundColor;
-    if (fill != null && fill.a > 0) {
-      canvas.drawRect(
-        Rect.fromLTWH(
-          x.toDouble(),
-          y.toDouble(),
-          width.toDouble(),
-          height.toDouble(),
-        ),
-        Paint()..color = fill,
-      );
-    }
-
-    final bc = style.borderColor;
-    final borderSize = style.borderWidth.round();
-    if (borderSize > 0) {
-      canvas.drawRect(
-        Rect.fromLTWH(
-          x.toDouble(),
-          y.toDouble(),
-          width.toDouble(),
-          borderSize.toDouble(),
-        ),
-        Paint()..color = bc,
-      );
-      canvas.drawRect(
-        Rect.fromLTWH(
-          x.toDouble(),
-          (y + height - borderSize).toDouble(),
-          width.toDouble(),
-          borderSize.toDouble(),
-        ),
-        Paint()..color = bc,
-      );
-      canvas.drawRect(
-        Rect.fromLTWH(
-          x.toDouble(),
-          y.toDouble(),
-          borderSize.toDouble(),
-          height.toDouble(),
-        ),
-        Paint()..color = bc,
-      );
-      canvas.drawRect(
-        Rect.fromLTWH(
-          (x + width - borderSize).toDouble(),
-          y.toDouble(),
-          borderSize.toDouble(),
-          height.toDouble(),
-        ),
-        Paint()..color = bc,
-      );
-    }
+    drawStyledBox(canvas, style: style);
 
     for (final child in children) {
       child.draw(canvas);

@@ -1,5 +1,3 @@
-import 'package:window_toolkit/window_toolkit.dart';
-
 import '../native/hyprland_ipc.dart' as ipc;
 import 'module.dart';
 
@@ -29,10 +27,17 @@ class HyprlandSubmapModule extends BarModule {
 
   @override
   void update() {
-    if (!_available) { output = ''; return; }
+    if (!_available) {
+      output = '';
+      return;
+    }
 
     final binds = ipc.hyprctl('binds');
-    if (binds is! List) { _available = false; output = ''; return; }
+    if (binds is! List) {
+      _available = false;
+      output = '';
+      return;
+    }
 
     final hasSubmap = binds.any((b) {
       final s = b['submap']?.toString() ?? '';
@@ -41,23 +46,20 @@ class HyprlandSubmapModule extends BarModule {
 
     _submap = hasSubmap ? 'resize' : '';
     final fmt = _submap.isEmpty
-        ? resolveFormat({'format': format, 'format-default': ''}, format, 'default')
+        ? resolveFormat(
+            {'format': format, 'format-default': ''},
+            format,
+            'default',
+          )
         : format;
 
-    if (_submap.isEmpty && fmt == format) { output = ''; return; }
+    if (_submap.isEmpty && fmt == format) {
+      output = '';
+      return;
+    }
 
     output = fmt
         .replaceAll('{submap}', _submap)
         .replaceAll('{icon}', _icons[_submap] ?? '\u2194');
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    if (output.isEmpty) return 0;
-    painter.drawText(output, Offset(x, y),
-        color: _submap.isNotEmpty
-            ? const Color(0xff, 0xcc, 0x00)
-            : const Color(0x80, 0x80, 0x80));
-    return painter.measureText(output).width;
   }
 }

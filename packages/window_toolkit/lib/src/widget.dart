@@ -3,7 +3,10 @@ import 'package:layout_engine/layout_engine.dart' as le;
 import 'drawing/color.dart';
 import 'mixins/event.dart';
 import 'interaction.dart';
+import 'font/font.dart';
+import 'font/font_database.dart';
 import 'painter/painter.dart';
+import 'font/painter_font.dart';
 import 'metrics.dart';
 import 'palette.dart';
 import 'style.dart';
@@ -58,6 +61,17 @@ abstract class Widget extends le.ElementWidget {
   /// Pseudo-classes — mirrors `add_class("hidden")`, `:hover`, etc.
   final Set<String> pseudoClasses = {};
 
+  // Incremented whenever selector-visible state changes. StyleContext uses it
+  // to invalidate provider results without making every paint rebuild CSS.
+  int _styleRevision = 0;
+
+  /// Internal selector-state revision used by the shared style cache.
+  int get styleRevision => _styleRevision;
+
+  void _markStyleDirty() {
+    _styleRevision++;
+  }
+
   /// Canonical interaction state for this widget.
   final InteractionState interaction = InteractionState();
 
@@ -104,14 +118,22 @@ abstract class Widget extends le.ElementWidget {
   bool hasClass(String name) => styleClasses.contains(name);
   bool hasPseudoClass(String name) =>
       pseudoClasses.contains(name) || styleClasses.contains(name);
-  void addClass(String name) => styleClasses.add(name);
-  void removeClass(String name) {
-    styleClasses.remove(name);
-    pseudoClasses.remove(name);
+  void addClass(String name) {
+    if (styleClasses.add(name)) _markStyleDirty();
   }
 
-  void addPseudoClass(String name) => pseudoClasses.add(name);
-  void removePseudoClass(String name) => pseudoClasses.remove(name);
+  void removeClass(String name) {
+    if (styleClasses.remove(name)) _markStyleDirty();
+    if (pseudoClasses.remove(name)) _markStyleDirty();
+  }
+
+  void addPseudoClass(String name) {
+    if (pseudoClasses.add(name)) _markStyleDirty();
+  }
+
+  void removePseudoClass(String name) {
+    if (pseudoClasses.remove(name)) _markStyleDirty();
+  }
 
   /// Creates a widget with an optional [key] for reconciliation.
   Widget({super.key, this.styleId});
@@ -210,6 +232,124 @@ abstract class Widget extends le.ElementWidget {
     return StyleContext.resolveStyle(this, role: styleRole(), local: overrides);
   }
 
+  /// CSS box-model values consumed by toolkit primitives.
+  ///
+  /// Keeping these fallbacks here makes padding consistent across buttons,
+  /// cards, custom surfaces, and future widgets instead of having each
+  /// control read [StyleContext] independently.
+  int styledPaddingLeft([int fallback = 0]) =>
+      widgetStyle.paddingLeft ?? fallback;
+  int styledPaddingTop([int fallback = 0]) =>
+      widgetStyle.paddingTop ?? fallback;
+  int styledPaddingRight([int fallback = 0]) =>
+      widgetStyle.paddingRight ?? fallback;
+  int styledPaddingBottom([int fallback = 0]) =>
+      widgetStyle.paddingBottom ?? fallback;
+
+  /// Paint this widget's CSS background and border using the shared cascade.
+  /// Content widgets can call this before drawing their children.
+  void drawStyledBox(Painter painter, {Style? style}) {
+    final effective = style ?? resolvedStyle();
+    final rect = Rect.fromLTWH(
+      x.toDouble(),
+      y.toDouble(),
+      width.toDouble(),
+      height.toDouble(),
+    );
+    drawStyledRect(painter, rect, style: effective);
+  }
+
+  /// Paint a CSS-styled surface at an arbitrary rectangle.
+  ///
+  /// This is used by overlays and compound controls for their secondary
+  /// surfaces while keeping the exact same background, radius, and border
+  /// implementation as ordinary widgets.
+  void drawStyledRect(Painter painter, Rect rect, {Style? style}) {
+    final effective = style ?? resolvedStyle();
+    final shadow = effective.shadowColor;
+    if (shadow != null && effective.opacity > 0) {
+      final shadowRect = rect.shift(
+        effective.shadowOffsetX ?? 0,
+        effective.shadowOffsetY ?? 0,
+      );
+      final shadowColor = _applyOpacity(shadow, effective.opacity);
+      final shadowPaint = Paint()..color = shadowColor;
+      if (effective.borderRadius > 0) {
+        painter.drawRRect(
+          shadowRect,
+          effective.borderRadius,
+          effective.borderRadius,
+          shadowPaint,
+        );
+      } else {
+        painter.drawRect(shadowRect, shadowPaint);
+      }
+    }
+    final background = effective.backgroundColor;
+    if (background != null && background.a > 0) {
+      final fill = _applyOpacity(background, effective.opacity);
+      if (effective.borderRadius > 0) {
+        painter.drawRRect(
+          rect,
+          effective.borderRadius,
+          effective.borderRadius,
+          Paint()..color = fill,
+        );
+      } else {
+        painter.drawRect(rect, Paint()..color = fill);
+      }
+    }
+    if (effective.borderWidth > 0) {
+      final inset = effective.borderWidth / 2;
+      final borderRect = Rect.fromLTWH(
+        rect.left + inset,
+        rect.top + inset,
+        rect.width - effective.borderWidth,
+        rect.height - effective.borderWidth,
+      );
+      final paint = Paint()
+        ..color = _applyOpacity(effective.borderColor, effective.opacity)
+        ..style = PaintStyle.stroke
+        ..strokeWidth = effective.borderWidth;
+      if (effective.borderRadius > 0) {
+        painter.drawRRect(
+          borderRect,
+          effective.borderRadius,
+          effective.borderRadius,
+          paint,
+        );
+      } else {
+        painter.drawRect(borderRect, paint);
+      }
+    }
+  }
+
+  Color _applyOpacity(Color color, double opacity) => Color(
+    color.r,
+    color.g,
+    color.b,
+    (color.a * opacity.clamp(0.0, 1.0)).round().clamp(0, 255),
+  );
+
+  /// Apply the resolved CSS opacity to a foreground paint color.
+  Color styledColor(Color color, [Style? style]) =>
+      _applyOpacity(color, (style ?? resolvedStyle()).opacity);
+
+  /// Resolve the font used by toolkit text widgets from the same concrete
+  /// style that controls their colors and geometry.
+  ///
+  /// CSS font properties are applied at the widget boundary, so individual
+  /// widgets never need to know whether the active style came from CSS, a
+  /// theme provider, or a programmatic provider.
+  Font textFontFromStyle([Style? style]) {
+    final effective = style ?? resolvedStyle();
+    final css = widgetStyle;
+    return Font(
+      family: css.fontFamily ?? effective.fontFamily,
+      pixelSize: css.fontSize ?? effective.fontSize,
+    );
+  }
+
   /// [resolvedStyle] with [pseudos] (e.g. `['hover']`) active, applying the
   /// widget-local [local] overrides for that state.
   Style resolvedStyleOn(Iterable<String> pseudos, {StylePatch? local}) {
@@ -220,6 +360,69 @@ abstract class Widget extends le.ElementWidget {
       role: styleRole(),
       local: overrides,
       pseudos: pseudos.toList(),
+    );
+  }
+
+  /// Shared text measurement for primitive widgets.
+  Size measureStyledText(
+    Painter painter,
+    String text, {
+    Style? style,
+    Font? fallback,
+  }) {
+    final font = FontDatabase.instance.resolveRequest(
+      _fontForStyle(style, fallback: fallback),
+    );
+    return painter.measureText(
+      text,
+      size: font.pixelSize,
+      fontFamily: font.family,
+    );
+  }
+
+  /// Shared ink-bound measurement for text that needs geometric centering.
+  Rect measureStyledTextBounds(
+    Painter painter,
+    String text, {
+    Style? style,
+    Font? fallback,
+  }) {
+    final font = _fontForStyle(style, fallback: fallback);
+    final resolved = FontDatabase.instance.resolveRequest(font);
+    return painter.measureTextBounds(
+      text,
+      size: resolved.pixelSize,
+      fontFamily: resolved.family,
+    );
+  }
+
+  /// Shared text drawing for primitive widgets.
+  void drawStyledText(
+    Painter painter,
+    String text,
+    Offset position, {
+    Style? style,
+    Font? fallback,
+    Color? color,
+  }) {
+    painter.drawTextFont(
+      text,
+      position,
+      font: _fontForStyle(style, fallback: fallback),
+      color: color == null ? null : styledColor(color, style),
+    );
+  }
+
+  Font _fontForStyle(Style? style, {Font? fallback}) {
+    final effective = style ?? resolvedStyle();
+    final css = widgetStyle;
+    final base = fallback ?? Font(pixelSize: effective.fontSize);
+    return Font(
+      family: css.fontFamily ?? effective.fontFamily,
+      pixelSize: css.fontSize ?? base.pixelSize,
+      weight: base.weight,
+      italic: base.italic,
+      styleHint: base.styleHint,
     );
   }
 

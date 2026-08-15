@@ -3,8 +3,6 @@
 /// Ported from artisanal (RenderStack), stripped of UV rendering.
 library;
 
-import 'dart:math' as math;
-
 import 'geometry.dart';
 import 'render_object.dart';
 
@@ -49,8 +47,12 @@ class StackParentData {
   });
 
   bool get isPositioned =>
-      left != null || right != null || top != null || bottom != null ||
-      width != null || height != null;
+      left != null ||
+      right != null ||
+      top != null ||
+      bottom != null ||
+      width != null ||
+      height != null;
 }
 
 /// Render object that stacks children (last child paints on top).
@@ -85,11 +87,13 @@ class RenderStack extends RenderBox {
         }
         if (data.left != null && data.right != null) {
           childConstraints = childConstraints.tighten(
-              width: constraints.maxWidth - data.left! - data.right!);
+            width: constraints.maxWidth - data.left! - data.right!,
+          );
         }
         if (data.top != null && data.bottom != null) {
           childConstraints = childConstraints.tighten(
-              height: constraints.maxHeight - data.top! - data.bottom!);
+            height: constraints.maxHeight - data.top! - data.bottom!,
+          );
         }
         child.layout(childConstraints);
       } else {
@@ -98,8 +102,8 @@ class RenderStack extends RenderBox {
         final childConstraints = fit == StackFit.loose
             ? constraints.loosen()
             : fit == StackFit.tight
-                ? BoxConstraints.tight
-                : constraints;
+            ? BoxConstraints.tight
+            : constraints;
         child.layout(childConstraints);
       }
     }
@@ -121,7 +125,8 @@ class RenderStack extends RenderBox {
         final right = data!.right ?? data.left ?? 0;
         final bottom = data.bottom ?? data.top ?? 0;
         if (child.size.width + right > maxW) maxW = child.size.width + right;
-        if (child.size.height + bottom > maxH) maxH = child.size.height + bottom;
+        if (child.size.height + bottom > maxH)
+          maxH = child.size.height + bottom;
       }
     }
     size = constraints.constrain(Size(maxW, maxH));
@@ -144,11 +149,13 @@ class RenderStack extends RenderBox {
       final top = data.top;
       final bottom = data.bottom;
 
-      final x = left ??
+      final x =
+          left ??
           (right != null
               ? targetW - childW - right
               : ((alignment.x + 1) / 2 * (targetW - childW)));
-      final y = top ??
+      final y =
+          top ??
           (bottom != null
               ? targetH - childH - bottom
               : ((alignment.y + 1) / 2 * (targetH - childH)));
@@ -161,5 +168,6 @@ class RenderStack extends RenderBox {
     return Offset(x.clamp(0, targetW), y.clamp(0, targetH));
   }
 
-  StackParentData? _getParentData(RenderObject child) => child.parentData as StackParentData?;
+  StackParentData? _getParentData(RenderObject child) =>
+      child.parentData as StackParentData?;
 }

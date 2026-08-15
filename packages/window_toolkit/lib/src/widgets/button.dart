@@ -1,4 +1,5 @@
 import '../drawing/color.dart';
+import '../font/font.dart';
 import '../metrics.dart';
 import '../interaction.dart';
 import '../mixins/hoverable.dart';
@@ -59,20 +60,34 @@ class Button extends Widget with Hoverable, HoverAnimated {
 
   @override
   void performLayout(int containerWidth) {
-    final intrinsic = text.length * charWidth + padding * 2;
+    final style = resolvedStyle();
+    final padLeft = styledPaddingLeft(padding);
+    final padRight = styledPaddingRight(padding);
+    final padTop = styledPaddingTop(padding);
+    final padBottom = styledPaddingBottom(padding);
+    final intrinsic = text.length * charWidth + padLeft + padRight;
     if (containerWidth > 0 && containerWidth < intrinsic) {
       width = containerWidth;
     } else {
       width = intrinsic;
     }
-    height = charHeight + padding * 2;
+    height =
+        (style.fontSize.ceil().clamp(charHeight, 1000)) + padTop + padBottom;
   }
 
   @override
   void measure(Painter painter) {
-    final tw = painter.measureText(text, size: charHeight.toDouble()).width;
-    width = (tw.round() + padding * 2).clamp(charHeight + padding, 400);
-    height = charHeight + padding * 2;
+    final tw = measureStyledText(
+      painter,
+      text,
+      fallback: Font(pixelSize: charHeight.toDouble()),
+    ).width;
+    final padLeft = styledPaddingLeft(padding);
+    final padRight = styledPaddingRight(padding);
+    final padTop = styledPaddingTop(padding);
+    final padBottom = styledPaddingBottom(padding);
+    width = (tw.round() + padLeft + padRight).clamp(charHeight + padding, 400);
+    height = charHeight + padTop + padBottom;
   }
 
   /// Button roles: button-text / button face / no default border (only CSS or
@@ -103,52 +118,22 @@ class Button extends Widget with Hoverable, HoverAnimated {
     final c = transitionHover(base.backgroundColor!, hover.backgroundColor!);
     final fg = base.color;
 
-    final rect = Rect.fromLTWH(
-      x.toDouble(),
-      y.toDouble(),
-      width.toDouble(),
-      height.toDouble(),
-    );
-    if (base.borderRadius > 0) {
-      canvas.drawRRect(
-        rect,
-        base.borderRadius,
-        base.borderRadius,
-        Paint()..color = c,
-      );
-    } else {
-      canvas.drawRect(rect, Paint()..color = c);
-    }
-    final tw = canvas.measureText(text, size: charHeight.toDouble()).width;
+    drawStyledBox(canvas, style: base.overlay(StylePatch(backgroundColor: c)));
+    final tw = measureStyledText(
+      canvas,
+      text,
+      style: base,
+      fallback: Font(pixelSize: charHeight.toDouble()),
+    ).width;
     final tx = x + (width - tw) / 2;
-    final ty = y + padding.toDouble();
-    canvas.drawText(
+    final ty = y + styledPaddingTop(padding).toDouble();
+    drawStyledText(
+      canvas,
       text,
       Offset(tx, ty),
-      size: charHeight.toDouble(),
+      style: base,
+      fallback: Font(pixelSize: charHeight.toDouble()),
       color: fg,
     );
-    // Border when a width is in effect (CSS-provided or explicit).
-    if (base.borderWidth > 0) {
-      final borderPaint = Paint()
-        ..color = base.borderColor
-        ..style = PaintStyle.stroke
-        ..strokeWidth = base.borderWidth;
-      if (base.borderRadius > 0) {
-        canvas.drawRRect(
-          Rect.fromLTWH(
-            x + base.borderWidth / 2,
-            y + base.borderWidth / 2,
-            width - base.borderWidth,
-            height - base.borderWidth,
-          ),
-          base.borderRadius,
-          base.borderRadius,
-          borderPaint,
-        );
-      } else {
-        canvas.drawRect(rect, borderPaint);
-      }
-    }
   }
 }

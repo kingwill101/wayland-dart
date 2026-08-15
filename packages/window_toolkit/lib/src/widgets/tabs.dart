@@ -1,8 +1,11 @@
 import '../drawing/color.dart';
+import '../font/font.dart';
 import '../interaction.dart';
 import '../mixins/hoverable.dart';
 import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
+import '../style.dart';
+import '../style/style_patch.dart';
 import '../widget.dart';
 
 class TabBar extends Widget with Hoverable, HoverAnimated {
@@ -43,6 +46,14 @@ class TabBar extends Widget with Hoverable, HoverAnimated {
   bool get acceptsFocus => true;
 
   @override
+  Style styleRole() => Style(
+    color: textColor,
+    backgroundColor: backgroundColor,
+    borderColor: indicatorColor,
+    borderWidth: 0,
+  );
+
+  @override
   void onMouseMove(int x, int y) {
     final next = tabAt(x, y);
     if (next == _hoverIndex) return;
@@ -57,6 +68,7 @@ class TabBar extends Widget with Hoverable, HoverAnimated {
   @override
   void draw(Painter canvas) {
     if (labels.isEmpty) return;
+    final style = resolvedStyle();
 
     final tw = tabWidth;
 
@@ -64,40 +76,54 @@ class TabBar extends Widget with Hoverable, HoverAnimated {
       final tx = x + i * tw;
       final isActive = i == activeIndex;
       final isHovered = i == _hoverIndex;
-      canvas.drawRect(
+      final tabStyle = isActive
+          ? resolvedStyleOn(const [
+              'selected',
+            ], local: StylePatch(backgroundColor: activeColor))
+          : resolvedStyleOn(
+              isHovered ? const ['hover'] : const <String>[],
+              local: StylePatch(
+                backgroundColor: isHovered
+                    ? Color.blend(
+                        style.backgroundColor!,
+                        const Color(255, 255, 255, 18),
+                      )
+                    : inactiveColor,
+              ),
+            );
+      drawStyledRect(
+        canvas,
         Rect.fromLTWH(
           tx.toDouble(),
           y.toDouble(),
           tw.toDouble(),
           tabHeight.toDouble(),
         ),
-        Paint()
-          ..color = isActive
-              ? activeColor
-              : (isHovered
-                    ? Color.blend(inactiveColor, const Color(255, 255, 255, 18))
-                    : inactiveColor),
+        style: tabStyle,
       );
 
-      canvas.drawText(
+      drawStyledText(
+        canvas,
         labels[i],
         Offset(
           (tx + (tw - labels[i].length * 8) ~/ 2).toDouble(),
           (y + (tabHeight - 16) ~/ 2).toDouble(),
         ),
-        color: textColor,
-        size: 16,
+        style: style,
+        color: style.color,
+        fallback: const Font(pixelSize: 16),
       );
     }
 
-    canvas.drawRect(
+    drawStyledRect(
+      canvas,
       Rect.fromLTWH(
         (x + activeIndex * tw).toDouble(),
         (y + tabHeight - 2).toDouble(),
         tw.toDouble(),
         2,
       ),
-      Paint()..color = indicatorColor,
+      style: style.overlay(StylePatch(backgroundColor: style.borderColor)),
     );
   }
 

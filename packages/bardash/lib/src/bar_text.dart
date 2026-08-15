@@ -50,6 +50,7 @@ class BarText {
       textFont: uiFont(),
       iconFont: iconFont(),
       runSpacing: m.iconTextGap.toDouble(),
+      splitPrivateUse: true,
     );
     // After cache purge / bad match, PUA can measure as ~0 — fall back to slot.
     if (hasIconGlyphs(text) && adv < 4) {
@@ -83,6 +84,7 @@ class BarText {
         iconFont: iconFont(),
         color: color,
         runSpacing: BarMetrics.current.iconTextGap.toDouble(),
+        splitPrivateUse: true,
       );
     } else {
       painter.drawTextFont(text, Offset(x, y), font: font, color: color);

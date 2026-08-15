@@ -1,15 +1,13 @@
 /// A click-to-open speed-test panel for bardash.
 ///
 /// Measures live link throughput for a short window and paints a large
-/// [Speedometer] gauge with the result. Surface plumbing mirrors the
-/// network/audio popups (layer overlay + dismiss catcher).
+/// [Speedometer] gauge with the result. Popup placement, input routing, and
+/// presentation are provided by the toolkit's [LayerPopupHost].
 library;
 
-import 'dart:async' as dart_async;
 import 'dart:io';
 import 'dart:math' show max;
 
-import 'package:wayland/wayland.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
 import 'speedtest_service.dart';
@@ -53,12 +51,12 @@ class SpeedPanelLayout {
   bool hitClose(double x, double y) => _inRect(btnClose(), x, y);
 }
 
-/// Toolkit-owned content for the speed-test surface.
+/// Toolkit-owned content for the speed-test popup.
 ///
-/// The overlay below is still responsible for the Wayland layer and SHM
-/// buffers, but every visible control is a normal toolkit widget. This keeps
+/// The surrounding overlay is responsible only for speed-test state and
+/// placement; every visible control is a normal toolkit widget. This keeps
 /// typography, spacing, hover transitions, focus, and button activation on
-/// the same code path as the rest of bardash.
+/// the same code path as the rest of Bardash.
 class SpeedTestView extends Widget {
   final VoidCallback onStart;
   final VoidCallback onClose;
@@ -294,7 +292,7 @@ class SpeedTestController {
   static SpeedTestOverlay? _active;
   static int _generation = 0;
 
-  static bool get isOpen => _active?.isOpen ?? false;
+  static bool get isOpen => _active != null;
 
   static void close() {
     _generation++;
@@ -303,7 +301,7 @@ class SpeedTestController {
   }
 
   static Future<void> open({
-    required WaylandConnection connection,
+    required LayerPopupHost popupHost,
     required int anchorX,
     required int parentWidth,
     required int parentHeight,
@@ -314,14 +312,9 @@ class SpeedTestController {
     _active?.destroy();
     _active = null;
 
-    if (connection.layerShell == null) {
-      stderr.writeln('[speedtest] layer shell not available');
-      return;
-    }
-
     late final SpeedTestOverlay overlay;
     overlay = SpeedTestOverlay(
-      connection: connection,
+      popupHost: popupHost,
       anchorX: anchorX,
       parentWidth: parentWidth,
       parentHeight: parentHeight,
@@ -331,42 +324,33 @@ class SpeedTestController {
       },
     );
     _active = overlay;
-    await overlay.show();
+    try {
+      await overlay.show();
+    } catch (e) {
+      stderr.writeln('[speedtest] popup failed: $e');
+      overlay.destroy();
+      if (identical(_active, overlay)) _active = null;
+    }
+    if (identical(_active, overlay) && !overlay.isOpen) {
+      _active = null;
+    }
     if (gen != _generation) return;
   }
 }
 
-class SpeedTestOverlay with EventReceiver {
-  final WaylandConnection connection;
+class SpeedTestOverlay {
+  final LayerPopupHost popupHost;
   final int anchorX;
   final int parentWidth;
   final int parentHeight;
   final bool openUpward;
   final void Function()? onClosed;
 
-  WlSurface? _surface;
-  LayerSurfaceV1? _layer;
-  final List<WlShmPool?> _pools = [null, null];
-  final List<WlBuffer?> _buffers = [null, null];
-  final List<int> _fds = [-1, -1];
-  final List<bool> _busy = [false, false];
-  int _front = 0;
-  bool _needsPaint = false;
-  bool _paintScheduled = false;
-  bool _presenting = false;
-
-  WlSurface? _dismissSurface;
-  LayerSurfaceV1? _dismissLayer;
-  WlBuffer? _dismissBuffer;
-  WlShmPool? _dismissPool;
-  int _dismissFd = -1;
-  int _dismissW = 0;
-  int _dismissH = 0;
+  LayerPopup? _popup;
 
   late final SpeedTestView _view;
   late final AnimationController _needleAnimation;
   bool _open = false;
-  int _openedAtMs = 0;
   double _needleStart = 0;
 
   // Sizes.
@@ -399,7 +383,7 @@ class SpeedTestOverlay with EventReceiver {
   }
 
   SpeedTestOverlay({
-    required this.connection,
+    required this.popupHost,
     required this.anchorX,
     this.parentWidth = 1920,
     this.parentHeight = 30,
@@ -417,140 +401,76 @@ class SpeedTestOverlay with EventReceiver {
   bool get isOpen => _open;
 
   Future<void> show() async {
-    final shell = connection.layerShell!;
-    if (!_createDismiss(shell)) {
-      stderr.writeln('[speedtest] dismiss create failed');
-      destroy();
+    final placement = BarPopupPlacement.forBar(
+      anchorX: anchorX,
+      parentWidth: parentWidth,
+      width: _w,
+      height: _h,
+      openUpward: openUpward,
+      keyboardMode: LayerKeyboardMode.onDemand,
+    );
+    final dismissPlacement = LayerSurfacePlacement(
+      anchors: {
+        LayerEdge.top,
+        LayerEdge.right,
+        LayerEdge.bottom,
+        LayerEdge.left,
+      },
+      width: 0,
+      height: 0,
+      marginTop: openUpward ? 0 : parentHeight,
+      marginBottom: openUpward ? parentHeight : 0,
+      exclusiveZone: -1,
+      keyboardMode: LayerKeyboardMode.none,
+    );
+    _popup = popupHost.create(
+      content: _view,
+      placement: placement,
+      dismissPlacement: dismissPlacement,
+      background: _bg,
+      onEvent: _handlePopupEvent,
+      onClosed: _onPopupClosed,
+    );
+    final shown = await _popup!.show();
+    if (!shown) {
+      _popup = null;
       return;
     }
-    if (!_createLayer(shell)) {
-      stderr.writeln('[speedtest] layer create failed');
-      destroy();
-      return;
-    }
-
-    _dismissSurface!.commit();
-    _surface!.commit();
-    final ok = await _waitConfigureAsync();
-    if (!ok) {
-      stderr.writeln('[speedtest] configure timeout');
-      destroy();
-      return;
-    }
-
-    _mapDismiss();
-    _mapLayer();
-
     _open = true;
-    _openedAtMs = DateTime.now().millisecondsSinceEpoch;
-    Application.instance.removeEventReceiver(this);
-    Application.instance.prependEventReceiver(this);
-
     stderr.writeln('[speedtest] open overlay $_w x $_h anchorX=$anchorX');
   }
 
   void hide() {
-    if (!_open && _surface == null && _dismissSurface == null) return;
+    if (!_open && _popup == null) return;
     _open = false;
-    Application.instance.removeEventReceiver(this);
-    _teardown();
-    onClosed?.call();
+    _popup?.close();
   }
 
   void destroy() => hide();
 
-  @override
-  void onEvent(Event event) {
-    if (!_open) return;
-
-    final surf = connection.pointerSurfaceId;
-    final onLayer = surf != null && surf == _surface?.objectId;
-    final onDismiss = surf != null && surf == _dismissSurface?.objectId;
-    final age = DateTime.now().millisecondsSinceEpoch - _openedAtMs;
-
-    if (age < 200) {
-      if (onLayer || onDismiss) event.accept();
-      return;
+  bool _handlePopupEvent(LayerPopupEvent popupEvent) {
+    final event = popupEvent.event;
+    if (popupEvent.isOutside) {
+      if (popupEvent.isOutsideClick) hide();
+      return false;
     }
-
-    if (event is KeyEvent && event.isPressed) {
-      if (event.key == 1 || event.character == '\x1b') {
-        hide();
-        event.accept();
-      }
-      return;
-    }
-
-    if (onDismiss) {
-      if (event is MouseButtonEvent && event.isPressed) {
-        // Dismiss on the outside click, but leave the event unaccepted so the
-        // bar can process a click in its own strip immediately.
-        hide();
-      } else {
-        event.accept();
-      }
-      return;
-    }
-
-    if (onLayer) {
-      if (event is MouseEnterEvent ||
-          event is MouseLeaveEvent ||
-          event is MouseMotionEvent) {
-        final mx = event is MouseEnterEvent
-            ? event.x
-            : event is MouseLeaveEvent
-            ? event.x
-            : (event as MouseMotionEvent).x;
-        final my = event is MouseEnterEvent
-            ? event.y
-            : event is MouseLeaveEvent
-            ? event.y
-            : (event as MouseMotionEvent).y;
-        _updateButtonHover(mx.round(), my.round());
-        event.accept();
-        return;
-      }
-      if (event is MouseButtonEvent) {
-        final x = event.x;
-        final y = event.y;
-        if (event.isPressed) {
-          _updateButtonHover(x.round(), y.round());
-          final button = _view.buttonAt(x.round(), y.round());
-          if (button != null) {
-            _pressedButton = button;
-            button.setInteractionState(WidgetState.pressed, true);
-          }
-        } else {
-          final button = _pressedButton;
-          if (button != null) {
-            button.setInteractionState(WidgetState.pressed, false);
-            if (identical(button, _view.buttonAt(x.round(), y.round()))) {
-              button.activate();
-            }
-          }
-          _pressedButton = null;
-        }
-        event.accept();
-        return;
-      }
-      return;
-    }
-
-    if (event is MouseButtonEvent && event.isPressed) hide();
+    // LayerPopup routes content through the shared widget host. This popup
+    // only needs the outside-click policy above.
+    return false;
   }
 
-  Button? _pressedButton;
+  void _onPopupClosed() {
+    _open = false;
+    _popup = null;
+    _needleAnimation.stop();
+    _needleAnimation.dispose();
+    _view.dispose();
+    onClosed?.call();
+  }
 
   void _onNeedleFrame() {
     if (!_open) return;
     _refreshView();
-    _scheduleRepaint();
-  }
-
-  void _updateButtonHover(int x, int y) {
-    for (final button in _view.buttons) {
-      button.setHovering(button.hitTest(x, y));
-    }
     _scheduleRepaint();
   }
 
@@ -651,321 +571,7 @@ class SpeedTestOverlay with EventReceiver {
       );
   }
 
-  // ── Layer surface setup ────────────────────────────────────────
-
-  bool _createLayer(LayerShellV1 shell) {
-    _surface = connection.compositor.createSurface().getOrElse((e) {
-      stderr.writeln('[speedtest] surface: $e');
-      return WlSurface(connection.context);
-    });
-    _layer = shell
-        .getLayerSurface(
-          _surface!,
-          connection.output,
-          LayerShellV1Layer.overlay.enumValue,
-          'bardash-speedtest',
-        )
-        .getOrElse((e) {
-          stderr.writeln('[speedtest] layer: $e');
-          return LayerSurfaceV1(connection.context);
-        });
-
-    final menuX = (anchorX - 8).clamp(4, parentWidth - _w - 4);
-    final preferRight = menuX + _w / 2 > parentWidth / 2;
-
-    if (openUpward) {
-      final bottom = parentHeight + 4;
-      if (preferRight) {
-        final right = (parentWidth - menuX - _w).clamp(0, parentWidth);
-        _layer!.setAnchor(
-          LayerSurfaceV1Anchor.bottom.enumValue |
-              LayerSurfaceV1Anchor.right.enumValue,
-        );
-        _layer!.setMargin(0, right, bottom, 0);
-      } else {
-        _layer!.setAnchor(
-          LayerSurfaceV1Anchor.bottom.enumValue |
-              LayerSurfaceV1Anchor.left.enumValue,
-        );
-        _layer!.setMargin(0, 0, bottom, menuX);
-      }
-    } else {
-      final top = parentHeight + 4;
-      if (preferRight) {
-        final right = (parentWidth - menuX - _w).clamp(0, parentWidth);
-        _layer!.setAnchor(
-          LayerSurfaceV1Anchor.top.enumValue |
-              LayerSurfaceV1Anchor.right.enumValue,
-        );
-        _layer!.setMargin(top, right, 0, 0);
-      } else {
-        _layer!.setAnchor(
-          LayerSurfaceV1Anchor.top.enumValue |
-              LayerSurfaceV1Anchor.left.enumValue,
-        );
-        _layer!.setMargin(top, 0, 0, menuX);
-      }
-    }
-
-    _layer!.setSize(_w, _h);
-    _layer!.setExclusiveZone(0);
-    // This is a transient popup, not a desktop-wide layer. On-demand focus
-    // keeps it usable without stealing keyboard focus from unrelated apps.
-    _layer!.setKeyboardInteractivity(
-      LayerSurfaceV1KeyboardInteractivity.onDemand.enumValue,
-    );
-    _layer!.onConfigure((e) => _layer!.ackConfigure(e.serial));
-    _layer!.onClosed((_) => hide());
-    return true;
-  }
-
-  bool _createDismiss(LayerShellV1 shell) {
-    _dismissSurface = connection.compositor.createSurface().getOrElse((e) {
-      stderr.writeln('[speedtest] dismiss surface: $e');
-      return WlSurface(connection.context);
-    });
-    _dismissLayer = shell
-        .getLayerSurface(
-          _dismissSurface!,
-          connection.output,
-          LayerShellV1Layer.overlay.enumValue,
-          'bardash-speedtest-dismiss',
-        )
-        .getOrElse((e) {
-          stderr.writeln('[speedtest] dismiss layer: $e');
-          return LayerSurfaceV1(connection.context);
-        });
-
-    _dismissLayer!.setAnchor(
-      LayerSurfaceV1Anchor.top.enumValue |
-          LayerSurfaceV1Anchor.bottom.enumValue |
-          LayerSurfaceV1Anchor.left.enumValue |
-          LayerSurfaceV1Anchor.right.enumValue,
-    );
-    if (openUpward) {
-      _dismissLayer!.setMargin(0, 0, parentHeight, 0);
-    } else {
-      _dismissLayer!.setMargin(parentHeight, 0, 0, 0);
-    }
-    _dismissLayer!.setSize(0, 0);
-    _dismissLayer!.setExclusiveZone(-1);
-    _dismissLayer!.setKeyboardInteractivity(
-      LayerSurfaceV1KeyboardInteractivity.none.enumValue,
-    );
-
-    // Keep the surface as a transparent overlay anchor, but do not let it
-    // claim pointer input across the output. The platform-specific region
-    // setup belongs to the toolkit, not to this popup.
-    SurfaceInputController(
-      connection,
-    ).setMode(_dismissSurface!, SurfaceInputMode.passthrough);
-
-    _dismissLayer!.onConfigure((e) {
-      _dismissLayer!.ackConfigure(e.serial);
-      if (e.width > 0 && e.height > 0) {
-        _dismissW = e.width;
-        _dismissH = e.height;
-      }
-    });
-    _dismissLayer!.onClosed((_) {});
-    return true;
-  }
-
-  Future<bool> _waitConfigureAsync() async {
-    final done = dart_async.Completer<void>();
-    var sawLayer = false;
-    var sawDismiss = false;
-    void tryComplete() {
-      if (sawLayer && sawDismiss && !done.isCompleted) done.complete();
-    }
-
-    _layer!.onConfigure((e) {
-      _layer!.ackConfigure(e.serial);
-      sawLayer = true;
-      tryComplete();
-    });
-    _dismissLayer!.onConfigure((e) {
-      _dismissLayer!.ackConfigure(e.serial);
-      if (e.width > 0 && e.height > 0) {
-        _dismissW = e.width;
-        _dismissH = e.height;
-      } else {
-        _dismissW = parentWidth.clamp(1, 7680);
-        _dismissH = 1440;
-      }
-      sawDismiss = true;
-      tryComplete();
-    });
-
-    try {
-      await done.future.timeout(const Duration(milliseconds: 500));
-      return true;
-    } on dart_async.TimeoutException {
-      return false;
-    }
-  }
-
-  void _mapLayer() {
-    final stride = _w * 4;
-    final slotSize = stride * _h;
-    for (var i = 0; i < 2; i++) {
-      final fd = createAnonymousFile(slotSize);
-      if (fd < 0) return;
-      _fds[i] = fd;
-      final pool = connection.shm.createPool(fd, slotSize).getOrElse((e) {
-        stderr.writeln('[speedtest] pool $i: $e');
-        return WlShmPool(connection.context);
-      });
-      _pools[i] = pool;
-      final buf = pool.createBuffer(0, _w, _h, stride, 0).getOrElse((e) {
-        stderr.writeln('[speedtest] buffer $i: $e');
-        return WlBuffer(connection.context);
-      });
-      final slot = i;
-      buf.onRelease((_) {
-        _busy[slot] = false;
-        if (_needsPaint && _open) _scheduleRepaint();
-      });
-      _buffers[i] = buf;
-      _busy[i] = false;
-    }
-    _front = 0;
-    _needsPaint = false;
-    _paintScheduled = false;
-    _presenting = false;
-    _present();
-  }
-
-  void _mapDismiss() {
-    var w = _dismissW;
-    var h = _dismissH;
-    if (w <= 0 || h <= 0) {
-      w = parentWidth.clamp(1, 7680);
-      h = 1440;
-      _dismissW = w;
-      _dismissH = h;
-    }
-    final stride = w * 4;
-    final size = stride * h;
-    _dismissFd = createAnonymousFile(size);
-    if (_dismissFd < 0) return;
-    _dismissPool = connection.shm.createPool(_dismissFd, size).getOrElse((e) {
-      stderr.writeln('[speedtest] dismiss pool: $e');
-      return WlShmPool(connection.context);
-    });
-    _dismissBuffer = _dismissPool!.createBuffer(0, w, h, stride, 0).getOrElse((
-      e,
-    ) {
-      stderr.writeln('[speedtest] dismiss buffer: $e');
-      return WlBuffer(connection.context);
-    });
-    final painter = SkiaPainter(_dismissFd, w, h);
-    try {
-      painter.clear(const Color(0, 0, 0, 0));
-      painter.flush();
-    } finally {
-      painter.dispose();
-    }
-    _dismissSurface!.attach(_dismissBuffer!, 0, 0);
-    _dismissSurface!.damage(0, 0, w, h);
-    _dismissSurface!.commit();
-  }
-
   void _scheduleRepaint() {
-    _needsPaint = true;
-    if (_paintScheduled) return;
-    _paintScheduled = true;
-    dart_async.scheduleMicrotask(() {
-      _paintScheduled = false;
-      if (!_open || !_needsPaint) return;
-      _present();
-    });
-  }
-
-  void _present() {
-    if (_surface == null || _presenting) {
-      _needsPaint = true;
-      return;
-    }
-    _presenting = true;
-    try {
-      var slot = 1 - _front;
-      if (_busy[slot] || _buffers[slot] == null) slot = _front;
-      if (_busy[slot] || _buffers[slot] == null || _fds[slot] < 0) {
-        _needsPaint = true;
-        return;
-      }
-      _paintInto(_fds[slot]);
-      _busy[slot] = true;
-      _front = slot;
-      _needsPaint = false;
-      _surface!.attach(_buffers[slot]!, 0, 0);
-      _surface!.damage(0, 0, _w, _h);
-      _surface!.commit();
-    } finally {
-      _presenting = false;
-    }
-  }
-
-  void _paintInto(int fd) {
-    if (fd < 0) return;
-    final painter = SkiaPainter(fd, _w, _h);
-    try {
-      painter.clear(_bg);
-      _view
-        ..x = 0
-        ..y = 0
-        ..width = _w
-        ..height = _h;
-      _view.measure(painter);
-      _view.performLayout(_w);
-      _view.draw(painter);
-      painter.flush();
-    } finally {
-      painter.dispose();
-    }
-  }
-
-  void _teardown() {
-    _needsPaint = false;
-    _paintScheduled = false;
-    _presenting = false;
-    _phase = 'idle';
-    _liveValue = 0;
-    _pressedButton = null;
-    _needleAnimation.stop();
-    _view.dispose();
-    _needleAnimation.dispose();
-    for (var i = 0; i < 2; i++) {
-      _buffers[i]?.destroy();
-      _buffers[i] = null;
-      _pools[i]?.destroy();
-      _pools[i] = null;
-      if (_fds[i] >= 0) {
-        closeFd(_fds[i]);
-        _fds[i] = -1;
-      }
-      _busy[i] = false;
-    }
-    _front = 0;
-    _layer?.destroy();
-    _layer = null;
-    _surface?.destroy();
-    _surface = null;
-
-    _dismissBuffer?.destroy();
-    _dismissBuffer = null;
-    _dismissPool?.destroy();
-    _dismissPool = null;
-    if (_dismissFd >= 0) {
-      closeFd(_dismissFd);
-      _dismissFd = -1;
-    }
-    _dismissLayer?.destroy();
-    _dismissLayer = null;
-    _dismissSurface?.destroy();
-    _dismissSurface = null;
-    _dismissW = 0;
-    _dismissH = 0;
+    _popup?.requestRepaint();
   }
 }

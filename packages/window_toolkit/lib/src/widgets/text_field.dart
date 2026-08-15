@@ -1,9 +1,11 @@
 import '../drawing/color.dart';
+import '../font/font.dart';
 import '../interaction.dart';
 import '../mixins/hoverable.dart';
 import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
 import '../style.dart';
+import '../style/style_patch.dart';
 import '../widget.dart';
 import 'text_editing_controller.dart';
 
@@ -75,33 +77,19 @@ class TextField extends Widget with Hoverable, HoverAnimated {
 
   @override
   void draw(Painter canvas) {
-    final style = resolvedStyle();
+    final resolved = resolvedStyle();
     final border = isFocused || isHovered
         ? const Color(100, 160, 255)
-        : style.borderColor;
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        y.toDouble(),
-        width.toDouble(),
-        height.toDouble(),
+        : resolved.borderColor;
+    final style = resolved.overlay(
+      StylePatch(
+        borderTopColor: border,
+        borderRightColor: border,
+        borderBottomColor: border,
+        borderLeftColor: border,
       ),
-      Paint()..color = style.backgroundColor!,
     );
-
-    canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), 1),
-      Paint()..color = border,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        (y + height - 1).toDouble(),
-        width.toDouble(),
-        1,
-      ),
-      Paint()..color = border,
-    );
+    drawStyledBox(canvas, style: style);
 
     final display = _displayText;
     final isEmpty = display.isEmpty;
@@ -116,12 +104,14 @@ class TextField extends Widget with Hoverable, HoverAnimated {
       ),
     );
 
-    const margin = 4;
-    canvas.drawText(
+    final margin = styledPaddingLeft(4);
+    drawStyledText(
+      canvas,
       label,
       Offset((x + margin).toDouble(), (y + 4).toDouble()),
+      style: style,
       color: isEmpty ? placeholderColor : style.color,
-      size: 16,
+      fallback: const Font(pixelSize: 16),
     );
 
     if (!isEmpty && _focused) {

@@ -1,4 +1,5 @@
 import '../drawing/color.dart';
+import '../font/font.dart';
 import '../mixins/hoverable.dart';
 import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
@@ -38,6 +39,7 @@ class MenuItem extends Widget with Hoverable, HoverAnimated {
     color: textColor,
     backgroundColor: backgroundColor,
     borderColor: palette.mid,
+    borderWidth: 0,
   );
 
   @override
@@ -47,21 +49,21 @@ class MenuItem extends Widget with Hoverable, HoverAnimated {
       'hover',
     ], local: StylePatch(backgroundColor: hoverColor));
     final fill = transitionHover(base.backgroundColor!, hover.backgroundColor!);
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        y.toDouble(),
-        width.toDouble(),
-        height.toDouble(),
-      ),
-      Paint()..color = fill,
+    drawStyledBox(
+      canvas,
+      style: base.overlay(StylePatch(backgroundColor: fill)),
     );
 
-    canvas.drawText(
+    drawStyledText(
+      canvas,
       label,
-      Offset((x + 12).toDouble(), (y + (itemHeight - 16) ~/ 2).toDouble()),
+      Offset(
+        (x + styledPaddingLeft(12)).toDouble(),
+        (y + (itemHeight - 16) ~/ 2 + styledPaddingTop()).toDouble(),
+      ),
+      style: base,
       color: base.color,
-      size: 16,
+      fallback: const Font(pixelSize: 16),
     );
   }
 }
@@ -96,48 +98,14 @@ class Menu extends Widget {
   @override
   void draw(Painter canvas) {
     final style = resolvedStyle();
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        y.toDouble(),
-        width.toDouble(),
-        height.toDouble(),
-      ),
-      Paint()..color = style.backgroundColor!,
-    );
+    drawStyledBox(canvas, style: style);
 
-    canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), 1),
-      Paint()..color = style.borderColor,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        (y + height - 1).toDouble(),
-        width.toDouble(),
-        1,
-      ),
-      Paint()..color = style.borderColor,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), 1, height.toDouble()),
-      Paint()..color = style.borderColor,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        (x + width - 1).toDouble(),
-        y.toDouble(),
-        1,
-        height.toDouble(),
-      ),
-      Paint()..color = style.borderColor,
-    );
-
-    var cy = y + padding;
+    var cy = y + styledPaddingTop(padding);
     for (final item in items) {
-      item.x = x + padding;
+      item.x = x + styledPaddingLeft(padding);
       item.y = cy;
-      item.width = width - padding * 2;
+      item.width =
+          width - styledPaddingLeft(padding) - styledPaddingRight(padding);
       item.draw(canvas);
       cy += item.height;
     }

@@ -1,9 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
 
-import 'package:window_toolkit/window_toolkit.dart';
-
-import '../metrics.dart';
 import '../native/pipewire_query.dart';
 import 'module.dart';
 
@@ -71,13 +68,13 @@ class WireplumberModule extends BarModule {
 
   void _applyFormat() {
     final sinkIcon = _muted
-        ? '🔇'
+        ? '\u{f6a9}'
         : _volume == 0
-            ? '🔈'
-            : _volume < 50
-                ? '🔉'
-                : '🔊';
-    final sourceIcon = _sourceMuted ? '🎤̸' : '🎤';
+        ? '\u{f026}'
+        : _volume < 50
+        ? '\u{f027}'
+        : '\u{f028}';
+    final sourceIcon = _sourceMuted ? '\u{f131}' : '\u{f130}';
     final sourceSeg = (_sourceMuted ? _formatSourceMuted : _formatSource)
         .replaceAll('{source_volume}', '$_sourceVolume')
         .replaceAll('{source_icon}', sourceIcon);
@@ -99,11 +96,10 @@ class WireplumberModule extends BarModule {
 
   Future<void> _updateSink() async {
     try {
-      final result = await Process.run(
-        'wpctl',
-        ['get-volume', '@DEFAULT_AUDIO_SINK@'],
-        runInShell: false,
-      );
+      final result = await Process.run('wpctl', [
+        'get-volume',
+        '@DEFAULT_AUDIO_SINK@',
+      ], runInShell: false);
       if (result.exitCode == 0) {
         final out = (result.stdout as String).trim();
         final volMatch = RegExp(r'Volume:\s+([\d.]+)').firstMatch(out);
@@ -128,11 +124,10 @@ class WireplumberModule extends BarModule {
 
   Future<void> _updateSource() async {
     try {
-      final result = await Process.run(
-        'wpctl',
-        ['get-volume', '@DEFAULT_AUDIO_SOURCE@'],
-        runInShell: false,
-      );
+      final result = await Process.run('wpctl', [
+        'get-volume',
+        '@DEFAULT_AUDIO_SOURCE@',
+      ], runInShell: false);
       if (result.exitCode != 0) return;
       final out = (result.stdout as String).trim();
       final volMatch = RegExp(r'Volume:\s+([\d.]+)').firstMatch(out);
@@ -148,89 +143,6 @@ class WireplumberModule extends BarModule {
       await Process.run('wpctl', args, runInShell: false);
     } catch (_) {}
     await _pollAsync();
-  }
-
-  // Emoji icons use Noto Color Emoji (not FA/Nerd). Measuring with Nerd gave
-  // ~8px advance while the fallback painted ~16px → text under the speaker.
-  double get _fontSize => BarMetrics.current.fontSize;
-  double get _iconTextGap => BarMetrics.current.iconTextGap.toDouble();
-
-  Font get _uiFont => Font.icon(pixelSize: _fontSize);
-  Font get _emojiFont => Font(
-        family: BarMetrics.current.emojiFamily,
-        pixelSize: _fontSize,
-      );
-
-  String get _sinkIcon => _muted
-      ? '🔇'
-      : _volume == 0
-          ? '🔈'
-          : _volume < 50
-              ? '🔉'
-              : '🔊';
-
-  String get _sourceIcon => _sourceMuted ? '🎤̸' : '🎤';
-
-  bool get _showMic =>
-      format.contains('{format_source}') || format.contains('{source_icon}');
-
-  /// Volume / source digits only (emoji stripped for layout).
-  String get _textPart {
-    final src = _sourceMuted
-        ? _formatSourceMuted
-            .replaceAll('{source_volume}', '$_sourceVolume')
-            .replaceAll('{source_icon}', '')
-        : _formatSource
-            .replaceAll('{source_volume}', '$_sourceVolume')
-            .replaceAll('{source_icon}', '');
-    var s = format
-        .replaceAll('{volume}', '$_volume')
-        .replaceAll('{icon}', '')
-        .replaceAll('{muted}', _muted ? 'yes' : 'no')
-        .replaceAll('{node_name}', _nodeName)
-        .replaceAll('{format_source}', src.trim())
-        .replaceAll('{source_volume}', '$_sourceVolume')
-        .replaceAll('{source_icon}', '');
-    // Drop emoji / symbols left in format strings (e.g. literal 🎤).
-    s = s.replaceAll(RegExp(r'[^\x09\x0A\x0D\x20-\x7E]+'), ' ');
-    return s.replaceAll(RegExp(r'\s+'), ' ').trim();
-  }
-
-  double _emojiWidth(Painter painter, String icon) {
-    final adv = painter.measureTextFont(icon, _emojiFont);
-    return BarMetrics.current.emojiLayoutWidth(adv);
-  }
-
-  @override
-  double measure(Painter painter) {
-    final textW = painter.measureTextFont(_textPart, _uiFont);
-    final sinkW = _emojiWidth(painter, _sinkIcon);
-    final micW = _showMic ? _emojiWidth(painter, _sourceIcon) : 0.0;
-    // [emoji][gap][text][gap][mic]
-    return (sinkW +
-            _iconTextGap +
-            textW +
-            (_showMic ? _iconTextGap + micW : 0))
-        .clamp(8, 220);
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    var cx = x;
-    final sinkW = _emojiWidth(painter, _sinkIcon);
-    painter.drawTextFont(_sinkIcon, Offset(cx, y), font: _emojiFont);
-    // Advance by full emoji layout width + gap so text never sits under ink.
-    cx += sinkW + _iconTextGap;
-    final text = _textPart;
-    painter.drawTextFont(text, Offset(cx, y), font: _uiFont);
-    cx += painter.measureTextFont(text, _uiFont);
-    if (_showMic) {
-      cx += _iconTextGap;
-      final micW = _emojiWidth(painter, _sourceIcon);
-      painter.drawTextFont(_sourceIcon, Offset(cx, y), font: _emojiFont);
-      cx += micW;
-    }
-    return (cx - x).clamp(8, 220);
   }
 
   @override

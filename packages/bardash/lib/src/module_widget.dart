@@ -23,8 +23,12 @@ class ModuleWidget extends Widget {
   /// traversal. The module wrapper is a real tree boundary, not a drawing
   /// shortcut.
   @override
-  List<Widget> get children =>
-      module.widget == null ? const <Widget>[] : <Widget>[module.widget!];
+  List<Widget> get children {
+    final child = module.widget;
+    if (child == null) return const <Widget>[];
+    child.parent = this;
+    return <Widget>[child];
+  }
 
   Object? _measuredToken;
   int _measuredPadL = -1;
@@ -63,7 +67,14 @@ class ModuleWidget extends Widget {
 
   void _syncTextRuns(Painter painter, {Color? color}) {
     _textRuns.text = module.output;
-    _textRuns.textFont = Font.ui(pixelSize: BarMetrics.current.fontSize);
+    // Make PUA icon selection explicit. This gives Skia, Dawn, and GLES the
+    // same icon font instead of relying on backend-specific glyph fallback.
+    _textRuns.splitPrivateUse = true;
+    final style = resolvedStyle();
+    _textRuns.textFont = Font(
+      family: style.fontFamily,
+      pixelSize: style.fontSize,
+    );
     _textRuns.iconFont = Font.icon(pixelSize: BarMetrics.current.iconFontSize);
     _textRuns.runSpacing = BarMetrics.current.iconTextGap.toDouble();
     _textRuns.color = color;
@@ -71,15 +82,16 @@ class ModuleWidget extends Widget {
   }
 
   void _measureWidget(Painter painter, Widget widget) {
+    widget.parent = this;
     if (widget is TextRuns) {
       _syncTextRuns(painter);
-      widget.measure(painter);
       final content = BarMetrics.current.isIconOutput(module.output)
           ? widget.width.toDouble().clamp(
               BarMetrics.current.iconSlot.toDouble(),
               100000,
             )
           : widget.width.toDouble() + BarMetrics.current.contentFudge;
+      _measuredContentW = content.toDouble();
       width = content.round() + _padL + _padR;
     } else {
       widget.measure(painter);
@@ -171,30 +183,17 @@ class ModuleWidget extends Widget {
       final barH = painter.height.round().clamp(1, 4096).toDouble();
       height = barH.round();
       y = 0;
-      // GTK-like background from CSS (waybar #clock, .module)
-      final ctx = StyleContext.forWidget(this);
-      final bg = ctx.parsedBackgroundColor;
-      if (bg != null && bg.a != 0) {
-        painter.drawRect(
-          Rect.fromLTWH(x.toDouble(), 0, width.toDouble(), barH),
-          Paint()..color = bg,
-        );
-      }
-      final border = ctx.parsedBorderColor;
-      if (border != null) {
-        painter.drawRect(
-          Rect.fromLTWH(x.toDouble(), 0, width.toDouble(), barH),
-          Paint()
-            ..color = border
-            ..style = PaintStyle.stroke
-            ..strokeWidth = 1,
-        );
-      }
+      // Every module surface consumes the same toolkit CSS box model as
+      // popup cards and buttons: background, border, radius, and future
+      // surface properties all resolve through one path.
+      final style = resolvedStyle();
+      module.cssStyle = style;
+      drawStyledBox(painter, style: style);
 
       if (module.widget != null) {
         final w = module.widget!;
-        if (w is TextRuns) _syncTextRuns(painter, color: ctx.parsedColor);
-        w.measure(painter);
+        w.parent = this;
+        if (w is TextRuns) _syncTextRuns(painter, color: style.color);
         w.x = x + _padL;
         // Center widget tree in the bar (groups, window title, workspaces).
         final wh = w.height > 0 ? w.height : barH.round();
@@ -206,7 +205,10 @@ class ModuleWidget extends Widget {
       } else {
         // y is Skia text-blob origin (line-box top), centered in the bar.
         final originY = _barTextOriginY(painter, barH);
-        final styleFg = ctx.parsedColor;
+        // A missing CSS foreground remains meaningful for graphics modules:
+        // they keep their own non-text draw path instead of being replaced by
+        // a text fallback. Box styling above is always concrete.
+        final styleFg = StyleContext.forWidget(this).parsedColor;
         // SNI tray draws images via module.draw, not text — never take the CSS text path
         if (module.name == 'sni' || module.name == 'tray') {
           module.cssForeground = null;

@@ -59,13 +59,19 @@ class ImageModule extends BarModule {
       // Draw placeholder square (CSS foreground for consistency)
       painter.drawRect(
         Rect.fromLTWH(x, yOffset, _size.toDouble(), _size.toDouble()),
-        Paint()..color = cssForeground ?? const Color(0x3a, 0x3a, 0x3a),
+        Paint()..color = cssColor(const Color(0x3a, 0x3a, 0x3a)),
       );
       return _size.toDouble();
     }
 
     // Center the image vertically within the bar height
-    painter.drawImage(_path, x, yOffset, width: _size.toDouble(), height: _size.toDouble());
+    painter.drawImage(
+      _path,
+      x,
+      yOffset,
+      width: _size.toDouble(),
+      height: _size.toDouble(),
+    );
     return _size.toDouble();
   }
 }

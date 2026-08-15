@@ -9,16 +9,20 @@ import 'text_option.dart';
 
 /// One independently shaped text run.
 ///
-/// Keeping icon and UI glyphs in separate runs prevents a renderer's fallback
-/// shaper from replacing a private-use icon when the same string also contains
-/// numbers or labels.
+/// Explicit runs are retained for controls that intentionally use different
+/// sizes for icons and labels. Normal toolkit text should use one [Font] and
+/// let the backend's fallback shaper choose faces per glyph.
 class FontTextRun {
   final String text;
   final Font font;
 
   const FontTextRun(this.text, this.font);
 
-  /// Splits private-use glyphs from normal text using the supplied roles.
+  /// Splits private-use glyphs from normal text using the supplied fonts.
+  ///
+  /// This is opt-in behavior. It is not used by [TextRuns] by default because
+  /// Waybar/Pango shapes the complete label against its configured family
+  /// stack, including fallback for private-use and emoji glyphs.
   static List<FontTextRun> split(
     String text, {
     required Font textFont,
@@ -86,13 +90,36 @@ extension PainterFont on Painter {
     return FontDatabase.instance.metrics(font).horizontalAdvance(text);
   }
 
-  /// Measures text using separate UI and private-use icon runs.
+  /// Measures the horizontal space a run actually occupies when painted.
+  ///
+  /// Some icon fonts have ink that extends past their typographic advance.
+  /// Using only [measureTextFont] can therefore place the following text on
+  /// top of the icon (most visibly the `1` in `100%`).  Keep layout based on
+  /// the advance, but reserve any positive right-side ink overhang as well.
+  double measureTextRunAdvance(String text, Font font) {
+    final resolved = FontDatabase.instance.resolveRequest(font);
+    final advance = measureTextFont(text, font);
+    final bounds = measureTextBounds(
+      text,
+      size: resolved.pixelSize,
+      fontFamily: resolved.family,
+    );
+    return advance > bounds.right ? advance : bounds.right;
+  }
+
+  /// Measures text through the shared shaped path.
+  ///
+  /// [splitPrivateUse] is opt-in for controls that intentionally use a
+  /// separate icon font. The default keeps the family stack intact so font
+  /// fallback can select a face per glyph.
   double measureTextRuns(
     String text, {
     required Font textFont,
     required Font iconFont,
     double runSpacing = 3,
+    bool splitPrivateUse = false,
   }) {
+    if (!splitPrivateUse) return measureTextFont(text, textFont);
     final runs = FontTextRun.split(
       text,
       textFont: textFont,
@@ -104,12 +131,51 @@ extension PainterFont on Painter {
       if (i > 0 && _needsRunSpacing(runs[i - 1], run)) {
         width += runSpacing;
       }
-      width += measureTextFont(run.text, run.font);
+      width += measureTextRunAdvance(run.text, run.font);
     }
     return width;
   }
 
-  /// Draws text using separate UI and private-use icon runs.
+  /// Measures the vertical ink bounds of a mixed-font line.
+  ///
+  /// A UI label and a private-use icon often have different ascent/descent
+  /// metrics. Returning the union keeps callers from centering the icon using
+  /// only the UI font's line box, which makes status-bar icons visibly drift
+  /// above or below their neighbouring text.
+  Rect measureTextRunsBounds(
+    String text, {
+    required Font textFont,
+    required Font iconFont,
+    double runSpacing = 3,
+    bool splitPrivateUse = false,
+  }) {
+    final runs = splitPrivateUse
+        ? FontTextRun.split(text, textFont: textFont, iconFont: iconFont)
+        : <FontTextRun>[FontTextRun(text, textFont)];
+    if (runs.isEmpty) return const Rect.fromLTWH(0, 0, 0, 0);
+
+    var top = double.infinity;
+    var bottom = double.negativeInfinity;
+    var advance = 0.0;
+    for (var i = 0; i < runs.length; i++) {
+      final run = runs[i];
+      final resolved = FontDatabase.instance.resolveRequest(run.font);
+      final bounds = measureTextBounds(
+        run.text,
+        size: resolved.pixelSize,
+        fontFamily: resolved.family,
+      );
+      if (bounds.top < top) top = bounds.top;
+      if (bounds.bottom > bottom) bottom = bounds.bottom;
+      if (i > 0 && _needsRunSpacing(runs[i - 1], run)) {
+        advance += runSpacing;
+      }
+      advance += measureTextRunAdvance(run.text, run.font);
+    }
+    return Rect.fromLTRB(0, top, advance, bottom);
+  }
+
+  /// Draws text through the shared shaped path; see [splitPrivateUse].
   double drawTextRuns(
     String text,
     Offset position, {
@@ -117,7 +183,12 @@ extension PainterFont on Painter {
     required Font iconFont,
     Color? color,
     double runSpacing = 3,
+    bool splitPrivateUse = false,
   }) {
+    if (!splitPrivateUse) {
+      drawTextFont(text, position, font: textFont, color: color);
+      return measureTextFont(text, textFont);
+    }
     final runs = FontTextRun.split(
       text,
       textFont: textFont,
@@ -135,7 +206,7 @@ extension PainterFont on Painter {
         font: run.font,
         color: color,
       );
-      advance += measureTextFont(run.text, run.font);
+      advance += measureTextRunAdvance(run.text, run.font);
     }
     return advance;
   }

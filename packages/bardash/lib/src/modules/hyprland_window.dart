@@ -40,7 +40,4 @@ class HyprlandWindowModule extends BarModule {
 
   Widget _buildLabel() =>
       Label(_title, font: const Font.ui(pixelSize: 14), maxWidth: _maxWidth);
-
-  @override
-  double draw(Painter painter, double x, double y) => 0;
 }

@@ -34,12 +34,10 @@ class HyprlandWorkspacesModule extends BarModule {
     ipc.onEvent(_onHyprEvent);
 
     // Initial fetch so workspaces appear immediately on startup.
-    if (ipc.isAvailable) {
-      _refresh();
-      if (_dirty) {
-        _dirty = false;
-        requestRepaint?.call();
-      }
+    _refresh();
+    if (_dirty) {
+      _dirty = false;
+      requestRepaint?.call();
     }
 
     // High-frequency drain so events are picked up within ~50ms.
@@ -77,10 +75,15 @@ class HyprlandWorkspacesModule extends BarModule {
     final list = ipc.hyprctl('workspaces');
     if (list is! List) {
       _available = false;
-      widget = null;
+      _log('refresh failed type=${list.runtimeType} ipc=${ipc.isAvailable}');
+      // Keep the last valid button tree during a transient IPC failure. On
+      // initial startup there is no tree yet, so the module remains empty but
+      // is retried instead of being permanently disabled.
+      if (_workspaces.isEmpty) widget = null;
       return;
     }
 
+    _available = true;
     _workspaces = list.cast<Map<String, dynamic>>();
     _urgentIds..removeWhere((id) => !_workspaces.any((ws) => ws['id'] == id));
     final clients = ipc.hyprctl('clients');
@@ -94,8 +97,13 @@ class HyprlandWorkspacesModule extends BarModule {
     }
     final active = ipc.hyprctl('activeworkspace');
     _activeId = (active is Map) ? (active['id'] as int? ?? -1) : -1;
+    _log('refresh count=${_workspaces.length} active=$_activeId');
     _workspaces.sort((a, b) => (a['id'] as int).compareTo(b['id'] as int));
 
+    _rebuildWorkspaceWidget();
+  }
+
+  void _rebuildWorkspaceWidget() {
     final buttons = <Widget>[];
     const gap = 2;
     for (var i = 0; i < _workspaces.length; i++) {
@@ -137,12 +145,13 @@ class HyprlandWorkspacesModule extends BarModule {
       final capturedId = id;
       btn.onClick = () {
         stderr.writeln('[bardash:workspaces] click workspace $capturedId');
-        ipc.hyprctl(
-          'dispatch hl.dsp.focus({ workspace = "$capturedId" })',
-          useJson: false,
-        );
+        // Update the visual state before the IPC round-trip. The old direct
+        // FFI call blocked the Wayland event loop until Hyprland replied.
+        _activeId = capturedId;
         _urgentIds.remove(capturedId);
-        _refresh();
+        _rebuildWorkspaceWidget();
+        requestRepaint?.call();
+        _focusWorkspace(capturedId);
         return true;
       };
       buttons.add(btn);
@@ -155,16 +164,37 @@ class HyprlandWorkspacesModule extends BarModule {
     output = _workspaces.map((w) => w['name'] ?? '').join(' ');
   }
 
+  Future<void> _focusWorkspace(int id) async {
+    try {
+      final focused = await ipc.focusWorkspaceAsync(id);
+      if (Platform.environment['BARDASH_DEBUG_HYPRLAND'] == '1') {
+        stderr.writeln(
+          '[bardash:workspaces] dispatch workspace $id focused=$focused',
+        );
+      }
+      if (focused) return;
+    } catch (e) {
+      _log('focus workspace $id failed: $e');
+    }
+
+    // If the asynchronous request failed, let the normal refresh path
+    // restore the compositor's actual active workspace.
+    _refresh();
+    requestRepaint?.call();
+  }
+
   @override
   void update() {
-    if (!_available) {
-      widget = null;
-      return;
-    }
     if (!ipc.isAvailable) {
       _available = false;
-      widget = null;
+      _log('ipc unavailable; retaining=${_workspaces.isNotEmpty}');
       return;
+    }
+
+    // A socket can appear after the bar starts, or Hyprland can restart with
+    // a new instance signature. Retry until the first successful response.
+    if (!_available || widget == null) {
+      _refresh();
     }
 
     // Safety net: periodic poll still fires events if the drain missed one.
@@ -175,8 +205,11 @@ class HyprlandWorkspacesModule extends BarModule {
     }
   }
 
-  @override
-  double draw(Painter painter, double x, double y) => 0;
+  void _log(String message) {
+    if (Platform.environment['BARDASH_DEBUG_HYPRLAND'] == '1') {
+      stderr.writeln('[bardash:workspaces] $message');
+    }
+  }
 
   @override
   void onScroll(double delta) {
@@ -189,7 +222,9 @@ class HyprlandWorkspacesModule extends BarModule {
     );
     if (next == current) return;
     final id = _workspaces[next]['id'];
-    ipc.hyprctl('dispatch hl.dsp.focus({ workspace = "$id" })', useJson: false);
-    _refresh();
+    _activeId = id;
+    _rebuildWorkspaceWidget();
+    requestRepaint?.call();
+    _focusWorkspace(id);
   }
 }

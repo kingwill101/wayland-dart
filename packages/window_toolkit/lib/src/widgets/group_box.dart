@@ -1,5 +1,7 @@
 import '../drawing/color.dart';
+import '../font/font.dart';
 import '../painter/painter.dart';
+import '../style.dart';
 import '../widget.dart';
 
 class GroupBox extends Widget {
@@ -34,75 +36,39 @@ class GroupBox extends Widget {
   int get _titleOffset => title == null ? 0 : titleHeight;
 
   @override
+  Style styleRole() => Style(
+    color: titleColor,
+    backgroundColor: backgroundColor,
+    borderColor: borderColor,
+    borderWidth: borderWidth.toDouble(),
+  );
+
+  @override
   void performLayout(int containerWidth) {
     width = containerWidth;
-    var cy = padding + _titleOffset;
+    final padL = styledPaddingLeft(padding);
+    final padR = styledPaddingRight(padding);
+    final padT = styledPaddingTop(padding);
+    final padB = styledPaddingBottom(padding);
+    var cy = padT + _titleOffset;
     for (final child in children) {
-      child.performLayout((width - padding * 2).clamp(0, width).toInt());
+      child.performLayout((width - padL - padR).clamp(0, width).toInt());
       cy += child.height + spacing;
     }
     if (children.isNotEmpty) cy -= spacing;
-    height = cy + padding;
+    height = cy + padB;
   }
 
   @override
   void draw(Painter canvas) {
     performLayout(width);
-
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        y.toDouble(),
-        width.toDouble(),
-        height.toDouble(),
-      ),
-      Paint()..color = backgroundColor,
-    );
-
-    // Border
-    if (borderWidth > 0) {
-      canvas.drawRect(
-        Rect.fromLTWH(
-          x.toDouble(),
-          y.toDouble(),
-          width.toDouble(),
-          borderWidth.toDouble(),
-        ),
-        Paint()..color = borderColor,
-      );
-      canvas.drawRect(
-        Rect.fromLTWH(
-          x.toDouble(),
-          (y + height - borderWidth).toDouble(),
-          width.toDouble(),
-          borderWidth.toDouble(),
-        ),
-        Paint()..color = borderColor,
-      );
-      canvas.drawRect(
-        Rect.fromLTWH(
-          x.toDouble(),
-          y.toDouble(),
-          borderWidth.toDouble(),
-          height.toDouble(),
-        ),
-        Paint()..color = borderColor,
-      );
-      canvas.drawRect(
-        Rect.fromLTWH(
-          (x + width - borderWidth).toDouble(),
-          y.toDouble(),
-          borderWidth.toDouble(),
-          height.toDouble(),
-        ),
-        Paint()..color = borderColor,
-      );
-    }
+    final style = resolvedStyle();
+    drawStyledBox(canvas, style: style);
 
     // Title
     if (title != null) {
       final titleW = title!.length * 8 + 8;
-      final titleX = x + padding;
+      final titleX = x + styledPaddingLeft(padding);
       canvas.drawRect(
         Rect.fromLTWH(
           titleX.toDouble(),
@@ -110,25 +76,30 @@ class GroupBox extends Widget {
           titleW.toDouble(),
           titleHeight.toDouble(),
         ),
-        Paint()..color = titleBg,
+        Paint()..color = styledColor(style.backgroundColor ?? titleBg, style),
       );
-      canvas.drawText(
+      drawStyledText(
+        canvas,
         title!,
         Offset(
           (titleX + 4).toDouble(),
           (y + (titleHeight - 16) ~/ 2).toDouble(),
         ),
-        color: titleColor,
-        size: 16,
+        style: style,
+        color: style.color,
+        fallback: const Font(pixelSize: 16),
       );
     }
 
     // Children
-    var cy = y + padding + _titleOffset;
+    var cy = y + styledPaddingTop(padding) + _titleOffset;
     for (final child in children) {
-      child.x = x + padding;
+      child.x = x + styledPaddingLeft(padding);
       child.y = cy;
-      child.width = (width - padding * 2).clamp(0, width).toInt();
+      child.width =
+          (width - styledPaddingLeft(padding) - styledPaddingRight(padding))
+              .clamp(0, width)
+              .toInt();
       child.draw(canvas);
       cy += child.height + spacing;
     }

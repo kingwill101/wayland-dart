@@ -1,4 +1,5 @@
 import '../drawing/color.dart';
+import '../font/font.dart';
 import '../interaction.dart';
 import '../mixins/hoverable.dart';
 import '../mixins/hover_animated.dart';
@@ -71,31 +72,15 @@ class Dropdown extends Widget with Hoverable, HoverAnimated {
       'hover',
     ], local: StylePatch(backgroundColor: hoverColor));
     final fill = transitionHover(base.backgroundColor!, hover.backgroundColor!);
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        y.toDouble(),
-        width.toDouble(),
-        height.toDouble(),
-      ),
-      Paint()..color = fill,
-    );
-
-    // Bottom border
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        (y + height - 1).toDouble(),
-        width.toDouble(),
-        1,
-      ),
-      Paint()..color = base.borderColor,
+    drawStyledBox(
+      canvas,
+      style: base.overlay(StylePatch(backgroundColor: fill)),
     );
 
     // Arrow
     final arrowX = x + width - 14;
     final arrowY = y + height ~/ 2;
-    final arrowPaint = Paint()..color = base.color;
+    final arrowPaint = Paint()..color = styledColor(base.color, base);
     canvas.drawLine(
       Offset(arrowX.toDouble(), (arrowY - 2).toDouble()),
       Offset((arrowX + 6).toDouble(), (arrowY - 2).toDouble()),
@@ -109,11 +94,16 @@ class Dropdown extends Widget with Hoverable, HoverAnimated {
 
     // Selected label
     if (selectedLabel != null) {
-      canvas.drawText(
+      drawStyledText(
+        canvas,
         selectedLabel!,
-        Offset((x + 6).toDouble(), (y + 3).toDouble()),
+        Offset(
+          (x + styledPaddingLeft(6)).toDouble(),
+          (y + styledPaddingTop(3)).toDouble(),
+        ),
+        style: base,
         color: base.color,
-        size: 16,
+        fallback: const Font(pixelSize: 16),
       );
     }
 
@@ -124,14 +114,16 @@ class Dropdown extends Widget with Hoverable, HoverAnimated {
           itemHeight;
       final listY = y + height;
 
-      canvas.drawRect(
+      canvas.drawRRect(
         Rect.fromLTWH(
           x.toDouble(),
           listY.toDouble(),
           width.toDouble(),
           listH.toDouble(),
         ),
-        Paint()..color = base.backgroundColor!,
+        base.borderRadius,
+        base.borderRadius,
+        Paint()..color = styledColor(base.backgroundColor!, base),
       );
 
       final visible = items.length < maxVisibleItems
@@ -139,11 +131,16 @@ class Dropdown extends Widget with Hoverable, HoverAnimated {
           : items.sublist(0, maxVisibleItems);
       for (var i = 0; i < visible.length; i++) {
         final iy = listY + i * itemHeight;
-        canvas.drawText(
+        drawStyledText(
+          canvas,
           visible[i],
-          Offset((x + 6).toDouble(), (iy + 3).toDouble()),
+          Offset(
+            (x + styledPaddingLeft(6)).toDouble(),
+            (iy + styledPaddingTop(3)).toDouble(),
+          ),
+          style: base,
           color: i == selectedIndex ? base.color : base.color,
-          size: 16,
+          fallback: const Font(pixelSize: 16),
         );
       }
     }

@@ -78,45 +78,15 @@ class Checkbox extends Widget with Hoverable, HoverAnimated {
         backgroundColor: Color.blend(boxColor, const Color(255, 255, 255, 18)),
       ),
     );
-    final outer = Rect.fromLTWH(
-      x.toDouble(),
-      y.toDouble(),
-      width.toDouble(),
-      height.toDouble(),
-    );
     final fill = transitionHover(base.backgroundColor!, hover.backgroundColor!);
-    canvas.drawRect(outer, Paint()..color = fill);
-
-    canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), 1),
-      Paint()..color = base.borderColor,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        (y + height - 1).toDouble(),
-        width.toDouble(),
-        1,
-      ),
-      Paint()..color = base.borderColor,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), 1, height.toDouble()),
-      Paint()..color = base.borderColor,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        (x + width - 1).toDouble(),
-        y.toDouble(),
-        1,
-        height.toDouble(),
-      ),
-      Paint()..color = base.borderColor,
+    drawStyledBox(
+      canvas,
+      style: base.overlay(StylePatch(backgroundColor: fill)),
     );
 
     if (checked) {
       final checkPaint = Paint()
-        ..color = base.color
+        ..color = styledColor(base.color, base)
         ..strokeWidth = 2;
       canvas.drawLine(
         Offset((x + width * 0.22).toDouble(), (y + height * 0.55).toDouble()),

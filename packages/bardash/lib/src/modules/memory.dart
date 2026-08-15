@@ -1,8 +1,5 @@
 import 'dart:io';
 
-import 'package:window_toolkit/window_toolkit.dart';
-
-import '../metrics.dart';
 import 'module.dart';
 
 class MemoryModule extends BarModule {
@@ -50,11 +47,7 @@ class MemoryModule extends BarModule {
           .replaceAll('{total}', totalMiB);
       tooltip = resolveTooltip(
         'Memory $percentStr% ($usedMiB / $totalMiB MiB)',
-        {
-          'percent': percentStr,
-          'used': usedMiB,
-          'total': totalMiB,
-        },
+        {'percent': percentStr, 'used': usedMiB, 'total': totalMiB},
       );
     } catch (_) {
       output = 'N/A';
@@ -64,18 +57,5 @@ class MemoryModule extends BarModule {
   int _parseMeminfoValue(String line) {
     final parts = line.split(RegExp(r'\s+'));
     return int.tryParse(parts[1]) ?? 0;
-  }
-
-  @override
-  double measure(Painter painter) {
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    return painter.measureTextFont(output, font);
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    painter.drawTextFont(output, Offset(x, y), font: font);
-    return painter.measureTextFont(output, font);
   }
 }

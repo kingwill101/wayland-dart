@@ -55,9 +55,14 @@ class WidgetHostController {
 
   /// Plain widget trees do not use layout_engine's element lifecycle.
   void _initializeWidgetTree(Widget widget) {
-    if (widget.mounted) return;
-    widget.mounted = true;
-    widget.initState();
+    // Composite widgets may replace children after the host was mounted
+    // (workspace buttons are a practical example).  Initialization therefore
+    // has to be idempotent per node, not an early return for the whole
+    // subtree: an already-mounted parent can contain newly-created controls.
+    if (!widget.mounted) {
+      widget.mounted = true;
+      widget.initState();
+    }
     for (final child in childrenOf(widget)) {
       _initializeWidgetTree(child);
     }
@@ -82,6 +87,7 @@ class WidgetHostController {
   /// newly-created render widgets to this host.
   void layoutRoot(int width, int height) {
     elementTree?.build();
+    _initializeWidgetTree(root);
     bindRepaintCallbacks();
     root
       ..x = 0
@@ -191,7 +197,11 @@ class WidgetHostController {
     final changed = updateHover(px, py);
     final target = hitTest(px, py);
     target?.onMouseMove(px, py);
-    return changed || target != null;
+    // A target being present is not itself a state change. Returning true for
+    // every motion event caused layer-shell windows to repaint continuously
+    // while the pointer was stationary over a widget. Controls that change
+    // motion state call requestRepaint through setState/setInteractionState.
+    return changed;
   }
 
   /// Completes a pointer gesture and emits a click only when the release is

@@ -1,4 +1,5 @@
 import '../drawing/color.dart';
+import '../font/font.dart';
 import '../painter/painter.dart';
 import '../style.dart';
 import '../widget.dart';
@@ -36,22 +37,29 @@ class Card extends Widget {
 
   @override
   void performLayout(int containerWidth) {
+    final padLeft = styledPaddingLeft(padding);
+    final padRight = styledPaddingRight(padding);
+    final padTop = styledPaddingTop(padding);
+    final padBottom = styledPaddingBottom(padding);
     width = containerWidth;
-    var totalH = padding + (title == null ? 0 : 22);
+    var totalH = padTop + (title == null ? 0 : 22);
     for (final child in children) {
-      child.performLayout((width - padding * 2).clamp(0, width).toInt());
+      child.performLayout((width - padLeft - padRight).clamp(0, width).toInt());
       totalH += child.height + spacing;
     }
     if (children.isNotEmpty) totalH -= spacing;
-    height = totalH + padding;
+    height = totalH + padBottom;
   }
 
   void layoutChildren() {
-    var cy = y + padding + (title == null ? 0 : 22);
+    final padLeft = styledPaddingLeft(padding);
+    final padTop = styledPaddingTop(padding);
+    final padRight = styledPaddingRight(padding);
+    var cy = y + padTop + (title == null ? 0 : 22);
     for (final child in children) {
-      child.x = x + padding;
+      child.x = x + padLeft;
       child.y = cy;
-      child.width = (width - padding * 2).clamp(0, width).toInt();
+      child.width = (width - padLeft - padRight).clamp(0, width).toInt();
       cy += child.height + spacing;
     }
   }
@@ -60,63 +68,19 @@ class Card extends Widget {
   void draw(Painter canvas) {
     layoutChildren();
     final style = resolvedStyle();
-    final border = style.borderWidth.round();
-
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        y.toDouble(),
-        width.toDouble(),
-        height.toDouble(),
-      ),
-      Paint()..color = style.backgroundColor!,
-    );
-
-    if (border > 0) {
-      canvas.drawRect(
-        Rect.fromLTWH(
-          x.toDouble(),
-          y.toDouble(),
-          width.toDouble(),
-          border.toDouble(),
-        ),
-        Paint()..color = style.borderColor,
-      );
-      canvas.drawRect(
-        Rect.fromLTWH(
-          x.toDouble(),
-          (y + height - border).toDouble(),
-          width.toDouble(),
-          border.toDouble(),
-        ),
-        Paint()..color = style.borderColor,
-      );
-      canvas.drawRect(
-        Rect.fromLTWH(
-          x.toDouble(),
-          y.toDouble(),
-          border.toDouble(),
-          height.toDouble(),
-        ),
-        Paint()..color = style.borderColor,
-      );
-      canvas.drawRect(
-        Rect.fromLTWH(
-          (x + width - border).toDouble(),
-          y.toDouble(),
-          border.toDouble(),
-          height.toDouble(),
-        ),
-        Paint()..color = style.borderColor,
-      );
-    }
+    drawStyledBox(canvas, style: style);
 
     if (title != null) {
-      canvas.drawText(
+      drawStyledText(
+        canvas,
         title!,
-        Offset((x + padding).toDouble(), (y + padding).toDouble()),
+        Offset(
+          (x + styledPaddingLeft(padding)).toDouble(),
+          (y + styledPaddingTop(padding)).toDouble(),
+        ),
+        style: style,
         color: style.color,
-        size: 16,
+        fallback: const Font(pixelSize: 16),
       );
     }
 

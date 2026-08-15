@@ -1,4 +1,5 @@
 import '../drawing/color.dart';
+import '../font/font.dart';
 import '../painter/painter.dart';
 import '../style.dart';
 import '../widget.dart';
@@ -44,28 +45,27 @@ class Badge extends Widget {
     if (text == null) return;
 
     final style = resolvedStyle();
-    canvas.drawCircle(
-      Offset((x + width ~/ 2).toDouble(), (y + height ~/ 2).toDouble()),
-      (height / 2).toDouble(),
-      Paint()..color = style.backgroundColor!,
-    );
-    canvas.drawCircle(
-      Offset((x + width ~/ 2).toDouble(), (y + height ~/ 2).toDouble()),
-      (height / 2).toDouble(),
-      Paint()
-        ..color = style.borderColor
-        ..style = PaintStyle.stroke
-        ..strokeWidth = 1,
+    drawStyledRect(
+      canvas,
+      Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        width.toDouble(),
+        height.toDouble(),
+      ),
+      style: style,
     );
 
-    canvas.drawText(
+    drawStyledText(
+      canvas,
       text,
       Offset(
         (x + (width - text.length * 8) ~/ 2).toDouble(),
         (y + 1).toDouble(),
       ),
+      style: style,
       color: style.color,
-      size: 12,
+      fallback: const Font(pixelSize: 12),
     );
   }
 }

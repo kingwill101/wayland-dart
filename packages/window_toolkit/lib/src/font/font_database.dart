@@ -30,6 +30,7 @@ class FontDatabase {
   static FontDatabase get fontDatabase => instance;
 
   FontEngine _engine = _defaultEngine();
+  final Map<Font, FontMetrics> _metricsCache = {};
   final Map<FontRole, String> _roleFamilies = {
     FontRole.ui: 'sans',
     FontRole.icon: 'sans',
@@ -37,7 +38,15 @@ class FontDatabase {
   };
 
   /// Default UI size when a [Font] omits a positive [Font.pixelSize].
-  double defaultPixelSize = 13;
+  double _defaultPixelSize = 13;
+
+  double get defaultPixelSize => _defaultPixelSize;
+
+  set defaultPixelSize(double value) {
+    if (_defaultPixelSize == value) return;
+    _defaultPixelSize = value;
+    _metricsCache.clear();
+  }
 
   static FontEngine _defaultEngine() {
     // Prefer Skia in production; tests can inject bitmap.
@@ -58,6 +67,7 @@ class FontDatabase {
     if (!identical(_engine, engine)) {
       _engine.dispose();
       _engine = engine;
+      _metricsCache.clear();
     }
   }
 
@@ -86,14 +96,21 @@ class FontDatabase {
 
   bool isFixedPitch(String family) => _engine.isFixedPitch(family);
 
-  String? addApplicationFont(String filePath) =>
-      _engine.addApplicationFont(filePath);
+  String? addApplicationFont(String filePath) => _addApplicationFont(filePath);
+
+  String? _addApplicationFont(String filePath) {
+    final family = _engine.addApplicationFont(filePath);
+    if (family != null) _metricsCache.clear();
+    return family;
+  }
 
   // ── Role / application defaults ─────────────────────────────────────
 
   /// Map a [FontRole] to a concrete family name.
   void setRoleFamily(FontRole role, String family) {
+    if (_roleFamilies[role] == family) return;
     _roleFamilies[role] = family;
+    _metricsCache.clear();
   }
 
   String familyForRole(FontRole role) =>
@@ -116,7 +133,10 @@ class FontDatabase {
 
   FontInfo fontInfo(Font request) => _engine.resolve(resolveRequest(request));
 
-  FontMetrics metrics(Font request) => _engine.metrics(resolveRequest(request));
+  FontMetrics metrics(Font request) {
+    final resolved = resolveRequest(request);
+    return _metricsCache.putIfAbsent(resolved, () => _engine.metrics(resolved));
+  }
 
   /// Shortcut: metrics for a role at [pixelSize].
   FontMetrics metricsForRole(FontRole role, {double? pixelSize}) {
@@ -142,6 +162,7 @@ class FontDatabase {
   }
 
   void dispose() {
+    _metricsCache.clear();
     _engine.dispose();
   }
 }

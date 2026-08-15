@@ -128,15 +128,6 @@ class GroupModule extends BarModule {
   }
 
   @override
-  double draw(Painter painter, double x, double y) => 0;
-
-  @override
-  double measure(Painter painter) {
-    widget?.measure(painter);
-    return (widget?.width ?? 0).toDouble();
-  }
-
-  @override
   void prepareHoverTooltip(double moduleX, double moduleY) {
     // [hoverX] is absolute bar X (set by BardashBar).
     final child = _childAtAbsolute(hoverX);

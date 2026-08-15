@@ -2,9 +2,7 @@ import 'dart:io';
 
 import 'package:window_toolkit/window_toolkit.dart';
 
-import '../bar_text.dart';
 import '../command.dart';
-import '../metrics.dart';
 import 'module.dart';
 
 /// PulseAudio volume slider rendered as an inline level bar.
@@ -136,46 +134,6 @@ class PulseaudioSliderModule extends BarModule {
     final volume = int.parse(volMatch.group(1)!);
     final muted = out.contains('[off]');
     return (volume, muted);
-  }
-
-  @override
-  double measure(Painter painter) {
-    final textWidth = output.isEmpty
-        ? 0
-        : painter.measureTextFont(output, BarText.fontFor(output));
-    return textWidth + 4 + _barWidth.toDouble();
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    // Draw icon/text
-    final text = output;
-    final font = BarText.fontFor(text);
-    final color = cssForeground ?? const Color(0xc8, 0xc8, 0xc8);
-    painter.drawTextFont(text, Offset(x, y), font: font, color: color);
-    final textWidth = painter.measureTextFont(text, font);
-
-    // Draw level bar
-    final barX = x + textWidth + 4;
-    final glyph = BarMetrics.current.fontSize.round();
-    final barY = y + (glyph - _barHeight) / 2;
-
-    // Track background
-    painter.drawRect(
-      Rect.fromLTWH(barX, barY, _barWidth.toDouble(), _barHeight.toDouble()),
-      Paint()..color = _barBgColor,
-    );
-
-    // Filled portion
-    if (_volume > 0) {
-      final fillWidth = _volume / 100.0 * _barWidth;
-      painter.drawRect(
-        Rect.fromLTWH(barX, barY, fillWidth, _barHeight.toDouble()),
-        Paint()..color = _muted ? const Color(0x60, 0x60, 0x60) : _barColor,
-      );
-    }
-
-    return barX + _barWidth - x;
   }
 
   @override

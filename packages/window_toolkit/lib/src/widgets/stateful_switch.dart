@@ -13,6 +13,8 @@ import '../drawing/color.dart';
 import '../mixins/hoverable.dart';
 import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
+import '../style.dart';
+import '../style/style_patch.dart';
 import '../widget.dart';
 
 class StatefulSwitch extends StatefulWidget {
@@ -68,34 +70,25 @@ class _SwitchRender extends Widget with Hoverable, HoverAnimated {
   bool get acceptsFocus => true;
 
   @override
+  Style styleRole() => Style(
+    color: palette.light,
+    backgroundColor: value ? const Color(0, 180, 80) : palette.mid,
+    borderColor: palette.shadow,
+    borderRadius: height > 0 ? height / 2 : 11,
+  );
+
+  @override
   void draw(Painter canvas) {
-    final trackColor = value ? const Color(0, 180, 80) : palette.mid;
+    final base = resolvedStyle();
+    final trackColor = base.backgroundColor!;
     final fill = transitionHover(
       trackColor,
       Color.blend(trackColor, const Color(255, 255, 255, 24)),
     );
 
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        y.toDouble(),
-        width.toDouble(),
-        height.toDouble(),
-      ),
-      Paint()..color = fill,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), 1),
-      Paint()..color = palette.shadow,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        (y + height - 1).toDouble(),
-        width.toDouble(),
-        1,
-      ),
-      Paint()..color = palette.shadow,
+    drawStyledBox(
+      canvas,
+      style: base.overlay(StylePatch(backgroundColor: fill)),
     );
 
     final knobRadius = (height / 2) - 2;
@@ -104,7 +97,7 @@ class _SwitchRender extends Widget with Hoverable, HoverAnimated {
     canvas.drawCircle(
       Offset(knobCenterX.toDouble(), knobCenterY.toDouble()),
       knobRadius.toDouble(),
-      Paint()..color = palette.light,
+      Paint()..color = styledColor(base.color, base),
     );
   }
 

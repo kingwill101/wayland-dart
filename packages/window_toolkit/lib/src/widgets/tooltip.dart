@@ -1,6 +1,8 @@
 import '../drawing/color.dart';
+import '../font/font.dart';
 import '../painter/painter.dart';
 import '../style.dart';
+import '../style/style_patch.dart';
 import '../mixins/hoverable.dart';
 import '../widget.dart';
 
@@ -72,36 +74,45 @@ class Tooltip extends Widget with Hoverable {
     child.draw(canvas);
 
     if (visible && text.isNotEmpty) {
-      final bounds = canvas.measureTextBounds(text, size: fontSize);
-      final tipW = bounds.width + padding * 2;
-      final tipH = bounds.height + padding * 2;
+      final bounds = measureStyledTextBounds(
+        canvas,
+        text,
+        style: style,
+        fallback: Font(pixelSize: fontSize),
+      );
+      final padL = styledPaddingLeft(padding);
+      final padR = styledPaddingRight(padding);
+      final padT = styledPaddingTop(padding);
+      final padB = styledPaddingBottom(padding);
+      final tipW = bounds.width + padL + padR;
+      final tipH = bounds.height + padT + padB;
       final tipX = x + (width - tipW) / 2;
       final tipY = y - tipH; // was -4 gap; should sit on bar (gap 0)
 
-      canvas.drawRect(
+      drawStyledRect(
+        canvas,
         Rect.fromLTWH(tipX, tipY, tipW, tipH),
-        Paint()..color = style.backgroundColor!,
+        style: style.overlay(
+          StylePatch(
+            borderTopWidth: drawBorder ? 1 : 0,
+            borderRightWidth: drawBorder ? 1 : 0,
+            borderBottomWidth: drawBorder ? 1 : 0,
+            borderLeftWidth: drawBorder ? 1 : 0,
+          ),
+        ),
       );
 
-      if (drawBorder) {
-        canvas.drawRect(
-          Rect.fromLTWH(tipX + 0.5, tipY + 0.5, tipW - 1, tipH - 1),
-          Paint()
-            ..color = style.borderColor
-            ..style = PaintStyle.stroke
-            ..strokeWidth = 1,
-        );
-      }
-
       // Center glyph bounds inside the tip box (baseline-aware for Skia).
-      final originX = tipX + (tipW - bounds.width) / 2 - bounds.left;
-      final originY = tipY + (tipH - bounds.height) / 2 - bounds.top;
+      final originX = tipX + padL - bounds.left;
+      final originY = tipY + padT - bounds.top;
 
-      canvas.drawText(
+      drawStyledText(
+        canvas,
         text,
         Offset(originX, originY),
+        style: style,
         color: style.color,
-        size: fontSize,
+        fallback: Font(pixelSize: fontSize),
       );
     }
   }

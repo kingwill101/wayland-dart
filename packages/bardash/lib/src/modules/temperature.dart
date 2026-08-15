@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:window_toolkit/window_toolkit.dart';
-
 import 'module.dart';
 
 class TemperatureModule extends BarModule {
@@ -16,6 +14,7 @@ class TemperatureModule extends BarModule {
 
   @override
   void init(Map<String, String> config) {
+    super.init(config);
     if (config.containsKey('format')) _format = config['format']!;
     if (config.containsKey('interval')) {
       _interval = int.tryParse(config['interval']!) ?? 5;
@@ -31,6 +30,7 @@ class TemperatureModule extends BarModule {
       final zoneDir = _findThermalZone();
       if (zoneDir == null) {
         _display = 'N/A';
+        output = _display;
         return;
       }
       final tempFile = File('$zoneDir/temp');
@@ -38,12 +38,15 @@ class TemperatureModule extends BarModule {
       final millidegrees = int.tryParse(raw);
       if (millidegrees == null) {
         _display = 'N/A';
+        output = _display;
         return;
       }
       final celsius = millidegrees / 1000;
       _display = _format.replaceAll('{temp}', celsius.round().toString());
+      output = _display;
     } catch (_) {
       _display = 'N/A';
+      output = _display;
     }
   }
 
@@ -68,11 +71,5 @@ class TemperatureModule extends BarModule {
     }
 
     return null;
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    painter.drawText(_display, Offset(x, y));
-    return painter.measureText(_display).width;
   }
 }

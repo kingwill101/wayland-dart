@@ -4,6 +4,7 @@ import 'package:bardash/src/module_widget.dart';
 import 'package:bardash/src/metrics.dart';
 import 'package:bardash/src/modules/module.dart';
 import 'package:bardash/src/modules/audio.dart';
+import 'package:bardash/src/modules/registry.dart';
 
 class FakeModule extends BarModule {
   @override
@@ -51,6 +52,31 @@ void main() {
     w.measure(p);
     expect(w.width, 12);
   });
+
+  test('composite modules expose toolkit widget trees', () {
+    final cases = <String, Map<String, String>>{
+      'cpu/graph': {},
+      'custom/graph': {'exec': 'echo 1'},
+      'pulseaudio-slider': {},
+      'backlight-slider': {},
+      'group/test': {'modules': 'clock,cpu'},
+    };
+
+    for (final entry in cases.entries) {
+      final module = createModule(entry.key);
+      expect(module, isNotNull, reason: entry.key);
+      module!.init(entry.value);
+
+      final wrapper = ModuleWidget(module);
+      expect(
+        module.widget,
+        isNotNull,
+        reason: '${entry.key} should be composed from toolkit widgets',
+      );
+      expect(wrapper.children, hasLength(1), reason: entry.key);
+    }
+  });
+
   test('ModuleWidget background from CSS', () {
     final provider = CssProvider()
       ..loadFromData('#fake { background-color: #ff0000; }');
@@ -98,21 +124,95 @@ void main() {
     expect(txt.color?.b, 255);
   });
 
-  test('text module width uses toolkit mixed-font measurement', () {
+  test('text module width uses the shared toolkit text widget', () {
     final m = AudioModule()..output = '\u{f028} 55%';
     expect(m.showsGraphics, isFalse);
     final w = ModuleWidget(m);
     final p = RecordingPainter(width: 800, height: 30);
     w.measure(p);
 
-    // The icon and percentage must be measured as separate toolkit font runs.
-    final full = m.measure(p);
-    expect(
-      w.width,
-      full.round(),
-      reason: 'module widget must use the toolkit text-run measure',
-    );
-    expect(full, greaterThan(0));
+    expect(m.widget, isA<TextRuns>());
+    expect(w.width, greaterThan(0));
+    expect((m.widget as TextRuns).width, greaterThan(0));
+  });
+
+  test('dynamically rebuilt module controls receive toolkit hover state', () {
+    final first = Button('1');
+    final m = _WidgetModule(first);
+    final wrapper = ModuleWidget(m);
+    final host = WidgetHostController(wrapper);
+
+    host.layoutRoot(200, 30);
+    final replacement = Button('2');
+    m.widget = replacement;
+    host.layoutRoot(200, 30);
+    host.updateHover(4, 4);
+
+    // Hyprland workspace buttons are rebuilt in exactly this way when the
+    // IPC event stream reports a workspace change.
+    expect(replacement.mounted, isTrue);
+    expect(replacement.isHovered, isTrue);
+    expect(replacement.hasPseudoClass('hover'), isTrue);
+  });
+
+  test('module CSS color inherits into a composite toolkit child', () {
+    final provider = CssProvider()
+      ..loadFromData('#widget-test { color: #89b4fa; font-size: 18px; }');
+    StyleContext.addProviderForScreen(provider);
+    final child = TextRuns('hello');
+    final m = _WidgetModule(child);
+    final wrapper = ModuleWidget(m)
+      ..x = 0
+      ..y = 0
+      ..width = 120
+      ..height = 30;
+    final p = RecordingPainter(width: 120, height: 30);
+
+    wrapper.draw(p);
+
+    expect(child.parent, same(wrapper));
+    expect(child.resolvedStyle().color.r, 0x89);
+    expect(child.resolvedStyle().color.b, 0xfa);
+    expect(child.resolvedStyle().fontSize, 18);
+  });
+
+  test('legacy graphics colors consume the same concrete module style', () {
+    final m = _GraphicsModule()
+      ..cssStyle = const Style(
+        color: Color(20, 30, 40),
+        backgroundColor: Color(1, 2, 3),
+        borderColor: Color(50, 60, 70),
+        opacity: 0.5,
+      );
+
+    final ink = m.cssColor(const Color(255, 255, 255));
+    final border = m.cssColor(const Color(255, 255, 255), border: true);
+
+    expect(ink.r, 20);
+    expect(ink.a, 128);
+    expect(border.b, 70);
+    expect(border.a, 128);
+  });
+
+  test('every registered text module is owned by toolkit text rendering', () {
+    for (final name in availableModules) {
+      if (name == 'group/* (dynamic)') continue;
+      final module = createModule(name);
+      expect(module, isNotNull, reason: 'registry entry $name');
+      if (module == null || module.name == 'sni' || module.name == 'tray') {
+        continue;
+      }
+
+      final wrapper = ModuleWidget(module);
+      if (!module.showsGraphics) {
+        expect(
+          module.widget,
+          isA<TextRuns>(),
+          reason: '$name must render text through TextRuns',
+        );
+        expect(wrapper.children, hasLength(1));
+      }
+    }
   });
 }
 
@@ -128,4 +228,16 @@ class _GraphicsModule extends BarModule {
 
   @override
   double draw(Painter painter, double x, double y) => 12;
+}
+
+class _WidgetModule extends BarModule {
+  _WidgetModule(Widget initial) {
+    widget = initial;
+  }
+
+  @override
+  String get name => 'widget-test';
+
+  @override
+  double draw(Painter painter, double x, double y) => 0;
 }

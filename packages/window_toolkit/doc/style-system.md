@@ -170,3 +170,39 @@ only read concrete `resolvedStyle()` values (`color`, `backgroundColor`,
 widgets via `addClass(...)` / `styleId` so selectors like
 `.tooltip .calendar .today { color: … }` match through an explicit ancestry
 chain.
+
+### Popup and module controls
+
+The same cascade is available on popup and bar content. Current shared
+primitives consume the relevant surface properties directly:
+
+- `Button`, `TransportButton`, and `Slider` consume `color`,
+  `background-color`, `border-color`, `border-width`, `border-radius`, and
+  CSS padding where their geometry permits it.
+- `Card`, `Frame`, and `PainterWidget` consume the shared background, border,
+  radius, and surface styling path.
+- Bardash modules expose their module id and classes on real toolkit widgets,
+  so selectors can target `#network`, `#audio-popup .audio-action`, or
+  `.module:hover` without module-specific paint code.
+
+For example:
+
+```css
+#audio-popup {
+  background: #201f24;
+  border: 1px solid #5a5660;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+#audio-popup .audio-slider {
+  background-color: #3a3238;
+  color: #d9b27c;
+  border-color: #f5f1f3;
+}
+
+#audio-popup .audio-action:hover,
+#audio-popup .transport-button:hover {
+  background-color: #75665c;
+}
+```

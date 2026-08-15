@@ -4,6 +4,7 @@ import 'package:lualike/lualike.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
 import 'metrics.dart';
+import 'bar_text.dart';
 
 /// A reference to a Lua function defined in the config file.
 ///
@@ -29,7 +30,10 @@ class BardashConfig {
 
   /// Gap between top-level modules (see [BarMetrics.spacing]).
   int spacing = 2;
-  String iconFontFamily = 'Hack Nerd Font';
+
+  /// Optional icon family override. Empty (or `sans`) selects the first
+  /// installed Nerd/FontAwesome face, matching Waybar's practical fallback.
+  String iconFontFamily = '';
   Color backgroundColor = const Color(30, 30, 30);
 
   /// GTK-like CSS — mirrors waybar `style.css` (CssProvider load_from_path).
@@ -63,7 +67,13 @@ class BardashConfig {
     // window_toolkit font manager: UI + icon roles used by measure/draw.
     FontDatabase.instance.defaultPixelSize = metrics.fontSize;
     FontDatabase.instance.setRoleFamily(FontRole.ui, 'sans');
-    FontDatabase.instance.setRoleFamily(FontRole.icon, iconFontFamily);
+    final configuredIconFamily = iconFontFamily.trim();
+    final iconFamily =
+        configuredIconFamily.isEmpty ||
+            configuredIconFamily.toLowerCase() == 'sans'
+        ? BarText.resolveFamily(BarText.iconFamilyCandidates)
+        : configuredIconFamily;
+    FontDatabase.instance.setRoleFamily(FontRole.icon, iconFamily);
     FontDatabase.instance.setRoleFamily(FontRole.mono, 'monospace');
     // Emoji family is used directly by battery / volume modules.
     // Use Skia with default font manager + cache limits before registering
@@ -72,34 +82,9 @@ class BardashConfig {
     // The 8 MB font cache cap + periodic purge keep RSS bounded.
     try {
       FontDatabase.instance.useSkiaEngine();
-      // Try to register icon font file if present on system (like Waybar's
-      // FontAwesome/Nerd requirement). Mirrors Waybar's Pango fallback scan.
-      _tryRegisterIconFont(iconFontFamily);
     } catch (_) {
       // Tests / headless may only have bitmap.
     }
-  }
-
-  static void _tryRegisterIconFont(String family) {
-    const candidates = [
-      '/usr/share/fonts/TTF/HackNerdFont-Regular.ttf',
-      '/usr/share/fonts/TTF/Hack NF.ttf',
-      '/usr/share/fonts/OTF/HackNerdFont-Regular.otf',
-      '/usr/share/fonts/TTF/Font Awesome 6 Free-Solid-900.otf',
-      '/usr/share/fonts/OTF/FontAwesome.otf',
-      '/usr/share/fonts/truetype/font-awesome/fontawesome-webfont.ttf',
-      '/usr/share/fonts/TTF/NerdFonts/Hack/HackNerdFont-Regular.ttf',
-    ];
-    for (final path in candidates) {
-      final f = File(path);
-      if (f.existsSync()) {
-        try {
-          FontDatabase.instance.addApplicationFont(path);
-          break;
-        } catch (_) {}
-      }
-    }
-    // Also try family-named lookup — if already installed, no file needed.
   }
 
   static Future<BardashConfig> fromLua(String source) async {

@@ -23,16 +23,6 @@ This repo is a monorepo managed with Melos:
 ## Installation
 
 ```yaml
-# pubspec.yaml
-dependencies:
-  wayland:
-    git: https://github.com/your-account/dart_wayland.git
-    path: packages/wayland
-```
-
-Or if published on pub.dev:
-
-```yaml
 dependencies:
   wayland: ^1.0.0
 ```

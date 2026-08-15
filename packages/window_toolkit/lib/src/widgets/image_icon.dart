@@ -1,6 +1,7 @@
 import '../widget.dart';
 import '../drawing/color.dart';
 import '../painter/painter.dart';
+import '../style.dart';
 
 enum IconShape { circle, square, triangle }
 
@@ -20,8 +21,17 @@ class ImageIcon extends Widget {
   }
 
   @override
+  Style styleRole() => Style(
+    color: iconColor,
+    backgroundColor: const Color(0, 0, 0, 0),
+    borderColor: iconColor,
+    borderWidth: 0,
+  );
+
+  @override
   void draw(Painter canvas) {
-    final c = iconColor;
+    final style = resolvedStyle();
+    final c = styledColor(style.color, style);
     final cx = x + width ~/ 2;
     final cy = y + height ~/ 2;
 

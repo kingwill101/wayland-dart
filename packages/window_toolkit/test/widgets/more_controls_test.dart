@@ -11,7 +11,7 @@ void main() {
     final painter = RecordingPainter();
     sw.draw(painter);
 
-    expect(painter.commands.ofType<DrawRectCommand>(), hasLength(3));
+    expect(painter.commands.ofType<DrawRectCommand>(), hasLength(2));
     expect(painter.commands.ofType<DrawCircleCommand>(), hasLength(1));
     expect(sw.value, isFalse);
 

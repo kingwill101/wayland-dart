@@ -1,4 +1,5 @@
 import '../drawing/color.dart';
+import '../font/font.dart';
 import '../painter/painter.dart';
 import '../style.dart';
 import '../widget.dart';
@@ -37,6 +38,7 @@ class ProgressBar extends Widget {
     color: fillColor,
     backgroundColor: backgroundColor,
     borderColor: backgroundColor,
+    borderWidth: 0,
   );
 
   @override
@@ -45,27 +47,29 @@ class ProgressBar extends Widget {
     final clampedValue = value.clamp(min, max);
     final range = max - min;
 
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        y.toDouble(),
-        width.toDouble(),
-        height.toDouble(),
-      ),
-      Paint()..color = style.backgroundColor!,
-    );
+    drawStyledBox(canvas, style: style);
 
     if (range > 0 && clampedValue > min) {
       final fillWidth = ((clampedValue - min) * width ~/ range);
-      canvas.drawRect(
-        Rect.fromLTWH(
-          x.toDouble(),
-          y.toDouble(),
-          fillWidth.toDouble(),
-          height.toDouble(),
-        ),
-        Paint()..color = style.color,
+      final fillRect = Rect.fromLTWH(
+        x.toDouble(),
+        y.toDouble(),
+        fillWidth.toDouble(),
+        height.toDouble(),
       );
+      if (style.borderRadius > 0) {
+        canvas.drawRRect(
+          fillRect,
+          style.borderRadius,
+          style.borderRadius,
+          Paint()..color = styledColor(style.color, style),
+        );
+      } else {
+        canvas.drawRect(
+          fillRect,
+          Paint()..color = styledColor(style.color, style),
+        );
+      }
     }
 
     if (showText) {
@@ -76,11 +80,13 @@ class ProgressBar extends Widget {
       final text = '$percentage%';
       final textX = x + (width - text.length * 8) ~/ 2;
       final textY = y + (height - charHeight) ~/ 2;
-      canvas.drawText(
+      drawStyledText(
+        canvas,
         text,
         Offset(textX.toDouble(), textY.toDouble()),
+        style: style,
         color: style.color,
-        size: charHeight.toDouble(),
+        fallback: Font(pixelSize: charHeight.toDouble()),
       );
     }
   }

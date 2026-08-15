@@ -1,8 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:window_toolkit/window_toolkit.dart';
-
 import 'module.dart';
 
 /// Sway focused window title module.
@@ -49,11 +47,11 @@ class SwayWindowModule extends BarModule {
   @override
   void update() {
     try {
-      final result = Process.runSync(
-        _binary,
-        ['-t', 'get_tree', '--raw'],
-        runInShell: true,
-      );
+      final result = Process.runSync(_binary, [
+        '-t',
+        'get_tree',
+        '--raw',
+      ], runInShell: true);
       if (result.exitCode != 0) {
         output = 'N/A';
         return;
@@ -67,7 +65,8 @@ class SwayWindowModule extends BarModule {
       }
 
       _title = focused['name']?.toString() ?? '';
-      _appId = focused['app_id']?.toString() ??
+      _appId =
+          focused['app_id']?.toString() ??
           focused['window_properties']?['class']?.toString() ??
           '';
 
@@ -105,11 +104,5 @@ class SwayWindowModule extends BarModule {
       }
     }
     return null;
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    painter.drawText(output, Offset(x, y));
-    return painter.measureText(output).width;
   }
 }

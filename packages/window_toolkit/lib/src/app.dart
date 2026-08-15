@@ -1,8 +1,8 @@
 import 'dart:async' as async;
 import 'backend/backend.dart';
-import 'backend/connection.dart';
 import 'event_loop.dart';
 import 'mixins/event.dart';
+import 'platform/platform.dart';
 
 mixin EventReceiver {
   void onEvent(Event event) {}
@@ -15,7 +15,6 @@ class Application {
 
   final List<EventReceiver> _eventReceivers = [];
   final List<Backend> _backends = [];
-  final WaylandConnection connection = WaylandConnection();
   bool _running = false;
 
   Application._internal();
@@ -55,18 +54,17 @@ class Application {
   void _execTick() {
     if (!_running) return;
 
-    if (connection.isConnected) {
+    final connections = <PlatformConnection>{
+      for (final backend in _backends) backend.platformConnection,
+    };
+    for (final connection in connections) {
+      if (!connection.isConnected) continue;
       // Use scheduleMicrotask to re-dispatch immediately — this ensures
-      // Wayland polling happens BEFORE any VM service event processing.
+      // platform polling happens BEFORE any VM service event processing.
       // async.Timer.run posts to the event loop, which lets VM service
       // messages (profiler data) queue between iterations and delay the
       // next poll, causing the compositor to disconnect.
       connection.dispatch();
-      // If the Wayland socket died, stop running.
-      if (connection.isConnected && !connection.context.isConnected) {
-        _running = false;
-        return;
-      }
     }
     for (var backend in _backends) {
       if (!backend.isRunning) {
@@ -99,10 +97,15 @@ class Application {
   }
 
   void reset() {
+    final connections = <PlatformConnection>{
+      for (final backend in _backends) backend.platformConnection,
+    };
+    for (final connection in connections) {
+      connection.reset();
+    }
     _eventReceivers.clear();
     _backends.clear();
     _running = false;
-    connection.reset();
     EventLoop.instance.reset();
   }
 }

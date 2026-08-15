@@ -1,16 +1,16 @@
 name: window_toolkit
 description: Wayland window toolkit for Dart
-publish_to: none
 version: 1.0.0
+repository: https://github.com/kingwill101/wayland-dart
 resolution: workspace
 
 environment:
   sdk: ">=3.12.0 <4.0.0"
 
 dependencies:
-  wayland: any
-  gl: any
-  layout_engine: any
+  wayland: ^1.0.0
+  gl: ^1.0.0
+  layout_engine: ^0.1.0
   skia_dart:
     git:
       url: https://github.com/knopp/skia_dart.git

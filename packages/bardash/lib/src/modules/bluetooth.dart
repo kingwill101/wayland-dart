@@ -1,7 +1,4 @@
-import 'package:window_toolkit/window_toolkit.dart';
-
 import '../command.dart';
-import '../metrics.dart';
 import '../native/bluez.dart';
 import 'module.dart';
 
@@ -13,7 +10,6 @@ class BluetoothModule extends BarModule {
   @override
   String get name => 'bluetooth';
 
-  Color _color = const Color(180, 180, 180);
   BluezSnapshot _snap = const BluezSnapshot(
     powered: false,
     adapterName: '',
@@ -28,9 +24,6 @@ class BluetoothModule extends BarModule {
     format = resolveFormat(config, ' {device_count}', '');
     // Signal-driven; light poll only as fallback.
     interval = parseInt(config, 'interval', 30);
-    if (config.containsKey('color')) {
-      _color = parseColor(config['color']!);
-    }
     _listener = (s) {
       _snap = s;
       _apply();
@@ -52,9 +45,7 @@ class BluetoothModule extends BarModule {
     final icon = powered ? (count > 0 ? '' : '') : '';
     final power = powered ? 'on' : 'off';
 
-    final state = !powered
-        ? 'off'
-        : (count > 0 ? 'connected' : 'on');
+    final state = !powered ? 'off' : (count > 0 ? 'connected' : 'on');
     final fmt = resolveFormat(
       config,
       format.isNotEmpty ? format : ' {device_count}',
@@ -72,9 +63,7 @@ class BluetoothModule extends BarModule {
     tooltip = resolveTooltip(
       !powered
           ? 'Bluetooth off'
-          : (count == 0
-              ? 'Bluetooth on · no devices'
-              : 'Connected: $devices'),
+          : (count == 0 ? 'Bluetooth on · no devices' : 'Connected: $devices'),
       {
         'power': power,
         'device_count': '$count',
@@ -87,20 +76,6 @@ class BluetoothModule extends BarModule {
       _lastOut = output;
       requestRepaint?.call();
     }
-  }
-
-  @override
-  double measure(Painter painter) {
-    final font = Font.icon(pixelSize: BarMetrics.current.fontSize);
-    return painter.measureTextFont(output, font);
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    final font = Font.icon(pixelSize: BarMetrics.current.fontSize);
-    final color = _snap.powered ? _color : const Color(100, 100, 100);
-    painter.drawTextFont(output, Offset(x, y), font: font, color: color);
-    return painter.measureTextFont(output, font);
   }
 
   @override

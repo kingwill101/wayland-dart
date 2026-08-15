@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:window_toolkit/window_toolkit.dart';
 
-import '../metrics.dart';
 import 'module.dart';
 
 /// Custom command with sparkline graph.
@@ -128,53 +127,5 @@ class CustomGraphModule extends BarModule {
       output = 'ERR';
       _syncWidget();
     }
-  }
-
-  @override
-  double measure(Painter painter) {
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    final textWidth = painter.measureTextFont(output, font);
-    return textWidth + 4 + _graphWidth.toDouble();
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    final m = BarMetrics.current;
-    final font = Font.ui(pixelSize: m.fontSize);
-    final textColor = cssForeground ?? const Color(0xc8, 0xc8, 0xc8);
-    painter.drawTextFont(output, Offset(x, y), font: font, color: textColor);
-    final textWidth = painter.measureTextFont(output, font);
-
-    final graphX = x + textWidth + 4;
-    final glyphSize = m.fontSize.round();
-    final graphY =
-        y + (_graphHeight > glyphSize ? (_graphHeight - glyphSize) ~/ 2 : 0);
-
-    final minVal =
-        _fixedMin ??
-        (_history.isEmpty ? 0.0 : _history.reduce((a, b) => a < b ? a : b));
-    final maxVal =
-        _fixedMax ??
-        (_history.isEmpty ? 100.0 : _history.reduce((a, b) => a > b ? a : b));
-    final range = (maxVal - minVal).clamp(0.1, double.infinity);
-
-    if (_history.length >= 2) {
-      final paint = Paint()
-        ..color = _lineColor
-        ..style = PaintStyle.stroke
-        ..strokeWidth = 1.5;
-
-      final step = _graphWidth / _maxSamples;
-      for (int i = 1; i < _history.length; i++) {
-        final x1 = graphX + (i - 1) * step;
-        final x2 = graphX + i * step;
-        final y1 =
-            graphY + _graphHeight * (1 - (_history[i - 1] - minVal) / range);
-        final y2 = graphY + _graphHeight * (1 - (_history[i] - minVal) / range);
-        painter.drawLine(Offset(x1, y1), Offset(x2, y2), paint);
-      }
-    }
-
-    return graphX + _graphWidth - x;
   }
 }

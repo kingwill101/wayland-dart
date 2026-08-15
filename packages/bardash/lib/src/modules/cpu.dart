@@ -1,8 +1,5 @@
 import 'dart:io';
 
-import 'package:window_toolkit/window_toolkit.dart';
-
-import '../metrics.dart';
 import 'module.dart';
 
 /// CPU usage via /proc/stat.
@@ -39,7 +36,8 @@ class CpuModule extends BarModule {
   /// Returns null when there is no previous sample (first tick).
   static double? _percent(List<int> now, List<int> prev) {
     if (now.length < 5 || prev.length < 5) return null;
-    final totalDelta = (now[0] - prev[0]) +
+    final totalDelta =
+        (now[0] - prev[0]) +
         (now[1] - prev[1]) +
         (now[2] - prev[2]) +
         (now[3] - prev[3]) +
@@ -108,7 +106,9 @@ class CpuModule extends BarModule {
         final pct = had ? _percent(now, prev) : null;
         _prevCores[idx] = now;
         // Align core name so percentages line up in a monospace tooltip.
-        coreLines.add('${core[0].padRight(6)}${pct == null ? '--' : pct.toStringAsFixed(1)}%');
+        coreLines.add(
+          '${core[0].padRight(6)}${pct == null ? '--' : pct.toStringAsFixed(1)}%',
+        );
       }
 
       final coresText = coreLines.join('\n');
@@ -119,18 +119,5 @@ class CpuModule extends BarModule {
     } catch (_) {
       output = 'N/A';
     }
-  }
-
-  @override
-  double measure(Painter painter) {
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    return painter.measureTextFont(output, font);
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    painter.drawTextFont(output, Offset(x, y), font: font);
-    return painter.measureTextFont(output, font);
   }
 }

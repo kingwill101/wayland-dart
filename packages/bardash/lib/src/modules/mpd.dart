@@ -2,9 +2,7 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:ffi/ffi.dart';
-import 'package:window_toolkit/window_toolkit.dart';
 
-import '../metrics.dart';
 import '../native/ffigen_mpd.dart';
 import 'module.dart';
 
@@ -77,7 +75,9 @@ class MpdModule extends BarModule {
     final hostPtr = _host.toNativeUtf8();
     try {
       _conn = _lib!.mpd_connection_new(hostPtr.cast(), _port, 3000);
-      if (_conn == nullptr || _lib!.mpd_connection_get_error(_conn!) != mpd_error.MPD_ERROR_SUCCESS) {
+      if (_conn == nullptr ||
+          _lib!.mpd_connection_get_error(_conn!) !=
+              mpd_error.MPD_ERROR_SUCCESS) {
         _disconnect();
         return false;
       }
@@ -129,7 +129,9 @@ class MpdModule extends BarModule {
 
     final stateStr = state == mpd_state.MPD_STATE_PLAY
         ? 'play'
-        : state == mpd_state.MPD_STATE_PAUSE ? 'pause' : 'stop';
+        : state == mpd_state.MPD_STATE_PAUSE
+        ? 'pause'
+        : 'stop';
 
     _buildOutput(
       state: stateStr,
@@ -161,11 +163,10 @@ class MpdModule extends BarModule {
         return;
       }
 
-      final r = await Process.run(
-        'mpc',
-        ['status', '%artist%||%title%||%album%||%state%||%volume%'],
-        runInShell: false,
-      );
+      final r = await Process.run('mpc', [
+        'status',
+        '%artist%||%title%||%album%||%state%||%volume%',
+      ], runInShell: false);
       if (r.exitCode != 0) {
         output = 'mpd N/A';
         return;
@@ -216,25 +217,47 @@ class MpdModule extends BarModule {
   // ── Output builder ─────────────────────────────────────────────────
 
   void _buildOutput({
-    required String state, required int volumeMpd,
-    required int elapsed, required int total,
-    required String artist, required String title, required String album,
+    required String state,
+    required int volumeMpd,
+    required int elapsed,
+    required int total,
+    required String artist,
+    required String title,
+    required String album,
   }) {
     String fmt;
     if (state == 'play') {
       fmt = resolveFormat({'format': format}, format, '');
     } else if (state == 'pause') {
-      fmt = resolveFormat({'format': format, 'format-paused': format}, format, 'paused');
+      fmt = resolveFormat(
+        {'format': format, 'format-paused': format},
+        format,
+        'paused',
+      );
     } else {
-      fmt = resolveFormat({'format': format, 'format-stopped': ''}, format, 'stopped');
+      fmt = resolveFormat(
+        {'format': format, 'format-stopped': ''},
+        format,
+        'stopped',
+      );
     }
-    if (state == 'stop' && fmt == format) { output = ''; return; }
+    if (state == 'stop' && fmt == format) {
+      output = '';
+      return;
+    }
 
-    final icon = state == 'play' ? '\u25B6' : state == 'pause' ? '\u23F8' : '\u23F9';
+    final icon = state == 'play'
+        ? '\u25B6'
+        : state == 'pause'
+        ? '\u23F8'
+        : '\u23F9';
     var result = fmt
-        .replaceAll('{artist}', artist).replaceAll('{title}', title)
-        .replaceAll('{album}', album).replaceAll('{state}', state)
-        .replaceAll('{volume}', volumeMpd.toString()).replaceAll('{icon}', icon)
+        .replaceAll('{artist}', artist)
+        .replaceAll('{title}', title)
+        .replaceAll('{album}', album)
+        .replaceAll('{state}', state)
+        .replaceAll('{volume}', volumeMpd.toString())
+        .replaceAll('{icon}', icon)
         .replaceAll('{elapsed}', _fmtDur(elapsed))
         .replaceAll('{total}', _fmtDur(total));
     if (_maxLength > 0 && result.length > _maxLength) {
@@ -243,20 +266,6 @@ class MpdModule extends BarModule {
     output = result;
   }
 
-  String _fmtDur(int s) => '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}';
-
-  @override
-  double measure(Painter painter) {
-    if (output.isEmpty) return 0;
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    return painter.measureTextFont(output, font);
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    if (output.isEmpty) return 0;
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    painter.drawTextFont(output, Offset(x, y), font: font);
-    return painter.measureTextFont(output, font);
-  }
+  String _fmtDur(int s) =>
+      '${(s ~/ 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}';
 }

@@ -57,7 +57,10 @@ class QuicklinksModule extends CustomModule {
   void init(Map<String, String> config) {
     final c = Map<String, String>.from(config);
     c.putIfAbsent('exec', () => "echo '\u{f0c1}'");
-    c.putIfAbsent('on-click', () => "~/.config/ml4w/apps/ML4W_Hyprland_Settings-x86_64.AppImage");
+    c.putIfAbsent(
+      'on-click',
+      () => "~/.config/ml4w/apps/ML4W_Hyprland_Settings-x86_64.AppImage",
+    );
     super.init(c);
   }
 }

@@ -21,20 +21,20 @@ class Separator extends Widget {
     color: color,
     backgroundColor: const Color(0, 0, 0, 0),
     borderColor: color,
+    borderWidth: lineWidth.toDouble(),
   );
 
   @override
   void draw(Painter canvas) {
-    final lineColor = resolvedStyle().color;
-    final lineX = (x + margin).toDouble();
+    final style = resolvedStyle();
+    final lineColor = style.color;
+    final lineWidth = style.borderWidth > 0
+        ? style.borderWidth
+        : this.lineWidth.toDouble();
+    final lineX = (x + styledPaddingLeft(margin)).toDouble();
     canvas.drawRect(
-      Rect.fromLTWH(
-        lineX,
-        y.toDouble(),
-        lineWidth.toDouble(),
-        height.toDouble(),
-      ),
-      Paint()..color = lineColor,
+      Rect.fromLTWH(lineX, y.toDouble(), lineWidth, height.toDouble()),
+      Paint()..color = styledColor(lineColor, style),
     );
   }
 }

@@ -8,7 +8,7 @@
 ///
 /// Mirrors `Gtk::CssProvider` + `Gtk::StyleContext::add_provider_for_screen`.
 /// Supported properties follow the GTK3 CSS property catalog — see
-/// `docs/style-system.md` for the full list. Highlights:
+/// `doc/style-system.md` for the full list. Highlights:
 ///
 /// - colors: `color`, `background-color`, `border-*-color`, `outline-color`,
 ///   hex / `rgb()` / `rgba()` / named / `@define-color` symbolic colors
@@ -48,12 +48,33 @@ class CssRule {
   });
 }
 
+class _CompiledSelector {
+  final List<_CompiledSimpleSelector> parts;
+  const _CompiledSelector(this.parts);
+}
+
+class _CompiledSimpleSelector {
+  final String? type;
+  final List<String> ids;
+  final List<String> classes;
+  final List<String> pseudos;
+
+  const _CompiledSimpleSelector({
+    this.type,
+    this.ids = const [],
+    this.classes = const [],
+    this.pseudos = const [],
+  });
+}
+
 /// Parses CSS (or SCSS compiled to CSS) via `package:csslib` and exposes
 /// declarations grouped by selector. Supports ids (`#id`), classes (`.cls`),
 /// element names (`window`, `button`), pseudo-classes (`:hover`, `:active`,
 /// `.hidden`), and descendant combinators (`#workspaces button`).
 class CssProvider extends StyleProvider {
   final List<CssRule> _rules = [];
+  final Map<CssRule, List<_CompiledSelector>> _compiledSelectors = {};
+  final Map<CssRule, StylePatch> _rulePatches = {};
   final Map<String, Color> _namedColors = {}; // @define-color
   int _orderCounter = 0;
   String _rawCss = '';
@@ -91,10 +112,28 @@ class CssProvider extends StyleProvider {
 
   bool _parse(String cssText) {
     _rules.clear();
+    _compiledSelectors.clear();
+    _rulePatches.clear();
     _namedColors.clear();
     if (cssText.trim().isEmpty) return true;
+
+    // csslib does not know GTK's @define-color directive and reports a
+    // parser error even though it successfully parses the remaining rules.
+    // Extract the directive before handing the stylesheet to csslib so a
+    // valid GTK stylesheet is not rejected by loadFromPath().
+    final defineColor = RegExp(
+      r'@define-color\s+([a-zA-Z0-9_-]+)\s+([^;]+);',
+      caseSensitive: false,
+    );
+    final withoutDefinitions = cssText.replaceAllMapped(defineColor, (match) {
+      final name = match.group(1)!;
+      final value = match.group(2)!.trim();
+      final color = _parseCssColor(value);
+      if (color != null) _namedColors[name] = color;
+      return '';
+    });
     final errors = <css.Message>[];
-    final StyleSheet sheet = css.parse(cssText, errors: errors);
+    final StyleSheet sheet = css.parse(withoutDefinitions, errors: errors);
 
     for (final node in sheet.topLevels) {
       if (node is VarDefinitionDirective) {
@@ -148,15 +187,21 @@ class CssProvider extends StyleProvider {
       final spec = selectors
           .map(_specificityOf)
           .fold<int>(0, (a, b) => a > b ? a : b);
-      _rules.add(
-        CssRule(
-          selectors: selectors,
-          declarations: decls,
-          specificity: spec,
-          sourceOrder: _orderCounter++,
-        ),
+      final rule = CssRule(
+        selectors: selectors,
+        declarations: decls,
+        specificity: spec,
+        sourceOrder: _orderCounter++,
       );
+      _rules.add(rule);
+      _compiledSelectors[rule] = [
+        for (final selector in selectors) _compileSelector(selector),
+      ];
     }
+    _rules.sort((a, b) {
+      final bySpec = b.specificity.compareTo(a.specificity);
+      return bySpec != 0 ? bySpec : b.sourceOrder.compareTo(a.sourceOrder);
+    });
     return errors.isEmpty;
   }
 
@@ -177,24 +222,29 @@ class CssProvider extends StyleProvider {
 
   @override
   StylePatch styleFor(Widget widget, List<Widget> chain) {
-    final matched =
-        _rules
-            .where((r) => r.selectors.any((s) => _matchesSelector(s, chain)))
-            .toList()
-          ..sort((a, b) {
-            final bySpec = b.specificity.compareTo(a.specificity);
-            return bySpec != 0
-                ? bySpec
-                : b.sourceOrder.compareTo(a.sourceOrder);
-          });
-
     var resolved = StylePatch.empty;
-    for (final rule in matched) {
+    // Rules are sorted once per stylesheet load. Keeping this loop allocation
+    // free is important because styleFor is called for every widget on every
+    // uncached style state.
+    final ordered = _orderedRules;
+    for (final rule in ordered) {
+      final selectors = _compiledSelectors[rule] ??= [
+        for (final selector in rule.selectors) _compileSelector(selector),
+      ];
+      if (!selectors.any(
+        (selector) => _matchesCompiledSelector(selector, chain),
+      )) {
+        continue;
+      }
       // Highest specificity/order comes first; fill gaps so it wins.
-      resolved = resolved.fillFrom(_styleFromDecls(rule.declarations));
+      resolved = resolved.fillFrom(
+        _rulePatches[rule] ??= _styleFromDecls(rule.declarations),
+      );
     }
     return resolved;
   }
+
+  List<CssRule> get _orderedRules => _rules;
 
   /// Map CSS declaration strings onto typed [StylePatch] properties.
   StylePatch _styleFromDecls(Map<String, String> decls) {
@@ -603,19 +653,22 @@ class CssProvider extends StyleProvider {
   }
 
   String? _fontFamily(String v) {
-    final m = RegExp('["]([^"]*)["]').firstMatch(v);
-    if (m != null && m.group(1)!.isNotEmpty) return m.group(1);
-    final sq = RegExp("'[^']*'").firstMatch(v);
-    if (sq != null && sq.group(0)!.length > 2)
-      return sq.group(0)!.replaceAll("'", '');
-    // Take the last bare token (e.g. "Sans", "Comic Sans MS" without quotes).
     final parts = v
         .split(',')
         .map((p) => p.trim())
         .where((p) => p.isNotEmpty)
+        .map((p) {
+          if (p.length >= 2 &&
+              ((p.startsWith('"') && p.endsWith('"')) ||
+                  (p.startsWith("'") && p.endsWith("'")))) {
+            return p.substring(1, p.length - 1).trim();
+          }
+          return p;
+        })
+        .where((p) => p.isNotEmpty)
         .toList();
     if (parts.isEmpty) return null;
-    return parts.first.replaceAll('"', '').replaceAll("'", '');
+    return parts.join(', ');
   }
 
   ({double? x, double? y, double? blur, Color? color})? _boxShadow(String raw) {
@@ -734,25 +787,68 @@ class CssProvider extends StyleProvider {
   };
 }
 
-/// Matching helpers — handles:
-/// `window#waybar`, `#pulseaudio`, `.module`, `button:hover`,
-/// `#workspaces button`, `window#waybar.hidden`
-bool _matchesSelector(String selector, List<Widget> chain) {
-  final parts = selector
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((s) => s.isNotEmpty)
-      .toList();
-  if (parts.isEmpty) return false;
+_CompiledSelector _compileSelector(String selector) {
+  final parts = selector.trim().split(RegExp(r'\s+'));
+  return _CompiledSelector([
+    for (final part in parts)
+      if (part.isNotEmpty) _compileSimpleSelector(part),
+  ]);
+}
+
+_CompiledSimpleSelector _compileSimpleSelector(String part) {
+  String? type;
+  final ids = <String>[];
+  final classes = <String>[];
+  final pseudos = <String>[];
+  var i = 0;
+  if (i < part.length && _isSelectorNameStart(part.codeUnitAt(i))) {
+    final start = i++;
+    while (i < part.length && _isSelectorNamePart(part.codeUnitAt(i))) i++;
+    type = part.substring(start, i).toLowerCase();
+  }
+  while (i < part.length) {
+    final marker = part.codeUnitAt(i++);
+    final target = switch (marker) {
+      35 => ids, // #
+      46 => classes, // .
+      58 => pseudos, // :
+      _ => null,
+    };
+    if (target == null) continue;
+    final start = i;
+    while (i < part.length && _isSelectorNamePart(part.codeUnitAt(i))) i++;
+    if (i > start) target.add(part.substring(start, i));
+  }
+  return _CompiledSimpleSelector(
+    type: type,
+    ids: ids,
+    classes: classes,
+    pseudos: pseudos,
+  );
+}
+
+bool _isSelectorNameStart(int code) =>
+    (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+
+bool _isSelectorNamePart(int code) =>
+    _isSelectorNameStart(code) ||
+    (code >= 48 && code <= 57) ||
+    code == 45 ||
+    code == 95;
+
+bool _matchesCompiledSelector(_CompiledSelector selector, List<Widget> chain) {
+  if (selector.parts.isEmpty || chain.isEmpty) return false;
   var chainIdx = chain.length - 1;
-  var partIdx = parts.length - 1;
-  if (!_matchesSimple(parts[partIdx], chain[chainIdx])) return false;
+  var partIdx = selector.parts.length - 1;
+  if (!_matchesCompiledSimple(selector.parts[partIdx], chain[chainIdx])) {
+    return false;
+  }
   partIdx--;
   chainIdx--;
   while (partIdx >= 0) {
     var found = false;
     while (chainIdx >= 0) {
-      if (_matchesSimple(parts[partIdx], chain[chainIdx])) {
+      if (_matchesCompiledSimple(selector.parts[partIdx], chain[chainIdx])) {
         found = true;
         chainIdx--;
         break;
@@ -765,31 +861,19 @@ bool _matchesSelector(String selector, List<Widget> chain) {
   return true;
 }
 
-bool _matchesSimple(String part, Widget w) {
-  final ids = RegExp(
-    r'#([a-zA-Z0-9_-]+)',
-  ).allMatches(part).map((m) => m.group(1)!).toList();
-  final classes = RegExp(
-    r'\.([a-zA-Z0-9_-]+)',
-  ).allMatches(part).map((m) => m.group(1)!).toList();
-  final pseudos = RegExp(
-    r':([a-zA-Z0-9_-]+)',
-  ).allMatches(part).map((m) => m.group(1)!).toList();
-  final typeMatch = RegExp(r'^([a-zA-Z][a-zA-Z0-9_-]*)').firstMatch(part);
-  final type = typeMatch?.group(1);
-
+bool _matchesCompiledSimple(_CompiledSimpleSelector selector, Widget w) {
+  final type = selector.type;
   if (type != null && type != '*' && type != 'window') {
     final wType = _widgetTypeName(w);
-    if (wType != type && wType.toLowerCase() != type.toLowerCase())
-      return false;
+    if (wType != type && wType.toLowerCase() != type) return false;
   }
-  for (final id in ids) {
+  for (final id in selector.ids) {
     if (w.styleId != id) return false;
   }
-  for (final cls in classes) {
+  for (final cls in selector.classes) {
     if (!w.hasClass(cls)) return false;
   }
-  for (final pseudo in pseudos) {
+  for (final pseudo in selector.pseudos) {
     if (!w.hasPseudoClass(pseudo)) return false;
   }
   return true;

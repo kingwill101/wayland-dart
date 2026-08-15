@@ -43,6 +43,7 @@ class TransportButton extends Widget with Hoverable, HoverAnimated {
     color: iconColor,
     backgroundColor: backgroundColor,
     borderColor: backgroundColor,
+    borderWidth: 0,
     borderRadius: 7,
   );
 
@@ -58,18 +59,15 @@ class TransportButton extends Widget with Hoverable, HoverAnimated {
       'hover',
     ], local: StylePatch(backgroundColor: hoverColor));
     final fill = transitionHover(base.backgroundColor!, hover.backgroundColor!);
-    final rect = Rect.fromLTWH(
-      x.toDouble(),
-      y.toDouble(),
-      width.toDouble(),
-      height.toDouble(),
+    drawStyledBox(
+      canvas,
+      style: base.overlay(StylePatch(backgroundColor: fill)),
     );
-    canvas.drawRRect(rect, 7, 7, Paint()..color = fill);
 
     final cx = x + width / 2;
     final cy = y + height / 2;
     final ink = Paint()
-      ..color = base.color
+      ..color = styledColor(base.color, base)
       ..strokeWidth = 2;
     switch (action) {
       case TransportAction.previous:
@@ -83,11 +81,11 @@ class TransportButton extends Widget with Hoverable, HoverAnimated {
       case TransportAction.pause:
         canvas.drawRect(
           Rect.fromLTWH(cx - 6, cy - 7, 4, 14),
-          Paint()..color = base.color,
+          Paint()..color = styledColor(base.color, base),
         );
         canvas.drawRect(
           Rect.fromLTWH(cx + 2, cy - 7, 4, 14),
-          Paint()..color = base.color,
+          Paint()..color = styledColor(base.color, base),
         );
       case TransportAction.play:
         canvas.drawLine(Offset(cx - 5, cy - 8), Offset(cx + 7, cy), ink);

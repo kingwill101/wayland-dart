@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:window_toolkit/window_toolkit.dart';
-
 import 'module.dart';
 
 /// Logind idle inhibitor module.
@@ -39,11 +37,10 @@ class InhibitorModule extends BarModule {
   @override
   void update() {
     try {
-      final result = Process.runSync(
-        'systemd-inhibit',
-        ['--list', '--no-legend'],
-        runInShell: true,
-      );
+      final result = Process.runSync('systemd-inhibit', [
+        '--list',
+        '--no-legend',
+      ], runInShell: true);
 
       if (result.exitCode != 0) {
         output = '';
@@ -68,14 +65,5 @@ class InhibitorModule extends BarModule {
     } catch (_) {
       output = '';
     }
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    final color = _count > 0
-        ? const Color(0xff, 0xcc, 0x00) // yellow when inhibited
-        : const Color(0x80, 0x80, 0x80); // gray otherwise
-    painter.drawText(output, Offset(x, y), color: color);
-    return painter.measureText(output).width;
   }
 }

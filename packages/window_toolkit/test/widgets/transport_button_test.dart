@@ -25,4 +25,16 @@ void main() {
     expect(button.activate(), isTrue);
     expect(pressed, 1);
   });
+
+  test('TransportButton sends hover animation frames to its repaint owner', () {
+    var repaints = 0;
+    final button = TransportButton(TransportAction.play)
+      ..repaintCallback = () => repaints++;
+
+    button.setHovering(true);
+
+    expect(button.isHovered, isTrue);
+    expect(repaints, greaterThan(0));
+    button.dispose();
+  });
 }

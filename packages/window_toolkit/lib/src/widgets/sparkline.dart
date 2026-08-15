@@ -1,5 +1,6 @@
 import '../drawing/color.dart';
 import '../painter/painter.dart';
+import '../style.dart';
 import '../widget.dart';
 
 /// A compact line graph for time-series values.
@@ -36,25 +37,24 @@ class Sparkline extends Widget {
   }
 
   @override
+  Style styleRole() => Style(
+    color: lineColor,
+    backgroundColor: backgroundColor,
+    borderColor: lineColor,
+    borderWidth: 0,
+  );
+
+  @override
   void draw(Painter canvas) {
-    if (backgroundColor != null) {
-      canvas.drawRect(
-        Rect.fromLTWH(
-          x.toDouble(),
-          y.toDouble(),
-          width.toDouble(),
-          height.toDouble(),
-        ),
-        Paint()..color = backgroundColor!,
-      );
-    }
+    final style = resolvedStyle();
+    drawStyledBox(canvas, style: style);
     if (values.length < 2) return;
 
     final low = minValue ?? values.reduce((a, b) => a < b ? a : b);
     final high = maxValue ?? values.reduce((a, b) => a > b ? a : b);
     final range = (high - low).abs();
     final paint = Paint()
-      ..color = lineColor
+      ..color = styledColor(style.color, style)
       ..style = PaintStyle.stroke
       ..strokeWidth = strokeWidth;
     final divisor = (values.length - 1).toDouble();

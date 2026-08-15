@@ -64,6 +64,24 @@ void main() {
     expect(clicks, 1);
   });
 
+  test('widget host initializes controls added after the root was mounted', () {
+    final children = <Widget>[];
+    final root = Container(children: children);
+    final host = WidgetHostController(root);
+
+    // This mirrors a workspace refresh replacing the Button list after the
+    // bar has already attached its root to the window.
+    final button = Button('Workspace')..x = 0;
+    children.add(button);
+    host.layoutRoot(160, 40);
+
+    host.updateHover(4, 4);
+
+    expect(button.mounted, isTrue);
+    expect(button.isHovered, isTrue);
+    expect(button.hasPseudoClass('hover'), isTrue);
+  });
+
   test('widget host shares press, drag, release, and click routing', () {
     var clicks = 0;
     final button = _ProbeButton('Open', onPressed: () => clicks++);
@@ -85,6 +103,18 @@ void main() {
     host.dispatchMouseDown(4, 4, 272);
     host.dispatchMouseUp(4, 4, 272);
     expect(clicks, 1);
+  });
+
+  test('stationary pointer motion does not request another repaint', () {
+    final button = Button('Open');
+    final repaints = <int>[];
+    final host = WidgetHostController(button, onRepaint: () => repaints.add(1));
+    host.layoutRoot(120, 40);
+
+    expect(host.dispatchMouseMotion(4, 4), isTrue);
+    final afterEnter = repaints.length;
+    expect(host.dispatchMouseMotion(4, 4), isFalse);
+    expect(repaints.length, afterEnter);
   });
 
   test('widget host shares focus, keyboard, and activation routing', () {

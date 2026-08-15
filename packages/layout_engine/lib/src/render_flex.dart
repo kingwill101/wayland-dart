@@ -1,14 +1,19 @@
 /// Flex layout render objects: [RenderRow] and [RenderColumn].
 library;
 
-import 'dart:math' as math;
-
 import 'geometry.dart';
 import 'render_object.dart';
 import 'text_measure.dart';
 
 /// Main-axis alignment for flex layouts.
-enum MainAxisAlignment { start, end, center, spaceBetween, spaceAround, spaceEvenly }
+enum MainAxisAlignment {
+  start,
+  end,
+  center,
+  spaceBetween,
+  spaceAround,
+  spaceEvenly,
+}
 
 /// Cross-axis alignment for flex layouts.
 enum CrossAxisAlignment { start, end, center, stretch }
@@ -37,7 +42,7 @@ abstract class RenderFlex extends RenderBox {
     this.mainAxisAlignment = MainAxisAlignment.start,
     this.crossAxisAlignment = CrossAxisAlignment.start,
     this.mainAxisSize = MainAxisSize.min,
-  })  : assert(gap >= 0, 'RenderFlex gap must be >= 0');
+  }) : assert(gap >= 0, 'RenderFlex gap must be >= 0');
 
   bool get isRow;
 
@@ -81,7 +86,9 @@ abstract class RenderFlex extends RenderBox {
       } else {
         child.layout(childConstraintsForFlex(isFlex: false));
         totalFixed += child.size.width;
-        childData.add(_ChildData(child: child, flex: 0, width: child.size.width));
+        childData.add(
+          _ChildData(child: child, flex: 0, width: child.size.width),
+        );
       }
     }
 
@@ -119,13 +126,19 @@ abstract class RenderFlex extends RenderBox {
     if (mainAxisSize == MainAxisSize.max) {
       totalW = constraints.maxWidth;
     }
-    size = Size(totalW, maxH.clamp(constraints.minHeight, constraints.maxHeight));
+    size = Size(
+      totalW,
+      maxH.clamp(constraints.minHeight, constraints.maxHeight),
+    );
 
     // Phase 4: position children.
     var dx = _mainAxisStart(totalW);
     if (isRow) {
       for (final data in childData) {
-        data.child.offset = Offset(dx, _crossAxisOffset(data.child.size.height));
+        data.child.offset = Offset(
+          dx,
+          _crossAxisOffset(data.child.size.height),
+        );
         dx += (data.width ?? 0) + gap;
       }
     }
@@ -158,7 +171,9 @@ abstract class RenderFlex extends RenderBox {
       } else {
         child.layout(childConstraintsForFlex(isFlex: false));
         totalFixed += child.size.height;
-        childData.add(_ChildData(child: child, flex: 0, height: child.size.height));
+        childData.add(
+          _ChildData(child: child, flex: 0, height: child.size.height),
+        );
       }
     }
 
@@ -203,9 +218,7 @@ abstract class RenderFlex extends RenderBox {
   }
 
   double _mainAxisStart(double total) {
-    final available = isRow
-        ? constraints.maxWidth
-        : constraints.maxHeight;
+    final available = isRow ? constraints.maxWidth : constraints.maxHeight;
     final remaining = available - total;
     if (remaining <= 0) return 0;
     switch (mainAxisAlignment) {

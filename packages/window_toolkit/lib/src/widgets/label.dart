@@ -49,16 +49,33 @@ class Label extends Widget {
   }
 
   /// CSS `color` wins, then the explicit [color], then the palette text color.
-  Color get resolvedColor => resolvedStyle().color;
+  Color get resolvedColor {
+    final style = resolvedStyle();
+    return styledColor(style.color, style);
+  }
 
   @override
   StylePatch localOverrides() => StylePatch(color: color);
 
   Font get resolvedFont {
-    if (font != null) {
-      return FontDatabase.instance.resolveRequest(font!);
-    }
-    return Font(family: fontFamily, pixelSize: fontSize);
+    final base = font ?? Font(family: fontFamily, pixelSize: fontSize);
+    final css = widgetStyle;
+    final styled = Font(
+      family: css.fontFamily ?? base.family,
+      pixelSize: css.fontSize ?? base.pixelSize,
+      weight: css.fontWeight ?? base.weight,
+      italic: css.fontStyle == TextStyle.normal
+          ? false
+          : css.fontStyle == TextStyle.italic ||
+                css.fontStyle == TextStyle.oblique
+          ? true
+          : base.italic,
+      styleHint: base.styleHint,
+      // A CSS family is concrete and must not be replaced by the semantic
+      // role resolver (e.g. `Font.icon()`); it is the toolkit's font stack.
+      role: css.fontFamily == null ? base.role : null,
+    );
+    return FontDatabase.instance.resolveRequest(styled);
   }
 
   @override

@@ -16,6 +16,16 @@ class VBox extends Widget {
       children = children ?? [];
 
   void _ensureRenderTree() {
+    if (_renderChildren.length == children.length) {
+      var unchanged = true;
+      for (var i = 0; i < children.length; i++) {
+        if (!identical(_renderChildren[i].widget, children[i])) {
+          unchanged = false;
+          break;
+        }
+      }
+      if (unchanged) return;
+    }
     _renderColumn.children.clear();
     _renderChildren.clear();
     for (final child in children) {

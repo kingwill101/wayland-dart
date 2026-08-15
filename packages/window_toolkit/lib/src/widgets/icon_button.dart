@@ -55,34 +55,15 @@ class IconButton extends Widget with Hoverable, HoverAnimated {
       'hover',
     ], local: StylePatch(backgroundColor: hoverColor));
     final fill = transitionHover(base.backgroundColor!, hover.backgroundColor!);
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        y.toDouble(),
-        width.toDouble(),
-        height.toDouble(),
-      ),
-      Paint()..color = fill,
-    );
-
-    canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), 1),
-      Paint()..color = base.borderColor,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        (y + height - 1).toDouble(),
-        width.toDouble(),
-        1,
-      ),
-      Paint()..color = base.borderColor,
+    drawStyledBox(
+      canvas,
+      style: base.overlay(StylePatch(backgroundColor: fill)),
     );
 
     final cx = x + width ~/ 2;
     final cy = y + height ~/ 2;
     final half = iconSize ~/ 2;
-    final paint = Paint()..color = base.color;
+    final paint = Paint()..color = styledColor(base.color, base);
 
     switch (shape) {
       case IconShape.circle:

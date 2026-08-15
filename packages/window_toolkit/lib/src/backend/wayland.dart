@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:wayland/wayland.dart';
 
-import '../app.dart';
 import '../drawing/canvas.dart';
 import '../widget.dart';
 import '../mixins/event.dart';
@@ -10,12 +9,14 @@ import '../mixins/size.dart';
 import '../painter/painter.dart' hide Size;
 import '../painter/raw_painter.dart';
 import '../painter/skia_painter.dart';
+import '../platform/platform.dart';
 import 'backend.dart';
 import 'connection.dart';
+import 'wayland_surface.dart';
 
 class WaylandBackend with Size, Events implements Backend {
-  @override
-  final WaylandConnection connection = Application.instance.connection;
+  final WaylandConnection connection;
+  late final WaylandSurface _platformSurface;
   @override
   VoidCallback? onFrameReady;
   late Context context;
@@ -28,6 +29,12 @@ class WaylandBackend with Size, Events implements Backend {
   late WlSurface surface;
   late XdgSurface xdgSurface;
   late XdgToplevel xdgToplevel;
+
+  @override
+  PlatformConnection get platformConnection => connection;
+
+  @override
+  PlatformSurface get platformSurface => _platformSurface;
 
   WlShmPool? _pool;
   int _poolSize = 0;
@@ -45,11 +52,14 @@ class WaylandBackend with Size, Events implements Backend {
   @override
   Function()? onClose;
 
+  WaylandBackend({WaylandConnection? connection})
+    : connection = connection ?? WaylandConnection.shared;
+
   @override
   bool get isRunning => _running;
 
   @override
-  bool get canPaint => !_bufferBusy && connection.isConnected;
+  bool get canPaint => !_bufferBusy && platformConnection.isConnected;
 
   @override
   Future<void> init() async {
@@ -72,6 +82,7 @@ class WaylandBackend with Size, Events implements Backend {
       stderr.writeln('[wt] createSurface failed: $e');
       return WlSurface(context);
     });
+    _platformSurface = WaylandSurface(connection, surface);
 
     xdgSurface = xdgWmBase.getXdgSurface(surface).getOrElse((e) {
       stderr.writeln('[wt] getXdgSurface failed: $e');
@@ -87,7 +98,7 @@ class WaylandBackend with Size, Events implements Backend {
         _ensureBuffer();
         onConfigure?.call(width, height);
       } else {
-        surface.commit();
+        _platformSurface.commit();
       }
     });
 
@@ -117,7 +128,7 @@ class WaylandBackend with Size, Events implements Backend {
 
     xdgToplevel.setTitle('window-toolkit');
     xdgToplevel.setAppId('window-toolkit');
-    surface.commit();
+    _platformSurface.commit();
   }
 
   void _ensureBuffer() {
@@ -247,7 +258,7 @@ class WaylandBackend with Size, Events implements Backend {
             onFrameReady?.call();
           }
         });
-    surface.commit();
+    _platformSurface.commit();
     return true;
   }
 
@@ -268,7 +279,7 @@ class WaylandBackend with Size, Events implements Backend {
 
   @override
   void dispatchEvents() {
-    connection.dispatch();
+    platformConnection.dispatch();
   }
 
   @override
@@ -300,6 +311,7 @@ class WaylandBackend with Size, Events implements Backend {
   void destroy() {
     _buffer?.destroy();
     _pool?.destroy();
+    _platformSurface.destroy();
     closeFd(_fd);
     _buffer = null;
     _bufferNeedsRecreate = false;

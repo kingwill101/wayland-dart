@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:window_toolkit/window_toolkit.dart';
-
 import 'module.dart';
 
 class _CpuData {
@@ -55,7 +53,8 @@ class CpuUsageModule extends BarModule {
 
         final prev = _prevData[index];
         if (prev != null) {
-          final totalDelta = (user - prev.user) +
+          final totalDelta =
+              (user - prev.user) +
               (nice - prev.nice) +
               (system - prev.system) +
               (idle - prev.idle) +
@@ -90,19 +89,14 @@ class CpuUsageModule extends BarModule {
     for (var i = 0; i < 8; i++) {
       final usage = _coreUsage[i];
       result = result.replaceAll(
-          '{core$i}',
-          usage != null ? usage.toStringAsFixed(0) : '0');
+        '{core$i}',
+        usage != null ? usage.toStringAsFixed(0) : '0',
+      );
     }
 
     final icon = getIcon(_totalUsage.round(), ['', '', '', '']);
     result = result.replaceAll('{icon}', icon);
 
     output = result;
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    painter.drawText(output, Offset(x, y));
-    return painter.measureText(output).width;
   }
 }

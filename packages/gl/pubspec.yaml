@@ -1,6 +1,7 @@
 name: gl
 description: OpenGL/EGL FFI bindings for Dart
 version: 1.0.0
+repository: https://github.com/kingwill101/wayland-dart
 resolution: workspace
 
 environment:

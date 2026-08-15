@@ -1,6 +1,3 @@
-import 'package:window_toolkit/window_toolkit.dart';
-
-import '../metrics.dart';
 import '../native/upower_client.dart';
 import 'module.dart';
 
@@ -63,9 +60,7 @@ class UPowerModule extends BarModule {
         ? 'charging'
         : (b.state == UpDeviceState.fullyCharged ? 'full' : '');
     final fmt = resolveFormat(config, '{percentage}% {icon}', stateKey);
-    final icon = b.isCharging
-        ? '⚡'
-        : (pct <= 15 ? '🪫' : '🔋');
+    final icon = _iconFor(b.isCharging, pct);
 
     output = fmt
         .replaceAll('{percentage}', '$pct')
@@ -98,34 +93,9 @@ class UPowerModule extends BarModule {
     }
   }
 
-  @override
-  double measure(Painter painter) {
-    if (output.isEmpty) return 0;
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    return painter.measureTextFont(output, font);
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    if (output.isEmpty) return 0;
-    final m = BarMetrics.current;
-    final ui = Font.ui(pixelSize: m.fontSize);
-    // Split emoji if present for correct spacing.
-    final pct = _bat?.percentage.round().clamp(0, 100);
-    if (pct == null) {
-      painter.drawTextFont(output, Offset(x, y), font: ui);
-      return painter.measureTextFont(output, ui);
-    }
-    final emoji = Font(family: m.emojiFamily, pixelSize: m.fontSize);
-    final gap = m.iconTextGap.toDouble();
-    final cap = '$pct%';
-    final icon = _bat!.isCharging
-        ? '⚡'
-        : (pct <= 15 ? '🪫' : '🔋');
-    final capW = painter.measureTextFont(cap, ui);
-    final iconW = m.emojiLayoutWidth(painter.measureTextFont(icon, emoji));
-    painter.drawTextFont(cap, Offset(x, y), font: ui);
-    painter.drawTextFont(icon, Offset(x + capW + gap, y), font: emoji);
-    return capW + gap + iconW;
+  String _iconFor(bool charging, int percentage) {
+    if (charging) return '\u{f0e7}';
+    if (percentage <= 15) return '\u{f244}';
+    return '\u{f240}';
   }
 }

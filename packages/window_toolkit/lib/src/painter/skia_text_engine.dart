@@ -42,9 +42,36 @@ class SkiaTextEngine {
   SkTypeface _typefaceFor(String fontFamily) {
     return _typefaces.putIfAbsent(fontFamily, () {
       final mgr = _platformFontMgr;
-      return mgr?.matchFamilyStyle(fontFamily, SkFontStyle.normal()) ??
+      if (mgr == null) return SkTypeface.empty();
+      final candidates = _familyCandidates(fontFamily);
+      for (final family in candidates) {
+        final face = mgr.matchFamilyStyle(family, SkFontStyle.normal());
+        if (face != null && face.glyphCount > 0) return face;
+        face?.dispose();
+      }
+      return mgr.matchFamilyStyle('sans', SkFontStyle.normal()) ??
           SkTypeface.empty();
     });
+  }
+
+  /// Parse the CSS/GTK family-list form while keeping generic families as
+  /// valid Skia fallbacks (`sans-serif` is normalized by FontConfig/Skia).
+  static List<String> _familyCandidates(String value) {
+    final candidates = value
+        .split(',')
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .map((part) {
+          if (part.length >= 2 &&
+              ((part.startsWith('"') && part.endsWith('"')) ||
+                  (part.startsWith("'") && part.endsWith("'")))) {
+            return part.substring(1, part.length - 1).trim();
+          }
+          return part;
+        })
+        .where((part) => part.isNotEmpty)
+        .toList();
+    return candidates.isEmpty ? const ['sans'] : candidates;
   }
 
   SkFont _fontFor(String fontFamily, double size) {
@@ -68,6 +95,7 @@ class SkiaTextEngine {
       advance: shaped.advance,
       bounds: shaped.bounds,
       blob: shaped.blob,
+      drawOffsetY: shaped.drawOffsetY,
     );
 
     if (_shapeCache.length >= _maxCacheEntries) {
@@ -80,17 +108,15 @@ class SkiaTextEngine {
     return entry;
   }
 
-  ({SkTextBlob? blob, double advance, Rect bounds}) _shapeText(
-    String text, {
-    required double size,
-    String fontFamily = 'sans',
-  }) {
+  ({SkTextBlob? blob, double advance, Rect bounds, double drawOffsetY})
+  _shapeText(String text, {required double size, String fontFamily = 'sans'}) {
     final utf8Bytes = utf8.encode(text).length;
     if (utf8Bytes == 0) {
       return (
         blob: null,
         advance: 0,
         bounds: Rect.fromLTWH(0, -size * 0.8, 0, size),
+        drawOffsetY: 0,
       );
     }
 
@@ -98,6 +124,44 @@ class SkiaTextEngine {
 
     final font = _fontFor(fontFamily, size);
     _debugGlyphResolution(text, fontFamily, font);
+
+    // Nerd Font / Font Awesome glyphs live in private-use ranges. HarfBuzz's
+    // fallback iterator can resolve the codepoint to a valid glyph for
+    // measurement while the text-blob run handler still records the fallback
+    // tofu glyph. Use Skia's direct character-to-glyph path for an icon-only
+    // run. This keeps the decision in the shared toolkit text engine, so all
+    // painters (raster and Graphite/Dawn) render the same glyphs.
+    if (_isPrivateUseOnly(text)) {
+      try {
+        final measured = font.measureText(
+          SkEncodedText.string(text),
+          includeBounds: true,
+        );
+        final measuredBounds = measured.bounds;
+        final blob = SkTextBlob.makeFromString(text, font);
+        if (blob != null && measuredBounds != null) {
+          final top = measuredBounds.top;
+          final result = (
+            blob: blob,
+            advance: measured.advance,
+            bounds: Rect.fromLTRB(
+              measuredBounds.left,
+              0,
+              measuredBounds.right,
+              measuredBounds.bottom - top,
+            ),
+            drawOffsetY: -top,
+          );
+          font.dispose();
+          return result;
+        }
+        blob?.dispose();
+      } catch (_) {
+        // Fall through to the shaped path if this font cannot produce a
+        // direct blob (for example a bitmap/test font).
+      }
+    }
+
     // Typographic advance from SkFont — reliable. Shaper endPoint.x is often
     // stuck at 0 with harfbuzzShapeDontWrapOrReorder, and textblob bounds can
     // be ~2× wider than the real advance (caused huge bar module gaps).
@@ -163,7 +227,7 @@ class SkiaTextEngine {
       } else {
         bounds = Rect.fromLTWH(0, 0, advance, size);
       }
-      return (blob: blob, advance: advance, bounds: bounds);
+      return (blob: blob, advance: advance, bounds: bounds, drawOffsetY: 0);
     } finally {
       handler.dispose();
       languageIterator.dispose();
@@ -172,6 +236,18 @@ class SkiaTextEngine {
       fontIterator.dispose();
       font.dispose();
     }
+  }
+
+  static bool _isPrivateUseOnly(String text) {
+    if (text.isEmpty) return false;
+    for (final rune in text.runes) {
+      final privateUse =
+          (rune >= 0xE000 && rune <= 0xF8FF) ||
+          (rune >= 0xF0000 && rune <= 0xFFFFD) ||
+          (rune >= 0x100000 && rune <= 0x10FFFD);
+      if (!privateUse) return false;
+    }
+    return true;
   }
 
   void _debugGlyphResolution(String text, String family, SkFont font) {
@@ -216,7 +292,7 @@ class SkiaTextEngine {
 
     try {
       // Blob is owned by the cache — do not dispose after draw.
-      canvas.drawTextBlob(blob, x, y, paint);
+      canvas.drawTextBlob(blob, x, y + entry.drawOffsetY, paint);
     } finally {
       paint.dispose();
     }
@@ -276,11 +352,13 @@ class _ShapeCacheEntry {
   final double advance;
   final Rect bounds;
   final SkTextBlob? blob;
+  final double drawOffsetY;
 
   _ShapeCacheEntry({
     required this.advance,
     required this.bounds,
     required this.blob,
+    this.drawOffsetY = 0,
   });
 
   void dispose() {

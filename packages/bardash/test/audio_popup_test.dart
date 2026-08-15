@@ -1,8 +1,10 @@
 import 'package:test/test.dart';
+import 'package:window_toolkit/window_toolkit.dart';
 
 import '../lib/src/audio_popup.dart';
 import '../lib/src/modules/audio.dart';
 import '../lib/src/modules/registry.dart';
+import '../lib/src/native/mpris_client.dart';
 
 void main() {
   group('AudioPanelLayout', () {
@@ -146,6 +148,86 @@ void main() {
       // 'ERR' — but the format path never throws.
       module.update();
       expect(module.output, anyOf(startsWith('ERR'), contains('%')));
+    });
+  });
+
+  group('AudioPanelWidget', () {
+    tearDown(StyleContext.reset);
+
+    AudioPanelWidget buildPanel() => AudioPanelWidget(
+      onMute: () {},
+      onMicMute: () {},
+      onMixer: () {},
+      onPrevious: () {},
+      onPlayPause: () {},
+      onNext: () {},
+      onOutputChanged: (_) {},
+      onMicChanged: (_) {},
+    );
+
+    test('is composed from toolkit controls with stable CSS hooks', () {
+      final panel = buildPanel();
+
+      expect(panel.styleId, 'audio-popup');
+      expect(panel.hasClass('popup'), isTrue);
+      expect(panel.children, contains(panel.outputSlider));
+      expect(panel.children, contains(panel.playPauseButton));
+      expect(panel.children, contains(panel.mixerButton));
+      expect(panel.outputSlider, isA<Slider>());
+      expect(panel.outputSlider.min, 0);
+      expect(panel.outputSlider.max, 1);
+      expect(panel.muteButton, isA<Button>());
+      expect(panel.previousButton, isA<TransportButton>());
+    });
+
+    test('lays out controls inside the popup bounds', () {
+      final panel = buildPanel();
+      panel.performLayout(300);
+
+      for (final child in panel.children) {
+        expect(child.x, greaterThanOrEqualTo(0));
+        expect(child.y, greaterThanOrEqualTo(0));
+        expect(child.x + child.width, lessThanOrEqualTo(panel.width));
+        expect(child.y + child.height, lessThanOrEqualTo(panel.height));
+      }
+      expect(panel.outputSlider.width, greaterThan(panel.muteButton.width));
+      expect(panel.mixerButton.x, greaterThan(panel.micMuteButton.x));
+    });
+
+    test('descendant CSS reaches audio controls and hover states', () {
+      final css = CssProvider()
+        ..loadFromString('''
+          #audio-popup { background-color: #101820; border-radius: 16px; padding: 20px; }
+          #audio-popup .audio-action { background-color: #263849; padding: 10px 14px; }
+          #audio-popup .audio-action:hover { background-color: #405a72; }
+          #audio-popup .audio-slider { background-color: #202b35; color: #8bd5ca; border-color: #f5e0c0; }
+        ''');
+      StyleContext.addProvider(css, priority: StyleProviderPriority.user);
+
+      final panel = buildPanel();
+      panel.performLayout(300);
+
+      expect(panel.resolvedStyle().borderRadius, 16);
+      expect(panel.styledPaddingLeft(), 20);
+      expect(panel.muteButton.resolvedStyle().backgroundColor, isNotNull);
+      expect(panel.muteButton.resolvedStyle().backgroundColor!.r, 0x26);
+      expect(
+        panel.muteButton.resolvedStyleOn(const ['hover']).backgroundColor!.r,
+        0x40,
+      );
+      expect(panel.outputSlider.resolvedStyle().backgroundColor!.r, 0x20);
+      expect(panel.outputSlider.resolvedStyle().color.r, 0x8b);
+      expect(panel.outputSlider.resolvedStyle().borderColor.r, 0xf5);
+
+      panel.updateAudio(
+        output: 1,
+        muted: false,
+        mic: 0.5,
+        micMuted: false,
+        media: MprisSnapshot.empty,
+      );
+      expect(panel.outputSlider.value, 1);
+      expect(panel.outputValue.text, '100%');
     });
   });
 }

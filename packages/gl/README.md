@@ -49,3 +49,10 @@ are exported as top-level `int` constants.
 
 Low-level `EGL` and `GLES2` classes with raw FFI function pointers are also
 exported for advanced use cases.
+
+## Install
+
+```yaml
+dependencies:
+  gl: ^1.0.0
+```

@@ -1,13 +1,12 @@
 /// A click-to-open network panel for bardash.
 ///
 /// Shows connection details + live link throughput + quick actions.
-/// Surface plumbing mirrors `audio_popup.dart` (layer overlay + dismiss).
+/// Layer ownership and presentation are provided by the toolkit popup host.
 library;
 
 import 'dart:async' as dart_async;
 import 'dart:io';
 
-import 'package:wayland/wayland.dart';
 import 'package:window_toolkit/window_toolkit.dart';
 
 import 'native/network_manager.dart';
@@ -20,8 +19,8 @@ class NetworkPanelLayout {
   final int height;
 
   NetworkPanelLayout({int? width, int? height})
-      : width = width ?? 260,
-        height = height ?? 190;
+    : width = width ?? 260,
+      height = height ?? 190;
 
   static const pad = 12;
   static const rowH = 20;
@@ -30,10 +29,18 @@ class NetworkPanelLayout {
   int get btnW => ((width - pad * 3) / 2).round();
 
   Rect btnSpeedTest() => Rect.fromLTWH(
-      pad.toDouble(), (height - pad - btnH).toDouble(), btnW.toDouble(), btnH.toDouble());
+    pad.toDouble(),
+    (height - pad - btnH).toDouble(),
+    btnW.toDouble(),
+    btnH.toDouble(),
+  );
 
   Rect btnSettings() => Rect.fromLTWH(
-      (pad + btnW + pad).toDouble(), (height - pad - btnH).toDouble(), btnW.toDouble(), btnH.toDouble());
+    (pad + btnW + pad).toDouble(),
+    (height - pad - btnH).toDouble(),
+    btnW.toDouble(),
+    btnH.toDouble(),
+  );
 
   bool _inRect(Rect b, double x, double y) =>
       x >= b.left && x <= b.right && y >= b.top && y <= b.bottom;
@@ -42,11 +49,221 @@ class NetworkPanelLayout {
   bool hitSettings(double x, double y) => _inRect(btnSettings(), x, y);
 }
 
+/// Toolkit-owned network popup content. The overlay only handles placement;
+/// labels and actions remain ordinary widgets so CSS and hover state apply.
+class NetworkPanelWidget extends Widget {
+  final int panelWidth;
+  final int panelHeight;
+  final VoidCallback onSpeedTest;
+  final VoidCallback onSettings;
+
+  late final Label icon;
+  late final Label title;
+  late final Label interfaceLabel;
+  late final Label interfaceValue;
+  late final Label ipLabel;
+  late final Label ipValue;
+  late final Label signalLabel;
+  late final Label signalValue;
+  late final Label downloadLabel;
+  late final Label downloadValue;
+  late final Label uploadLabel;
+  late final Label uploadValue;
+  late final Separator divider;
+  late final Button speedTestButton;
+  late final Button settingsButton;
+
+  @override
+  late final List<Widget> children;
+
+  NetworkPanelWidget({
+    this.panelWidth = 260,
+    this.panelHeight = 190,
+    required this.onSpeedTest,
+    required this.onSettings,
+  }) {
+    styleId = 'network-popup';
+    addClass('popup');
+    addClass('network-popup');
+    icon = Label('󰖩', font: const Font.icon(pixelSize: 18))
+      ..styleId = 'network-icon'
+      ..addClass('network-icon');
+    title = Label('Network', fontSize: 15)
+      ..styleId = 'network-title'
+      ..addClass('popup-title');
+
+    interfaceLabel = _label('Interface', 'network-interface-label');
+    interfaceValue = _value('—', 'network-interface-value');
+    ipLabel = _label('IP', 'network-ip-label');
+    ipValue = _value('—', 'network-ip-value');
+    signalLabel = _label('Signal', 'network-signal-label');
+    signalValue = _value('—', 'network-signal-value');
+    downloadLabel = _label('↓', 'network-download-label');
+    downloadValue = _value('—', 'network-download-value')
+      ..addClass('network-download');
+    uploadLabel = _label('↑', 'network-upload-label');
+    uploadValue = _value('—', 'network-upload-value')
+      ..addClass('network-upload');
+    divider = Separator(lineWidth: 1, margin: 0)
+      ..styleId = 'network-divider'
+      ..addClass('network-divider');
+    speedTestButton = Button('Speed Test', onPressed: onSpeedTest, padding: 8)
+      ..styleId = 'network-speed-test'
+      ..addClass('network-action');
+    settingsButton = Button('Settings', onPressed: onSettings, padding: 8)
+      ..styleId = 'network-settings'
+      ..addClass('network-action');
+
+    children = [
+      icon,
+      title,
+      interfaceLabel,
+      interfaceValue,
+      ipLabel,
+      ipValue,
+      signalLabel,
+      signalValue,
+      downloadLabel,
+      downloadValue,
+      uploadLabel,
+      uploadValue,
+      divider,
+      speedTestButton,
+      settingsButton,
+    ];
+    speedTestButton.initState();
+    settingsButton.initState();
+  }
+
+  Label _label(String text, String id) => Label(text, fontSize: 12)
+    ..styleId = id
+    ..addClass('network-label');
+
+  Label _value(String text, String id) => Label(text, fontSize: 12)
+    ..styleId = id
+    ..addClass('network-value');
+
+  @override
+  Style styleRole() => Style(
+    color: const Color(235, 235, 240),
+    backgroundColor: const Color(30, 30, 34),
+    borderColor: const Color(80, 80, 90),
+    borderWidth: 1,
+    borderRadius: 10,
+  );
+
+  void update({
+    required NmSnapshot snapshot,
+    required String down,
+    required String up,
+  }) {
+    final ssid = snapshot.ssid.isNotEmpty
+        ? snapshot.ssid
+        : snapshot.connectionId;
+    title.text = ssid.isEmpty ? 'Network' : ssid;
+    icon.text = snapshot.type == 'ethernet' ? '󰈀' : '󰖩';
+    interfaceValue.text = snapshot.ifname.isEmpty ? '—' : snapshot.ifname;
+    ipValue.text = snapshot.ip4.isEmpty ? '—' : snapshot.ip4;
+    signalValue.text = snapshot.signal >= 0 ? '${snapshot.signal}%' : '—';
+    downloadValue.text = down;
+    uploadValue.text = up;
+  }
+
+  @override
+  void measure(Painter painter) {
+    for (final child in children) {
+      child.measure(painter);
+    }
+    width = panelWidth;
+    height = panelHeight;
+  }
+
+  @override
+  void performLayout(int containerWidth) {
+    width = panelWidth;
+    height = panelHeight;
+    final left = styledPaddingLeft(12);
+    final right = styledPaddingRight(12);
+    final inner = (width - left - right).clamp(1, width);
+
+    void place(Widget child, int px, int py, int pw, int ph) {
+      child
+        ..x = x + px
+        ..y = y + py
+        ..width = pw
+        ..height = ph;
+    }
+
+    place(icon, left, 8, 22, 22);
+    place(title, left + 28, 8, inner - 28, 22);
+    final rows = <(Label, Label)>[
+      (interfaceLabel, interfaceValue),
+      (ipLabel, ipValue),
+      (signalLabel, signalValue),
+      (downloadLabel, downloadValue),
+      (uploadLabel, uploadValue),
+    ];
+    for (var i = 0; i < rows.length; i++) {
+      final (label, value) = rows[i];
+      final py = 39 + i * 20;
+      place(label, left, py, inner ~/ 2, 18);
+      place(value, width - right - value.width, py, value.width, 18);
+    }
+    place(divider, left, 142, inner, 1);
+    final buttonY = height - styledPaddingBottom(12) - 24;
+    const buttonGap = 12;
+    final buttonWidth = ((inner - buttonGap) / 2).round();
+    place(speedTestButton, left, buttonY, buttonWidth, 24);
+    place(
+      settingsButton,
+      left + buttonWidth + buttonGap,
+      buttonY,
+      inner - buttonWidth - buttonGap,
+      24,
+    );
+  }
+
+  @override
+  void draw(Painter painter) {
+    drawStyledBox(painter);
+    for (final child in children) {
+      child.draw(painter);
+    }
+  }
+
+  List<Button> get buttons => [speedTestButton, settingsButton];
+
+  Button? buttonAt(int px, int py) {
+    for (final button in buttons.reversed) {
+      if (button.hitTest(px, py)) return button;
+    }
+    return null;
+  }
+
+  void updateButtonHover(int px, int py) {
+    for (final button in buttons) {
+      button.setHovering(button.hitTest(px, py));
+    }
+  }
+
+  @override
+  bool hitTest(int px, int py) {
+    if (!super.hitTest(px, py)) return false;
+    for (final child in children.reversed) {
+      if (child.hitTest(px, py)) return true;
+    }
+    return true;
+  }
+}
+
 class NetworkPopupController {
   static NetworkPopupOverlay? _active;
   static int _generation = 0;
 
-  static bool get isOpen => _active?.isOpen ?? false;
+  // Treat a popup that is still waiting for compositor configure as active.
+  // Otherwise a second click can destroy its surfaces while show() is
+  // suspended, and the first continuation observes null handles.
+  static bool get isOpen => _active != null;
 
   static void close() {
     _generation++;
@@ -55,7 +272,7 @@ class NetworkPopupController {
   }
 
   static Future<void> open({
-    required WaylandConnection connection,
+    required LayerPopupHost popupHost,
     required int anchorX,
     required int parentWidth,
     required int parentHeight,
@@ -66,14 +283,9 @@ class NetworkPopupController {
     _active?.destroy();
     _active = null;
 
-    if (connection.layerShell == null) {
-      stderr.writeln('[network] layer shell not available');
-      return;
-    }
-
     late final NetworkPopupOverlay overlay;
     overlay = NetworkPopupOverlay(
-      connection: connection,
+      popupHost: popupHost,
       anchorX: anchorX,
       parentWidth: parentWidth,
       parentHeight: parentHeight,
@@ -83,183 +295,147 @@ class NetworkPopupController {
       },
     );
     _active = overlay;
-    await overlay.show();
+    try {
+      await overlay.show();
+    } catch (e) {
+      stderr.writeln('[network] popup failed: $e');
+      overlay.destroy();
+      if (identical(_active, overlay)) _active = null;
+    }
+    if (identical(_active, overlay) && !overlay.isOpen) {
+      _active = null;
+    }
     if (gen != _generation) return;
   }
 }
 
-class NetworkPopupOverlay with EventReceiver {
-  final WaylandConnection connection;
+class NetworkPopupOverlay {
+  final LayerPopupHost popupHost;
   final int anchorX;
   final int parentWidth;
   final int parentHeight;
   final bool openUpward;
   final void Function()? onClosed;
 
-  WlSurface? _surface;
-  LayerSurfaceV1? _layer;
-  final List<WlShmPool?> _pools = [null, null];
-  final List<WlBuffer?> _buffers = [null, null];
-  final List<int> _fds = [-1, -1];
-  final List<bool> _busy = [false, false];
-  int _front = 0;
-  bool _needsPaint = false;
-  bool _paintScheduled = false;
-  bool _presenting = false;
-
-  WlSurface? _dismissSurface;
-  LayerSurfaceV1? _dismissLayer;
-  WlBuffer? _dismissBuffer;
-  WlShmPool? _dismissPool;
-  int _dismissFd = -1;
-  int _dismissW = 0;
-  int _dismissH = 0;
-
-  late final NetworkPanelLayout _layout;
+  LayerPopup? _popup;
+  late final NetworkPanelWidget _view;
+  late final void Function(NmSnapshot) _networkListener;
   bool _open = false;
-  int _openedAtMs = 0;
   dart_async.Timer? _tick;
 
   // Sizes.
   static const _w = 260;
   static const _h = 190;
 
-  // Colors (opaque, alpha 255).
-  static const _bg = Color(30, 30, 34);
-  static const _border = Color(80, 80, 90);
-  static const _text = Color(235, 235, 240);
-  static const _dim = Color(140, 140, 155);
-  static const _sep = Color(65, 65, 75);
-  static const _btn = Color(62, 70, 82);
-  static const _btnHover = Color(84, 96, 112);
-  static const _icon = Color(0x88, 0xc0, 0xd0);
-  static const _up = Color(0xa6, 0xd9, 0xa3);
-  static const _down = Color(0xbf, 0x61, 0x6a);
-
   NetworkPopupOverlay({
-    required this.connection,
+    required this.popupHost,
     required this.anchorX,
     this.parentWidth = 1920,
     this.parentHeight = 30,
     this.openUpward = true,
     this.onClosed,
   }) {
-    _layout = NetworkPanelLayout(width: _w, height: _h);
+    _view = NetworkPanelWidget(
+      panelWidth: _w,
+      panelHeight: _h,
+      onSpeedTest: _openSpeedTest,
+      onSettings: () {
+        _run('Settings', 'nm-connection-editor');
+        hide();
+      },
+    );
+    _networkListener = (_) {
+      _refreshView();
+      _scheduleRepaint();
+    };
+    _refreshView();
   }
 
   bool get isOpen => _open;
 
   Future<void> show() async {
-    final shell = connection.layerShell!;
-    if (!_createDismiss(shell)) {
-      stderr.writeln('[network] dismiss create failed');
-      destroy();
+    _popup = popupHost.create(
+      content: _view,
+      placement: BarPopupPlacement.forBar(
+        anchorX: anchorX,
+        parentWidth: parentWidth,
+        width: _w,
+        height: _h,
+        openUpward: openUpward,
+      ),
+      dismissPlacement: LayerSurfacePlacement(
+        anchors: {
+          LayerEdge.top,
+          LayerEdge.right,
+          LayerEdge.bottom,
+          LayerEdge.left,
+        },
+        width: 0,
+        height: 0,
+        marginTop: openUpward ? 0 : parentHeight,
+        marginBottom: openUpward ? parentHeight : 0,
+        exclusiveZone: -1,
+        keyboardMode: LayerKeyboardMode.none,
+      ),
+      background: const Color(0, 0, 0, 0),
+      onEvent: _handlePopupEvent,
+      onClosed: _onPopupClosed,
+    );
+    if (!await _popup!.show()) {
+      _popup = null;
       return;
     }
-    if (!_createLayer(shell)) {
-      stderr.writeln('[network] layer create failed');
-      destroy();
-      return;
-    }
-
-    _dismissSurface!.commit();
-    _surface!.commit();
-    final ok = await _waitConfigureAsync();
-    if (!ok) {
-      stderr.writeln('[network] configure timeout');
-      destroy();
-      return;
-    }
-
-    _mapDismiss();
-    _mapLayer();
 
     // Live snapshot + throughput refreshes.
-    NetworkManagerClient.instance.addListener((_) => _scheduleRepaint());
+    NetworkManagerClient.instance.addListener(_networkListener);
     _tick = dart_async.Timer.periodic(const Duration(seconds: 1), (_) {
       NetSpeed.sample();
+      _refreshView();
       _scheduleRepaint();
     });
 
     _open = true;
-    _openedAtMs = DateTime.now().millisecondsSinceEpoch;
-    Application.instance.removeEventReceiver(this);
-    Application.instance.prependEventReceiver(this);
-
     stderr.writeln('[network] open overlay $_w x $_h anchorX=$anchorX');
   }
 
   void hide() {
-    if (!_open && _surface == null && _dismissSurface == null) return;
+    if (!_open && _popup == null) return;
     _open = false;
-    Application.instance.removeEventReceiver(this);
-    _tick?.cancel();
-    _tick = null;
-    _teardown();
-    onClosed?.call();
+    _popup?.close();
   }
 
   void destroy() => hide();
 
-  @override
-  void onEvent(Event event) {
-    if (!_open) return;
-
-    final surf = connection.pointerSurfaceId;
-    final onLayer = surf != null && surf == _surface?.objectId;
-    final onDismiss = surf != null && surf == _dismissSurface?.objectId;
-    final age = DateTime.now().millisecondsSinceEpoch - _openedAtMs;
-
-    if (age < 200) {
-      if (onLayer || onDismiss) event.accept();
-      return;
+  bool _handlePopupEvent(LayerPopupEvent popupEvent) {
+    final event = popupEvent.event;
+    if (popupEvent.isOutside) {
+      if (popupEvent.isOutsideClick) hide();
+      return false;
     }
+    // Content input is routed by LayerPopup's shared WidgetHostController.
+    // Keeping this policy callback focused on dismissal prevents every
+    // popup from growing a second button/hover implementation.
+    return false;
+  }
 
-    if (event is KeyEvent && event.isPressed) {
-      if (event.key == 1 || event.character == '\x1b') {
-        hide();
-        event.accept();
-      }
-      return;
-    }
+  void _openSpeedTest() {
+    NetworkPopupController.close();
+    SpeedTestController.open(
+      popupHost: popupHost,
+      anchorX: anchorX,
+      parentWidth: parentWidth,
+      parentHeight: parentHeight,
+      openUpward: openUpward,
+    );
+  }
 
-    if (onDismiss) {
-      if (event is MouseButtonEvent && event.isPressed) hide();
-      event.accept();
-      return;
-    }
-
-    if (onLayer) {
-      if (event is MouseEnterEvent) {
-        event.accept();
-        return;
-      }
-      if (event is MouseButtonEvent && event.isPressed) {
-        final x = event.x;
-        final y = event.y;
-        if (_layout.hitSpeedTest(x, y)) {
-          NetworkPopupController.close();
-        SpeedTestController.open(
-          connection: connection,
-          anchorX: anchorX,
-          parentWidth: parentWidth,
-          parentHeight: parentHeight,
-          openUpward: openUpward,
-        );
-          hide();
-        } else if (_layout.hitSettings(x, y)) {
-          _run('Settings', 'nm-connection-editor');
-          hide();
-        } else {
-          hide();
-        }
-        event.accept();
-        return;
-      }
-      return;
-    }
-
-    if (event is MouseButtonEvent && event.isPressed) hide();
+  void _onPopupClosed() {
+    _open = false;
+    _popup = null;
+    NetworkManagerClient.instance.removeListener(_networkListener);
+    _tick?.cancel();
+    _tick = null;
+    onClosed?.call();
   }
 
   String? _resolveCommand(String cmd) {
@@ -284,362 +460,16 @@ class NetworkPopupOverlay with EventReceiver {
     }
   }
 
-  // ── Layer surface setup ────────────────────────────────────────
-
-  bool _createLayer(LayerShellV1 shell) {
-    _surface = connection.compositor.createSurface().getOrElse((e) {
-      stderr.writeln('[network] surface: $e');
-      return WlSurface(connection.context);
-    });
-    _layer = shell
-        .getLayerSurface(
-          _surface!,
-          connection.output,
-          LayerShellV1Layer.overlay.enumValue,
-          'bardash-network',
-        )
-        .getOrElse((e) {
-      stderr.writeln('[network] layer: $e');
-      return LayerSurfaceV1(connection.context);
-    });
-
-    final menuX = (anchorX - 8).clamp(4, parentWidth - _w - 4);
-    final preferRight = menuX + _w / 2 > parentWidth / 2;
-
-    if (openUpward) {
-      final bottom = parentHeight + 4;
-      if (preferRight) {
-        final right = (parentWidth - menuX - _w).clamp(0, parentWidth);
-        _layer!.setAnchor(LayerSurfaceV1Anchor.bottom.enumValue |
-            LayerSurfaceV1Anchor.right.enumValue);
-        _layer!.setMargin(0, right, bottom, 0);
-      } else {
-        _layer!.setAnchor(LayerSurfaceV1Anchor.bottom.enumValue |
-            LayerSurfaceV1Anchor.left.enumValue);
-        _layer!.setMargin(0, 0, bottom, menuX);
-      }
-    } else {
-      final top = parentHeight + 4;
-      if (preferRight) {
-        final right = (parentWidth - menuX - _w).clamp(0, parentWidth);
-        _layer!.setAnchor(LayerSurfaceV1Anchor.top.enumValue |
-            LayerSurfaceV1Anchor.right.enumValue);
-        _layer!.setMargin(top, right, 0, 0);
-      } else {
-        _layer!.setAnchor(LayerSurfaceV1Anchor.top.enumValue |
-            LayerSurfaceV1Anchor.left.enumValue);
-        _layer!.setMargin(top, 0, 0, menuX);
-      }
-    }
-
-    _layer!.setSize(_w, _h);
-    _layer!.setExclusiveZone(0);
-    _layer!.setKeyboardInteractivity(
-        LayerSurfaceV1KeyboardInteractivity.exclusive.enumValue);
-    _layer!.onConfigure((e) => _layer!.ackConfigure(e.serial));
-    _layer!.onClosed((_) => hide());
-    return true;
-  }
-
-  bool _createDismiss(LayerShellV1 shell) {
-    _dismissSurface = connection.compositor.createSurface().getOrElse((e) {
-      stderr.writeln('[network] dismiss surface: $e');
-      return WlSurface(connection.context);
-    });
-    _dismissLayer = shell
-        .getLayerSurface(
-          _dismissSurface!,
-          connection.output,
-          LayerShellV1Layer.overlay.enumValue,
-          'bardash-network-dismiss',
-        )
-        .getOrElse((e) {
-      stderr.writeln('[network] dismiss layer: $e');
-      return LayerSurfaceV1(connection.context);
-    });
-
-    _dismissLayer!.setAnchor(LayerSurfaceV1Anchor.top.enumValue |
-        LayerSurfaceV1Anchor.bottom.enumValue |
-        LayerSurfaceV1Anchor.left.enumValue |
-        LayerSurfaceV1Anchor.right.enumValue);
-    if (openUpward) {
-      _dismissLayer!.setMargin(0, 0, parentHeight, 0);
-    } else {
-      _dismissLayer!.setMargin(parentHeight, 0, 0, 0);
-    }
-    _dismissLayer!.setSize(0, 0);
-    _dismissLayer!.setExclusiveZone(-1);
-    _dismissLayer!.setKeyboardInteractivity(
-        LayerSurfaceV1KeyboardInteractivity.none.enumValue);
-    _dismissLayer!.onConfigure((e) {
-      _dismissLayer!.ackConfigure(e.serial);
-      if (e.width > 0 && e.height > 0) {
-        _dismissW = e.width;
-        _dismissH = e.height;
-      }
-    });
-    _dismissLayer!.onClosed((_) {});
-    return true;
-  }
-
-  Future<bool> _waitConfigureAsync() async {
-    final done = dart_async.Completer<void>();
-    var sawLayer = false;
-    var sawDismiss = false;
-    void tryComplete() {
-      if (sawLayer && sawDismiss && !done.isCompleted) done.complete();
-    }
-
-    _layer!.onConfigure((e) {
-      _layer!.ackConfigure(e.serial);
-      sawLayer = true;
-      tryComplete();
-    });
-    _dismissLayer!.onConfigure((e) {
-      _dismissLayer!.ackConfigure(e.serial);
-      if (e.width > 0 && e.height > 0) {
-        _dismissW = e.width;
-        _dismissH = e.height;
-      } else {
-        _dismissW = parentWidth.clamp(1, 7680);
-        _dismissH = 1440;
-      }
-      sawDismiss = true;
-      tryComplete();
-    });
-
-    try {
-      await done.future.timeout(const Duration(milliseconds: 500));
-      return true;
-    } on dart_async.TimeoutException {
-      return false;
-    }
-  }
-
-  void _mapLayer() {
-    final stride = _w * 4;
-    final slotSize = stride * _h;
-    for (var i = 0; i < 2; i++) {
-      final fd = createAnonymousFile(slotSize);
-      if (fd < 0) return;
-      _fds[i] = fd;
-      final pool = connection.shm.createPool(fd, slotSize).getOrElse((e) {
-        stderr.writeln('[network] pool $i: $e');
-        return WlShmPool(connection.context);
-      });
-      _pools[i] = pool;
-      final buf = pool.createBuffer(0, _w, _h, stride, 0).getOrElse((e) {
-        stderr.writeln('[network] buffer $i: $e');
-        return WlBuffer(connection.context);
-      });
-      final slot = i;
-      buf.onRelease((_) {
-        _busy[slot] = false;
-        if (_needsPaint && _open) _scheduleRepaint();
-      });
-      _buffers[i] = buf;
-      _busy[i] = false;
-    }
-    _front = 0;
-    _needsPaint = false;
-    _paintScheduled = false;
-    _presenting = false;
-    _present();
-  }
-
-  void _mapDismiss() {
-    var w = _dismissW;
-    var h = _dismissH;
-    if (w <= 0 || h <= 0) {
-      w = parentWidth.clamp(1, 7680);
-      h = 1440;
-      _dismissW = w;
-      _dismissH = h;
-    }
-    final stride = w * 4;
-    final size = stride * h;
-    _dismissFd = createAnonymousFile(size);
-    if (_dismissFd < 0) return;
-    _dismissPool = connection.shm.createPool(_dismissFd, size).getOrElse((e) {
-      stderr.writeln('[network] dismiss pool: $e');
-      return WlShmPool(connection.context);
-    });
-    _dismissBuffer =
-        _dismissPool!.createBuffer(0, w, h, stride, 0).getOrElse((e) {
-      stderr.writeln('[network] dismiss buffer: $e');
-      return WlBuffer(connection.context);
-    });
-    final painter = SkiaPainter(_dismissFd, w, h);
-    try {
-      painter.clear(const Color(0, 0, 0, 0));
-      painter.flush();
-    } finally {
-      painter.dispose();
-    }
-    _dismissSurface!.attach(_dismissBuffer!, 0, 0);
-    _dismissSurface!.damage(0, 0, w, h);
-    _dismissSurface!.commit();
-  }
-
   void _scheduleRepaint() {
-    _needsPaint = true;
-    if (_paintScheduled) return;
-    _paintScheduled = true;
-    dart_async.scheduleMicrotask(() {
-      _paintScheduled = false;
-      if (!_open || !_needsPaint) return;
-      _present();
-    });
+    _popup?.requestRepaint();
   }
 
-  void _present() {
-    if (_surface == null || _presenting) {
-      _needsPaint = true;
-      return;
-    }
-    _presenting = true;
-    try {
-      var slot = 1 - _front;
-      if (_busy[slot] || _buffers[slot] == null) slot = _front;
-      if (_busy[slot] || _buffers[slot] == null || _fds[slot] < 0) {
-        _needsPaint = true;
-        return;
-      }
-      _paintInto(_fds[slot]);
-      _busy[slot] = true;
-      _front = slot;
-      _needsPaint = false;
-      _surface!.attach(_buffers[slot]!, 0, 0);
-      _surface!.damage(0, 0, _w, _h);
-      _surface!.commit();
-    } finally {
-      _presenting = false;
-    }
-  }
-
-  void _paintInto(int fd) {
-    if (fd < 0) return;
-    final painter = SkiaPainter(fd, _w, _h);
-    try {
-      painter.clear(_bg);
-      painter.drawRRect(
-        Rect.fromLTWH(0, 0, _w.toDouble(), _h.toDouble()),
-        10,
-        10,
-        Paint()..color = _bg,
-      );
-      painter.drawRect(
-        Rect.fromLTWH(0.5, 0.5, _w - 1.0, _h - 1.0),
-        Paint()
-          ..color = _border
-          ..style = PaintStyle.stroke
-          ..strokeWidth = 1,
-      );
-
-      final snap = NetworkManagerClient.instance.last;
-      final ssid = snap.ssid.isNotEmpty ? snap.ssid : snap.connectionId;
-      final title = ssid.isEmpty ? 'Network' : ssid;
-      final iconGlyph = snap.type == 'ethernet' ? '󰈀' : '󰖩';
-      final lw = 12.0;
-
-      // Title row: icon + name.
-      final iconW = painter.measureTextBounds(iconGlyph, size: 18, fontFamily: 'sans').width;
-      painter.drawText(
-        iconGlyph,
-        Offset(NetworkPanelLayout.pad.toDouble(), 14),
-        color: _icon,
-        size: 18,
-      );
-      final titleB = painter.measureTextBounds(title, size: 15, fontFamily: 'sans');
-      painter.drawText(
-        title,
-        Offset(NetworkPanelLayout.pad + iconW + 6, TextLayout.baselineForBounds(14, 18, titleB)),
-        color: _text,
-        size: 15,
-      );
-
-      // Divider.
-      painter.drawRect(
-        Rect.fromLTWH(NetworkPanelLayout.pad.toDouble(), 36, _w - NetworkPanelLayout.pad * 2, 1),
-        Paint()..color = _sep,
-      );
-
-      // Info rows (centered via baseline).
-      final rows = <(String, String, Color)>[
-        ('Interface', snap.ifname.isEmpty ? '—' : snap.ifname, _dim),
-        ('IP', snap.ip4.isEmpty ? '—' : snap.ip4, _text),
-        if (snap.signal >= 0) ('Signal', '${snap.signal}%', _text),
-        ('↓', NetSpeed.formatRate(NetSpeed.downBps), _down),
-        ('↑', NetSpeed.formatRate(NetSpeed.upBps), _up),
-      ];
-      for (var i = 0; i < rows.length; i++) {
-        final y = 48 + i * NetworkPanelLayout.rowH;
-        final (label, value, valueColor) = rows[i];
-        final labelBase = TextLayout.baselineForBounds(y.toDouble(), 14, painter.measureTextBounds(label, size: lw, fontFamily: 'sans'));
-        painter.drawText(label, Offset(NetworkPanelLayout.pad.toDouble(), labelBase), color: _dim, size: lw);
-        final vBase = TextLayout.baselineForBounds(y.toDouble(), 14, painter.measureTextBounds(value, size: lw, fontFamily: 'sans'));
-        painter.drawText(value, Offset(_w - NetworkPanelLayout.pad - painter.measureTextBounds(value, size: lw, fontFamily: 'sans').width, vBase), color: valueColor, size: lw);
-      }
-
-      // Divider + action row.
-      painter.drawRect(
-        Rect.fromLTWH(NetworkPanelLayout.pad.toDouble(), 152, _w - NetworkPanelLayout.pad * 2, 1),
-        Paint()..color = _sep,
-      );
-      final bTop = (_h - NetworkPanelLayout.pad - NetworkPanelLayout.btnH).toDouble();
-      final bH = NetworkPanelLayout.btnH.toDouble();
-      final openBtn = _layout.btnSpeedTest();
-      painter.drawRRect(openBtn, 8, 8, Paint()..color = _btn);
-      final openLabel = 'Speed Test';
-      final openB = painter.measureTextBounds(openLabel, size: lw, fontFamily: 'sans');
-      painter.drawText(openLabel, Offset(openBtn.left + 10, TextLayout.baselineForBounds(bTop, bH, openB)), color: _text, size: lw);
-
-      final setBtn = _layout.btnSettings();
-      painter.drawRRect(setBtn, 8, 8, Paint()..color = _btnHover);
-      final setLabel = 'Settings';
-      final setB = painter.measureTextBounds(setLabel, size: lw, fontFamily: 'sans');
-      painter.drawText(setLabel, Offset(setBtn.left + 10, TextLayout.baselineForBounds(bTop, bH, setB)), color: _text, size: lw);
-
-      painter.flush();
-    } finally {
-      painter.dispose();
-    }
-  }
-
-  void _teardown() {
-    _needsPaint = false;
-    _paintScheduled = false;
-    _presenting = false;
-    for (var i = 0; i < 2; i++) {
-      _buffers[i]?.destroy();
-      _buffers[i] = null;
-      _pools[i]?.destroy();
-      _pools[i] = null;
-      if (_fds[i] >= 0) {
-        closeFd(_fds[i]);
-        _fds[i] = -1;
-      }
-      _busy[i] = false;
-    }
-    _front = 0;
-    _layer?.destroy();
-    _layer = null;
-    _surface?.destroy();
-    _surface = null;
-
-    _dismissBuffer?.destroy();
-    _dismissBuffer = null;
-    _dismissPool?.destroy();
-    _dismissPool = null;
-    if (_dismissFd >= 0) {
-      closeFd(_dismissFd);
-      _dismissFd = -1;
-    }
-    _dismissLayer?.destroy();
-    _dismissLayer = null;
-    _dismissSurface?.destroy();
-    _dismissSurface = null;
-    _dismissW = 0;
-    _dismissH = 0;
+  void _refreshView() {
+    final snapshot = NetworkManagerClient.instance.last;
+    _view.update(
+      snapshot: snapshot,
+      down: NetSpeed.formatRate(NetSpeed.downBps),
+      up: NetSpeed.formatRate(NetSpeed.upBps),
+    );
   }
 }

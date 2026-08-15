@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:window_toolkit/window_toolkit.dart';
-
 import '../command.dart';
 import 'module.dart';
 
@@ -35,9 +33,7 @@ class PulseaudioModule extends BarModule {
       _volume = result.$1;
       _muted = result.$2;
 
-      final icon = _muted
-          ? '󰝟'
-          : getIcon(_volume, ['', '', '']);
+      final icon = _muted ? '󰝟' : getIcon(_volume, ['', '', '']);
       output = format
           .replaceAll('{volume}', '$_volume')
           .replaceAll('{icon}', icon)
@@ -48,27 +44,32 @@ class PulseaudioModule extends BarModule {
   }
 
   (int, bool)? _runPactl() {
-    final volResult = Process.runSync(
-        'pactl', ['get-sink-volume', '@DEFAULT_SINK@'],
-        runInShell: true);
+    final volResult = Process.runSync('pactl', [
+      'get-sink-volume',
+      '@DEFAULT_SINK@',
+    ], runInShell: true);
     if (volResult.exitCode != 0) return null;
     final volOut = volResult.stdout as String;
     final volMatch = RegExp(r'(\d+)%').firstMatch(volOut);
     if (volMatch == null) return null;
     final volume = int.parse(volMatch.group(1)!);
 
-    final muteResult = Process.runSync(
-        'pactl', ['get-sink-mute', '@DEFAULT_SINK@'],
-        runInShell: true);
-    final muted = muteResult.exitCode == 0 &&
+    final muteResult = Process.runSync('pactl', [
+      'get-sink-mute',
+      '@DEFAULT_SINK@',
+    ], runInShell: true);
+    final muted =
+        muteResult.exitCode == 0 &&
         (muteResult.stdout as String).contains('Mute: yes');
 
     return (volume, muted);
   }
 
   (int, bool)? _runAmixer() {
-    final result = Process.runSync('amixer', ['get', 'Master'],
-        runInShell: true);
+    final result = Process.runSync('amixer', [
+      'get',
+      'Master',
+    ], runInShell: true);
     if (result.exitCode != 0) return null;
     final out = result.stdout as String;
     final volMatch = RegExp(r'\[(\d+)%\]').firstMatch(out);
@@ -76,12 +77,6 @@ class PulseaudioModule extends BarModule {
     final volume = int.parse(volMatch.group(1)!);
     final muted = out.contains('[off]');
     return (volume, muted);
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    painter.drawText(output, Offset(x, y));
-    return painter.measureText(output).width;
   }
 
   /// Wheel steps the default sink volume (±[scroll-step]%, default 5).
@@ -97,10 +92,16 @@ class PulseaudioModule extends BarModule {
       return;
     }
     final step = delta < 0 ? '+$_scrollStep%' : '-$_scrollStep%';
-    Process.run('pactl', ['set-sink-volume', '@DEFAULT_SINK@', step],
-        runInShell: false);
-    Process.run('pactl', ['set-sink-mute', '@DEFAULT_SINK@', '0'],
-        runInShell: false);
+    Process.run('pactl', [
+      'set-sink-volume',
+      '@DEFAULT_SINK@',
+      step,
+    ], runInShell: false);
+    Process.run('pactl', [
+      'set-sink-mute',
+      '@DEFAULT_SINK@',
+      '0',
+    ], runInShell: false);
     update();
   }
 }

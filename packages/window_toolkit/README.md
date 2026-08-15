@@ -4,6 +4,13 @@ A lightweight **Wayland client UI toolkit** for Dart. Build bars, panels, and
 simple desktop windows without Flutter — pure Dart over Wayland protocols
 (layer-shell, xdg-shell, subsurfaces).
 
+## Install
+
+```yaml
+dependencies:
+  window_toolkit: ^1.0.0
+```
+
 ## Features
 
 - **Layer shell bars** (`LayerWindow`) and **xdg toplevel windows**

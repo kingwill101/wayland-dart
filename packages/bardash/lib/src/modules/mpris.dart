@@ -1,6 +1,3 @@
-import 'package:window_toolkit/window_toolkit.dart';
-
-import '../metrics.dart';
 import '../native/mpris_client.dart';
 import 'module.dart';
 
@@ -14,7 +11,6 @@ class MprisModule extends BarModule {
   @override
   String get name => 'mpris';
 
-  Color _color = const Color(180, 180, 180);
   MprisSnapshot _snap = MprisSnapshot.empty;
   void Function(MprisSnapshot)? _listener;
   String _lastOut = '';
@@ -26,9 +22,6 @@ class MprisModule extends BarModule {
     format = resolveFormat(config, '{icon} {artist} - {title}', '');
     interval = parseInt(config, 'interval', 15);
     _maxLength = parseInt(config, 'max-length', 40);
-    if (config.containsKey('color')) {
-      _color = parseColor(config['color']!);
-    }
     _listener = (s) {
       _snap = s;
       _apply();
@@ -54,11 +47,7 @@ class MprisModule extends BarModule {
     final state = status == 'playing'
         ? ''
         : (status == 'paused' ? 'paused' : status);
-    final fmt = resolveFormat(
-      config,
-      '{icon} {artist} - {title}',
-      state,
-    );
+    final fmt = resolveFormat(config, '{icon} {artist} - {title}', state);
 
     final icon = switch (status) {
       'playing' => '',
@@ -95,21 +84,6 @@ class MprisModule extends BarModule {
       _lastOut = output;
       requestRepaint?.call();
     }
-  }
-
-  @override
-  double measure(Painter painter) {
-    if (output.isEmpty) return 0;
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    return painter.measureTextFont(output, font);
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    if (output.isEmpty) return 0;
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    painter.drawTextFont(output, Offset(x, y), font: font, color: _color);
-    return painter.measureTextFont(output, font);
   }
 
   @override

@@ -1,6 +1,5 @@
 import 'package:window_toolkit/window_toolkit.dart';
 
-import '../bar_text.dart';
 import '../command.dart';
 import '../native/power_profiles_client.dart';
 import 'module.dart';
@@ -56,7 +55,10 @@ class PowerProfilesModule extends BarModule {
     final profile = _snap.active;
     final fmt = resolveFormat(config, '{icon}', profile);
     // Use Nerd icon if Hack Nerd Font available, else fallback to text to avoid []
-    final hasNerd = FontDatabase.instance.families().any((f) => f.toLowerCase().contains('nerd') || f.toLowerCase().contains('hack'));
+    final hasNerd = FontDatabase.instance.families().any(
+      (f) =>
+          f.toLowerCase().contains('nerd') || f.toLowerCase().contains('hack'),
+    );
     final iconMap = hasNerd ? _icons : _fallbackIcons;
     output = fmt
         .replaceAll('{profile}', profile)
@@ -73,18 +75,6 @@ class PowerProfilesModule extends BarModule {
       _lastOut = output;
       requestRepaint?.call();
     }
-  }
-
-  @override
-  double measure(Painter painter) {
-    if (output.isEmpty) return 0;
-    return BarText.measure(painter, output);
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    if (output.isEmpty) return 0;
-    return BarText.draw(painter, output, x, y);
   }
 
   @override

@@ -1,4 +1,5 @@
 import '../drawing/color.dart';
+import '../font/font.dart';
 import '../interaction.dart';
 import '../mixins/hoverable.dart';
 import '../mixins/hover_animated.dart';
@@ -75,7 +76,7 @@ class RadioButton extends Widget with Hoverable, HoverAnimated {
       const ['hover'],
       local: StylePatch(
         backgroundColor: Color.blend(
-          backgroundColor,
+          base.backgroundColor!,
           const Color(255, 255, 255, 18),
         ),
       ),
@@ -105,18 +106,20 @@ class RadioButton extends Widget with Hoverable, HoverAnimated {
       canvas.drawCircle(
         Offset(cx.toDouble(), cy.toDouble()),
         (diameter / 3).toDouble(),
-        Paint()..color = base.color,
+        Paint()..color = styledColor(base.color, base),
       );
     }
 
-    canvas.drawText(
+    drawStyledText(
+      canvas,
       label,
       Offset(
-        (x + diameter + 8).toDouble(),
-        (y + (height - 16) ~/ 2).toDouble(),
+        (x + diameter + styledPaddingLeft(8)).toDouble(),
+        (y + (height - 16) ~/ 2 + styledPaddingTop()).toDouble(),
       ),
+      style: base,
       color: base.color,
-      size: 16,
+      fallback: const Font(pixelSize: 16),
     );
   }
 }

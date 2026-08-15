@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:wayland/wayland.dart';
 
-import '../app.dart';
 import '../drawing/canvas.dart';
 import '../drawing/skia_renderer.dart';
+import '../debug.dart';
 import '../mixins/event.dart';
 import '../mixins/size.dart';
 import '../painter/painter.dart' hide Size;
@@ -12,18 +12,22 @@ import '../painter/dawn_graphite_painter.dart';
 import '../painter/gles_painter.dart';
 import '../painter/raw_painter.dart';
 import '../painter/skia_painter.dart';
+import '../platform/platform.dart';
 import '../renderer.dart';
 import '../widget.dart';
 import '../window_behavior.dart';
+import '../widgets/layer_popup.dart';
 
 import 'backend.dart';
 import 'connection.dart';
+import 'wayland_surface.dart';
 
 enum Anchor { top, bottom, left, right }
 
 class LayerBackend with Size, Events implements Backend {
-  @override
-  final WaylandConnection connection = Application.instance.connection;
+  final WaylandConnection connection;
+  LayerPopupHost? _popupHost;
+  late final WaylandSurface _platformSurface;
   @override
   VoidCallback? onFrameReady;
   late Context context;
@@ -36,6 +40,18 @@ class LayerBackend with Size, Events implements Backend {
   LayerShellV1 get layerShell => connection.layerShell!;
   late WlSurface surface;
   late LayerSurfaceV1 layerSurface;
+
+  @override
+  PlatformConnection get platformConnection => connection;
+
+  @override
+  PlatformSurface get platformSurface => _platformSurface;
+
+  /// Toolkit-owned host for layer-shell popups associated with this window.
+  ///
+  /// The host is lazy because a layer window can be constructed before its
+  /// Wayland connection has been established.
+  LayerPopupHost get popupHost => _popupHost ??= LayerPopupHost(connection);
 
   WlShmPool? _pool;
   int _poolSize = 0;
@@ -69,14 +85,15 @@ class LayerBackend with Size, Events implements Backend {
   bool get isRunning => _running;
 
   @override
-  bool get canPaint => !_bufferBusy && connection.isConnected;
+  bool get canPaint => !_bufferBusy && platformConnection.isConnected;
 
   LayerBackend({
+    WaylandConnection? connection,
     this.anchor = Anchor.top,
     this.barHeight = 30,
     this.exclusiveZone = 30,
     this.namespace = 'wayland-toolkit',
-  });
+  }) : connection = connection ?? WaylandConnection.shared;
 
   @override
   Future<void> init() async {
@@ -123,6 +140,7 @@ class LayerBackend with Size, Events implements Backend {
       stderr.writeln('[wt] createSurface failed: $e');
       return WlSurface(context);
     });
+    _platformSurface = WaylandSurface(connection, surface);
 
     layerSurface = layerShell
         .getLayerSurface(
@@ -151,7 +169,7 @@ class LayerBackend with Size, Events implements Backend {
         onConfigure?.call(width, height);
       } else {
         stderr.writeln('[wt:layer] configure with zero size, just committing');
-        surface.commit();
+        _platformSurface.commit();
       }
     });
 
@@ -160,7 +178,7 @@ class LayerBackend with Size, Events implements Backend {
       onClose?.call();
     });
 
-    surface.commit();
+    _platformSurface.commit();
   }
 
   void _ensureBuffer() {
@@ -168,9 +186,11 @@ class LayerBackend with Size, Events implements Backend {
     final size = stride * height;
 
     if (_pool != null && size <= _poolSize) {
-      stderr.writeln(
-        '[wt:layer] _ensureBuffer: pool already sufficient (${_poolSize}B)',
-      );
+      if (toolkitDebugLogs) {
+        stderr.writeln(
+          '[wt:layer] _ensureBuffer: pool already sufficient (${_poolSize}B)',
+        );
+      }
       return;
     }
 
@@ -185,16 +205,20 @@ class LayerBackend with Size, Events implements Backend {
       return;
     }
 
-    stderr.writeln(
-      '[wt:layer] _ensureBuffer: allocating ${size}B buffer (${width}x$height)',
-    );
+    if (toolkitDebugLogs) {
+      stderr.writeln(
+        '[wt:layer] _ensureBuffer: allocating ${size}B buffer (${width}x$height)',
+      );
+    }
     _glesUnavailable = false;
     _skia?.dispose();
     _skia = null;
     _pool?.destroy();
     closeFd(_fd);
     _fd = createAnonymousFile(size);
-    stderr.writeln('[wt:layer] created anonymous file fd=$_fd size=$size');
+    if (toolkitDebugLogs) {
+      stderr.writeln('[wt:layer] created anonymous file fd=$_fd size=$size');
+    }
     _pool = shm.createPool(_fd, size).getOrElse((e) {
       stderr.writeln('[wt:layer] createPool failed: $e');
       return WlShmPool(context);
@@ -207,15 +231,17 @@ class LayerBackend with Size, Events implements Backend {
       return WlBuffer(context);
     });
     _buffer!.onRelease((_) {
-      stderr.writeln('[wt:layer] buffer released');
+      if (toolkitDebugLogs) stderr.writeln('[wt:layer] buffer released');
       _bufferBusy = false;
       if (_needsPaint) {
-        stderr.writeln('[wt:layer] deferred paint after buffer release');
+        if (toolkitDebugLogs) {
+          stderr.writeln('[wt:layer] deferred paint after buffer release');
+        }
         _needsPaint = false;
         onFrameReady?.call();
       }
     });
-    stderr.writeln('[wt:layer] buffer ready');
+    if (toolkitDebugLogs) stderr.writeln('[wt:layer] buffer ready');
   }
 
   void paintTo(Canvas canvas) {
@@ -231,9 +257,11 @@ class LayerBackend with Size, Events implements Backend {
     // Backend selection from WindowBehavior mixin, or auto by default.
     final wb = (this is WindowBehavior) ? this as WindowBehavior : null;
     final b = wb?.rendererBackend ?? RendererBackend.fromEnvironment();
-    stderr.writeln(
-      '[wt:layer] createPainter($width, $height) backend=$b fd=$_fd',
-    );
+    if (toolkitDebugLogs) {
+      stderr.writeln(
+        '[wt:layer] createPainter($width, $height) backend=$b fd=$_fd',
+      );
+    }
     switch (b) {
       case RendererBackend.gl:
         try {
@@ -255,7 +283,9 @@ class LayerBackend with Size, Events implements Backend {
         }
       case RendererBackend.dawn:
         try {
-          stderr.writeln('[wt:layer] using Dawn Graphite/Vulkan...');
+          if (toolkitDebugLogs) {
+            stderr.writeln('[wt:layer] using Dawn Graphite/Vulkan...');
+          }
           return DawnGraphitePainter(_fd, width, height);
         } catch (e) {
           stderr.writeln('[wt:layer] Dawn Graphite unavailable: $e');
@@ -264,7 +294,9 @@ class LayerBackend with Size, Events implements Backend {
       case RendererBackend.auto:
         if (!_glesUnavailable) {
           try {
-            stderr.writeln('[wt:layer] trying GlesPainter...');
+            if (toolkitDebugLogs) {
+              stderr.writeln('[wt:layer] trying GlesPainter...');
+            }
             final p = GlesPainter(_fd, width, height);
             if (!p.isHealthy) {
               p.dispose();
@@ -279,7 +311,9 @@ class LayerBackend with Size, Events implements Backend {
           }
         }
         try {
-          stderr.writeln('[wt:layer] trying SkiaPainter...');
+          if (toolkitDebugLogs) {
+            stderr.writeln('[wt:layer] trying SkiaPainter...');
+          }
           return SkiaPainter(_fd, width, height);
         } catch (e) {
           stderr.writeln('[wt:layer] SkiaPainter unavailable: $e');
@@ -291,7 +325,9 @@ class LayerBackend with Size, Events implements Backend {
 
   @override
   void paintWithPainter(Painter painter) {
-    stderr.writeln('[wt:layer] paintWithPainter width=$width height=$height');
+    if (toolkitDebugLogs) {
+      stderr.writeln('[wt:layer] paintWithPainter width=$width height=$height');
+    }
     painter.flush();
     if (!_present()) {
       stderr.writeln('[wt:layer] _present() returned false, scheduling retry');
@@ -325,9 +361,11 @@ class LayerBackend with Size, Events implements Backend {
       }
     }
 
-    stderr.writeln(
-      '[wt:layer] presenting buffer $_buffer size=${width}x$height',
-    );
+    if (toolkitDebugLogs) {
+      stderr.writeln(
+        '[wt:layer] presenting buffer $_buffer size=${width}x$height',
+      );
+    }
     _bufferBusy = true;
     surface.attach(_buffer!, 0, 0);
     surface.damageBuffer(0, 0, width, height);
@@ -339,22 +377,26 @@ class LayerBackend with Size, Events implements Backend {
           return WlCallback(context);
         })
         .onDone((_) {
-          stderr.writeln('[wt:layer] frame callback done');
+          if (toolkitDebugLogs) {
+            stderr.writeln('[wt:layer] frame callback done');
+          }
           if (_needsPaint) {
             _needsPaint = false;
             onFrameReady?.call();
           }
         });
 
-    surface.commit();
-    stderr.writeln('[wt:layer] surface committed');
+    _platformSurface.commit();
+    if (toolkitDebugLogs) stderr.writeln('[wt:layer] surface committed');
     return true;
   }
 
   @override
   void requestPaint() {
     if (!connection.isConnected) return;
-    stderr.writeln('[wt:layer] requestPaint bufferBusy=$_bufferBusy');
+    if (toolkitDebugLogs) {
+      stderr.writeln('[wt:layer] requestPaint bufferBusy=$_bufferBusy');
+    }
     if (_bufferBusy) {
       _needsPaint = true;
       return;
@@ -369,7 +411,7 @@ class LayerBackend with Size, Events implements Backend {
 
   @override
   void dispatchEvents() {
-    connection.dispatch();
+    platformConnection.dispatch();
   }
 
   @override
@@ -378,6 +420,7 @@ class LayerBackend with Size, Events implements Backend {
     _skia = null;
     _buffer?.destroy();
     _pool?.destroy();
+    _platformSurface.destroy();
     closeFd(_fd);
     _running = false;
   }

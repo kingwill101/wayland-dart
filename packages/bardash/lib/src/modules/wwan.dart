@@ -1,6 +1,3 @@
-import 'package:window_toolkit/window_toolkit.dart';
-
-import '../metrics.dart';
 import '../native/modem_manager_client.dart';
 import 'module.dart';
 
@@ -53,10 +50,12 @@ class WwanModule extends BarModule {
       return;
     }
 
-    final icon = getIcon(
-      _snap.signal,
-      ['\u{f1eb}', '\u{f1eb}', '\u{f1eb}', '\u{f1eb}'],
-    );
+    final icon = getIcon(_snap.signal, [
+      '\u{f1eb}',
+      '\u{f1eb}',
+      '\u{f1eb}',
+      '\u{f1eb}',
+    ]);
 
     output = format
         .replaceAll('{state}', _snap.state)
@@ -88,20 +87,5 @@ class WwanModule extends BarModule {
       _lastOut = output;
       requestRepaint?.call();
     }
-  }
-
-  @override
-  double measure(Painter painter) {
-    if (output.isEmpty) return 0;
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    return painter.measureTextFont(output, font);
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    if (output.isEmpty) return 0;
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    painter.drawTextFont(output, Offset(x, y), font: font);
-    return painter.measureTextFont(output, font);
   }
 }

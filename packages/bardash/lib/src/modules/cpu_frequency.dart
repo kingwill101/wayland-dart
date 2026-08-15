@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:window_toolkit/window_toolkit.dart';
-
 import 'module.dart';
 
 class CpuFrequencyModule extends BarModule {
@@ -24,9 +22,9 @@ class CpuFrequencyModule extends BarModule {
         return;
       }
 
-      final freqKhz = File('${cpuDir.path}/scaling_cur_freq')
-          .readAsStringSync()
-          .trim();
+      final freqKhz = File(
+        '${cpuDir.path}/scaling_cur_freq',
+      ).readAsStringSync().trim();
       final freqMhz = (int.tryParse(freqKhz) ?? 0) ~/ 1000;
 
       late final String minMhz;
@@ -34,26 +32,27 @@ class CpuFrequencyModule extends BarModule {
       late final String governor;
 
       try {
-        final minKhz = File('${cpuDir.path}/scaling_min_freq')
-            .readAsStringSync()
-            .trim();
+        final minKhz = File(
+          '${cpuDir.path}/scaling_min_freq',
+        ).readAsStringSync().trim();
         minMhz = ((int.tryParse(minKhz) ?? 0) ~/ 1000).toString();
       } catch (_) {
         minMhz = '?';
       }
 
       try {
-        final maxKhz = File('${cpuDir.path}/scaling_max_freq')
-            .readAsStringSync()
-            .trim();
+        final maxKhz = File(
+          '${cpuDir.path}/scaling_max_freq',
+        ).readAsStringSync().trim();
         maxMhz = ((int.tryParse(maxKhz) ?? 0) ~/ 1000).toString();
       } catch (_) {
         maxMhz = '?';
       }
 
       try {
-        governor =
-            File('${cpuDir.path}/scaling_governor').readAsStringSync().trim();
+        governor = File(
+          '${cpuDir.path}/scaling_governor',
+        ).readAsStringSync().trim();
       } catch (_) {
         governor = '?';
       }
@@ -66,11 +65,5 @@ class CpuFrequencyModule extends BarModule {
     } catch (_) {
       output = 'N/A';
     }
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    painter.drawText(output, Offset(x, y));
-    return painter.measureText(output).width;
   }
 }

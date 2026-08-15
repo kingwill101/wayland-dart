@@ -9,7 +9,10 @@ abstract class FakeBackendBase implements Backend, EventReceiver {
   Function()? _onClose;
 
   @override
-  WaylandConnection get connection => Application.instance.connection;
+  PlatformConnection get platformConnection => WaylandConnection.shared;
+
+  @override
+  PlatformSurface get platformSurface => throw UnimplementedError();
 
   @override
   bool get canPaint => true;

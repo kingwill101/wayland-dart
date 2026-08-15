@@ -53,8 +53,12 @@ class WidgetLayerWindow extends LayerWindow {
   void onMouseMotion(MouseMotionEvent event) {
     final host = _widgetHost;
     if (host == null) return;
-    host.dispatchMouseMotion(event.x.toInt(), event.y.toInt());
-    host.requestRepaint();
+    // Do not repaint for every pointer sample while the pointer remains over
+    // the same widget. Widget motion handlers request their own repaint when
+    // a drag/segment state actually changes.
+    if (host.dispatchMouseMotion(event.x.toInt(), event.y.toInt())) {
+      host.requestRepaint();
+    }
   }
 
   @override

@@ -77,43 +77,7 @@ class DecoratedBox extends Widget {
   void draw(Painter canvas) {
     // CSS (style system) overrides explicit / theme values, centrally.
     final st = resolvedStyle();
-    final bg = st.backgroundColor;
-    final rad = st.borderRadius;
-    final bw = st.borderWidth;
-    final bord = st.borderColor;
-
-    final rect = Rect.fromLTWH(
-      x.toDouble(),
-      y.toDouble(),
-      width.toDouble(),
-      height.toDouble(),
-    );
-    if (bg != null) {
-      if (rad > 0) {
-        canvas.drawRRect(rect, rad, rad, Paint()..color = bg);
-      } else {
-        canvas.drawRect(rect, Paint()..color = bg);
-      }
-    }
-    if (bw > 0) {
-      final borderPaint = Paint()
-        ..color = bord
-        ..style = PaintStyle.stroke
-        ..strokeWidth = bw;
-      if (rad > 0) {
-        canvas.drawRRect(
-          Rect.fromLTWH(x + bw / 2, y + bw / 2, width - bw, height - bw),
-          rad,
-          rad,
-          borderPaint,
-        );
-      } else {
-        canvas.drawRect(
-          Rect.fromLTWH(x + bw / 2, y + bw / 2, width - bw, height - bw),
-          borderPaint,
-        );
-      }
-    }
+    drawStyledBox(canvas, style: st);
     if (child != null) {
       child!
         ..x = x + padding

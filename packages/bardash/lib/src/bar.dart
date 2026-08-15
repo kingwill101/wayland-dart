@@ -1,4 +1,4 @@
-import 'dart:async' show scheduleMicrotask;
+import 'dart:async' as async;
 import 'dart:io';
 
 import 'package:window_toolkit/window_toolkit.dart';
@@ -36,6 +36,10 @@ class BardashBar extends WidgetLayerWindow {
 
   /// Coalesce timer-driven paints (many modules share 1–5s intervals).
   bool _paintScheduled = false;
+  static final bool _debugPaintLogs =
+      Platform.environment['BARDASH_DEBUG_RENDER'] == '1' ||
+      Platform.environment['WINDOW_TOOLKIT_DEBUG'] == '1' ||
+      Platform.environment['WAYLAND_DEBUG_RENDER'] == '1';
 
   BardashBar(this.config)
     : _layout = BarLayout(spacing: config.spacing),
@@ -186,11 +190,18 @@ class BardashBar extends WidgetLayerWindow {
     return (null, null);
   }
 
-  /// One paint per microtask turn — module timers often fire together.
+  /// Coalesce invalidations to the next frame window.
+  ///
+  /// A microtask is too aggressive here: a producer that continuously emits
+  /// state changes can schedule another paint before Wayland has released the
+  /// previous SHM buffer. That turns the bar into a paint/microtask loop and
+  /// starves pointer events. The toolkit's interactive controls still update
+  /// immediately on direct input; asynchronous/module invalidations are
+  /// limited to one queued frame.
   void schedulePaint() {
     if (_paintScheduled) return;
     _paintScheduled = true;
-    scheduleMicrotask(() {
+    async.Timer(const Duration(milliseconds: 16), () {
       _paintScheduled = false;
       paint();
     });
@@ -272,26 +283,37 @@ class BardashBar extends WidgetLayerWindow {
     _tooltip!.show(tip, x: tipX, y: tipY);
   }
 
-  void _updateHover(int px, int py) {
+  bool _updateHover(int px, int py) {
     final prev = _hovered;
-    if (prev != null) {
-      prev.widget.removePseudoClass('hover');
-      prev.widget.removeClass('hover');
-    }
-    if (prev != null) prev.module.hoverX = -1;
+    // Keep module-specific tooltip handling alongside the toolkit's canonical
+    // hover path.  This is important for widgets rebuilt after mount: the
+    // host initializes their Hoverable callbacks during layout, and then
+    // applies the state to the actual workspace/button child.
+    widgetHost.updateHover(px, py);
     final (hit, _) = _hitTestDeep(px, py);
 
     // Left every module (gap in bar or empty space).
     if (hit == null) {
+      final changed = prev != null || _activeTip != null;
       if (_hovered != null || _activeTip != null) {
+        prev?.widget.setInteractionState(WidgetState.hovered, false);
+        prev?.widget.removeClass('hover');
+        prev?.module.hoverX = -1;
         _hovered = null;
         _dismissTooltip();
       }
-      return;
+      return changed;
     }
-    // GTK-like :hover (waybar #pulseaudio:hover)
-    hit.widget.addPseudoClass('hover');
-    hit.widget.addClass('hover');
+    // GTK-like module :hover (waybar #pulseaudio:hover).  Child controls get
+    // their own canonical hover state from WidgetHostController above.
+    final moduleChanged = !identical(hit, prev);
+    if (moduleChanged) {
+      prev?.widget.setInteractionState(WidgetState.hovered, false);
+      prev?.widget.removeClass('hover');
+      prev?.module.hoverX = -1;
+      hit.widget.setInteractionState(WidgetState.hovered, true);
+      hit.widget.addClass('hover');
+    }
 
     hit.module.hoverX = px.toDouble();
     // Let multi-icon modules (tray) resolve tip text + icon anchor now.
@@ -304,14 +326,15 @@ class BardashBar extends WidgetLayerWindow {
     if (TrayMenuController.isOpen) {
       _hovered = hit;
       _dismissTooltip();
-      return;
+      return moduleChanged || _activeTip != null;
     }
 
     final tip = hit.module.tooltip;
     if (tip.isEmpty) {
+      final changed = moduleChanged || _activeTip != null;
       _hovered = hit;
       _dismissTooltip();
-      return;
+      return changed;
     }
 
     // Re-show when tray icon (anchor) changes even if title text matches.
@@ -320,32 +343,34 @@ class BardashBar extends WidgetLayerWindow {
         tip == _activeTip &&
         (_tooltip?.isVisible ?? false) &&
         _activeAnchorX == anchorKey) {
-      return;
+      return moduleChanged;
     }
 
     _hovered = hit;
     _activeAnchorX = anchorKey;
     _showTooltipFor(hit, tip);
+    return true;
   }
 
   @override
   void onMouseEnter(MouseEnterEvent event) {
     super.onMouseEnter(event);
-    _updateHover(event.x.toInt(), event.y.toInt());
-    schedulePaint();
+    if (_updateHover(event.x.toInt(), event.y.toInt())) schedulePaint();
   }
 
   @override
   void onMouseMotion(MouseMotionEvent event) {
     super.onMouseMotion(event);
-    _updateHover(event.x.toInt(), event.y.toInt());
-    schedulePaint();
+    if (_updateHover(event.x.toInt(), event.y.toInt())) schedulePaint();
   }
 
   @override
   void onMouseLeave(MouseLeaveEvent event) {
     super.onMouseLeave(event);
-    _hovered?.module.hoverX = -1;
+    final previous = _hovered;
+    previous?.widget.setInteractionState(WidgetState.hovered, false);
+    previous?.widget.removeClass('hover');
+    previous?.module.hoverX = -1;
     _hovered = null;
     _dismissTooltip();
     schedulePaint();
@@ -353,6 +378,12 @@ class BardashBar extends WidgetLayerWindow {
 
   @override
   void onMouseButtonPressed(MouseButtonEvent event) {
+    // Layer popups are separate overlay surfaces. Close the active one before
+    // handling a click on the bar itself so clicking Network while Audio is
+    // open is a single, deterministic close-and-open gesture.
+    if (event.isPressed && event.button == 0x110 && popupHost.hasActivePopup) {
+      popupHost.closeActivePopup();
+    }
     final (entry, hitWidget) = _hitTestDeep(event.x.toInt(), event.y.toInt());
 
     // Never show tooltips while interacting with buttons (esp. right-click menus).
@@ -471,9 +502,11 @@ class BardashBar extends WidgetLayerWindow {
 
   @override
   void draw(Painter painter) {
-    stderr.writeln(
-      '[bardash] draw() painter=$painter size=${painter.width.round()}x${painter.height.round()}',
-    );
+    if (_debugPaintLogs) {
+      stderr.writeln(
+        '[bardash] draw() painter=$painter size=${painter.width.round()}x${painter.height.round()}',
+      );
+    }
     // Wire overlay-capable modules (tray menu, audio panel) to the live
     // layer surface once it exists — driven by each module's
     // `needsPopupOverlay` flag, no per-module type checks.
@@ -481,7 +514,7 @@ class BardashBar extends WidgetLayerWindow {
       final module = e.module;
       if (module.needsPopupOverlay) {
         module.attachPopupOverlay(
-          connection,
+          popupHost,
           parentWidth: width,
           parentHeight: height,
           // Bottom bar → open overlays upward into the screen.
@@ -493,16 +526,20 @@ class BardashBar extends WidgetLayerWindow {
     // CSS background for window#waybar overrides config (Skia/Gles/Raw all via Painter)
     final styleBg = StyleContext.forWidget(_layout).parsedBackgroundColor;
     final bg = styleBg ?? config.backgroundColor;
-    stderr.writeln(
-      '[bardash] clearing with bg=$bg (style ${styleBg != null ? "CSS" : "config"})',
-    );
+    if (_debugPaintLogs) {
+      stderr.writeln(
+        '[bardash] clearing with bg=$bg (style ${styleBg != null ? "CSS" : "config"})',
+      );
+    }
     painter.clear(bg);
     // Measure before the shared host lays out Stack/Positioned/HBox. Module
     // widths are intrinsic and are not available during the host's first
     // layout pass.
     _layout.measure(painter);
     layoutWidgetRoot(painter.width.round(), painter.height.round());
-    stderr.writeln('[bardash] layout: ${_layout.width}x${_layout.height}');
+    if (_debugPaintLogs) {
+      stderr.writeln('[bardash] layout: ${_layout.width}x${_layout.height}');
+    }
     _layout.draw(painter);
     if (ModuleWidget.debugLayout) {
       for (final e in _entries) {
@@ -510,6 +547,6 @@ class BardashBar extends WidgetLayerWindow {
       }
       ModuleWidget.debugLayoutDone();
     }
-    stderr.writeln('[bardash] draw complete');
+    if (_debugPaintLogs) stderr.writeln('[bardash] draw complete');
   }
 }

@@ -16,6 +16,8 @@ import '../drawing/color.dart';
 import '../interaction.dart';
 import '../mixins/hoverable.dart';
 import '../mixins/hover_animated.dart';
+import '../style.dart';
+import '../style/style_patch.dart';
 import '../widget.dart';
 import 'label.dart';
 
@@ -85,48 +87,28 @@ class _CheckboxRender extends Widget with Hoverable, HoverAnimated {
   bool get acceptsFocus => true;
 
   @override
+  Style styleRole() => Style(
+    color: palette.text,
+    backgroundColor: palette.base,
+    borderColor: palette.mid,
+    borderRadius: 3,
+  );
+
+  @override
   void draw(Painter canvas) {
-    final outer = Rect.fromLTWH(
-      x.toDouble(),
-      y.toDouble(),
-      boxSize.toDouble(),
-      boxSize.toDouble(),
-    );
+    final base = resolvedStyle();
     final fill = transitionHover(
-      palette.base,
-      Color.blend(palette.base, const Color(255, 255, 255, 18)),
+      base.backgroundColor!,
+      Color.blend(base.backgroundColor!, const Color(255, 255, 255, 18)),
     );
-    canvas.drawRect(outer, Paint()..color = fill);
-    canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), boxSize.toDouble(), 1),
-      Paint()..color = palette.mid,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        (y + boxSize - 1).toDouble(),
-        boxSize.toDouble(),
-        1,
-      ),
-      Paint()..color = palette.mid,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), 1, boxSize.toDouble()),
-      Paint()..color = palette.mid,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        (x + boxSize - 1).toDouble(),
-        y.toDouble(),
-        1,
-        boxSize.toDouble(),
-      ),
-      Paint()..color = palette.mid,
+    drawStyledBox(
+      canvas,
+      style: base.overlay(StylePatch(backgroundColor: fill)),
     );
 
     if (checked) {
       final p = Paint()
-        ..color = palette.text
+        ..color = styledColor(base.color, base)
         ..strokeWidth = 2;
       canvas.drawLine(
         Offset(
@@ -154,6 +136,7 @@ class _CheckboxRender extends Widget with Hoverable, HoverAnimated {
 
     if (label.isNotEmpty) {
       final lbl = Label(label);
+      lbl.parent = this;
       lbl.x = x + boxSize + 4;
       lbl.y = y;
       lbl.draw(canvas);

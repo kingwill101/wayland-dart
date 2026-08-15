@@ -21,8 +21,40 @@ class _ProviderEntry {
   _ProviderEntry(this.provider);
 }
 
+class _ProviderStyleCache {
+  int epoch = -1;
+  List<Widget> chain = const [];
+  List<int> revisions = const [];
+  StylePatch? value;
+
+  bool matches(int currentEpoch, List<Widget> currentChain) {
+    if (value == null ||
+        epoch != currentEpoch ||
+        chain.length != currentChain.length) {
+      return false;
+    }
+    for (var i = 0; i < chain.length; i++) {
+      if (!identical(chain[i], currentChain[i]) ||
+          revisions[i] != currentChain[i].styleRevision) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void store(int currentEpoch, List<Widget> currentChain, StylePatch result) {
+    epoch = currentEpoch;
+    chain = List<Widget>.of(currentChain);
+    revisions = [for (final item in currentChain) item.styleRevision];
+    value = result;
+  }
+}
+
 class StyleContext {
   static final List<_ProviderEntry> _providers = [];
+  static final Expando<_ProviderStyleCache> _cache =
+      Expando<_ProviderStyleCache>();
+  static int _providerEpoch = 0;
 
   /// Register a [StyleProvider]; higher [priority] wins conflicting props.
   static void addProvider(StyleProvider provider, {int? priority}) {
@@ -32,6 +64,7 @@ class StyleContext {
     _providers.sort(
       (a, b) => a.provider.priority.compareTo(b.provider.priority),
     );
+    _providerEpoch++;
   }
 
   /// Mirrors `Gtk::StyleContext::add_provider_for_screen(screen, provider, priority)`.
@@ -42,17 +75,22 @@ class StyleContext {
     _providers.sort(
       (a, b) => a.provider.priority.compareTo(b.provider.priority),
     );
+    _providerEpoch++;
   }
 
   static void removeProvider(StyleProvider provider) {
     _providers.removeWhere((e) => identical(e.provider, provider));
+    _providerEpoch++;
   }
 
   static void removeProviderForScreen(StyleProvider provider) =>
       removeProvider(provider);
 
   /// For testing — clears all providers.
-  static void reset() => _providers.clear();
+  static void reset() {
+    _providers.clear();
+    _providerEpoch++;
+  }
 
   static List<StyleProvider> get providers =>
       List.unmodifiable(_providers.map((e) => e.provider));
@@ -83,11 +121,19 @@ class StyleContext {
 
   /// The merged, typed style from every provider (highest priority wins).
   StylePatch get style {
+    return _providerStyle(widget, chain);
+  }
+
+  static StylePatch _providerStyle(Widget widget, List<Widget> chain) {
+    final cached = _cache[widget] ??= _ProviderStyleCache();
+    if (cached.matches(_providerEpoch, chain)) return cached.value!;
+
     var resolved = StylePatch.empty;
     // Providers sorted low->high; higher applied later so it overrides.
     for (final entry in _providers) {
       resolved = resolved.apply(entry.provider.styleFor(widget, chain));
     }
+    cached.store(_providerEpoch, chain, resolved);
     return resolved;
   }
 
@@ -132,11 +178,12 @@ class StyleContext {
       }
     }
 
-    var merged = StylePatch.empty;
     final providerChain = _chainFromParents(widget);
-    for (final entry in _providers) {
-      merged = merged.apply(entry.provider.styleFor(widget, providerChain));
-    }
+    // Temporary pseudo-state is intentionally not cached: the revision while
+    // it is applied is transient and would otherwise poison the normal state.
+    final merged = pseudos.isEmpty
+        ? _providerStyle(widget, providerChain)
+        : _mergeProviders(widget, providerChain);
 
     if (applied != null) {
       for (final p in applied) {
@@ -146,7 +193,47 @@ class StyleContext {
     }
 
     // role → widget-local override → providers (CSS) last (highest).
-    return role.overlay(local).overlay(merged);
+    final concrete = role.overlay(local).overlay(merged);
+
+    // GTK/Pango-style inherited properties. A module often owns a composite
+    // widget tree (label + graph/slider), while its CSS selector is attached
+    // to the module wrapper. Let descendants inherit text-facing properties
+    // without leaking the parent's surface/background into every child.
+    final parent = widget.parent;
+    if (parent == null) return concrete;
+    final parentStyle = resolveStyle(
+      parent,
+      role: parent.styleRole(),
+      local: parent.localOverrides(),
+    );
+    return concrete.overlay(
+      StylePatch(
+        color: local.color == null && merged.color == null
+            ? parentStyle.color
+            : null,
+        fontFamily: local.fontFamily == null && merged.fontFamily == null
+            ? parentStyle.fontFamily
+            : null,
+        fontSize: local.fontSize == null && merged.fontSize == null
+            ? parentStyle.fontSize
+            : null,
+        letterSpacing:
+            local.letterSpacing == null && merged.letterSpacing == null
+            ? parentStyle.letterSpacing
+            : null,
+        opacity: local.opacity == null && merged.opacity == null
+            ? parentStyle.opacity
+            : null,
+      ),
+    );
+  }
+
+  static StylePatch _mergeProviders(Widget widget, List<Widget> chain) {
+    var merged = StylePatch.empty;
+    for (final entry in _providers) {
+      merged = merged.apply(entry.provider.styleFor(widget, chain));
+    }
+    return merged;
   }
 
   // GTK-style helpers used by waybar modules.

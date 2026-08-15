@@ -38,7 +38,7 @@ class AudioModule extends BarModule {
   @override
   bool get needsPopupOverlay => true;
 
-  WaylandConnection? _connection;
+  LayerPopupHost? _popupHost;
   int _parentWidth = 1920;
   int _parentHeight = 30;
   bool _openUpward = true;
@@ -55,12 +55,12 @@ class AudioModule extends BarModule {
   /// create its own overlay surfaces on the same connection.
   @override
   void attachPopupOverlay(
-    WaylandConnection connection, {
+    LayerPopupHost popupHost, {
     int parentWidth = 1920,
     int parentHeight = 30,
     bool openUpward = true,
   }) {
-    _connection = connection;
+    _popupHost = popupHost;
     _parentWidth = parentWidth;
     _parentHeight = parentHeight;
     _openUpward = openUpward;
@@ -259,8 +259,8 @@ class AudioModule extends BarModule {
       return;
     }
     if (button == 0x111) return; // right-click handled by bar (on-click-right)
-    final connection = _connection;
-    if (connection == null) {
+    final popupHost = _popupHost;
+    if (popupHost == null) {
       // No layer connection (headless / early): fallback to pactl mute toggle.
       final arg = _muted ? '0' : '1';
       Process.runSync('pactl', [
@@ -275,7 +275,7 @@ class AudioModule extends BarModule {
       AudioPopupController.close();
     } else {
       AudioPopupController.open(
-        connection: connection,
+        popupHost: popupHost,
         anchorX: hoverX.round(),
         parentWidth: _parentWidth,
         parentHeight: _parentHeight,

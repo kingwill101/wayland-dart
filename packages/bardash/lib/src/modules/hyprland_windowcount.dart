@@ -1,5 +1,3 @@
-import 'package:window_toolkit/window_toolkit.dart';
-
 import '../native/hyprland_ipc.dart' as ipc;
 import 'module.dart';
 
@@ -21,7 +19,10 @@ class HyprlandWindowCountModule extends BarModule {
   @override
   void update() {
     final ws = ipc.hyprctl('activeworkspace');
-    if (ws is! Map) { output = ''; return; }
+    if (ws is! Map) {
+      output = '';
+      return;
+    }
 
     _workspaceName = ws['name']?.toString() ?? '';
     _count = ws['windows'] as int? ?? 0;
@@ -31,12 +32,5 @@ class HyprlandWindowCountModule extends BarModule {
         .replaceAll('{count}', _count.toString())
         .replaceAll('{icon}', icon)
         .replaceAll('{workspace}', _workspaceName);
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    if (output.isEmpty) return 0;
-    painter.drawText(output, Offset(x, y));
-    return painter.measureText(output).width;
   }
 }

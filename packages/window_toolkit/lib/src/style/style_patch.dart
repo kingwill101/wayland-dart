@@ -48,7 +48,7 @@ enum TextDecoration { none, underline, lineThrough }
 /// CSS is just one addon that injects into this model — see `CssProvider`,
 /// which maps its declarations onto these typed properties. The model covers
 /// roughly the same surface as GTK's CSS properties (see
-/// `docs/style-system.md` for the catalog).
+/// `doc/style-system.md` for the catalog).
 class StylePatch {
   // ── Color ───────────────────────────────────────────────────────────────
   final Color? color; // foreground (text/icon) — GTK `color`

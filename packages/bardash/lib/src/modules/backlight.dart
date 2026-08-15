@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:window_toolkit/window_toolkit.dart';
-
 import 'module.dart';
 
 class BacklightModule extends BarModule {
@@ -14,6 +12,7 @@ class BacklightModule extends BarModule {
 
   @override
   void init(Map<String, String> config) {
+    super.init(config);
     _format = config['format'] ?? _format;
     _interval = int.tryParse(config['interval'] ?? '') ?? _interval;
   }
@@ -25,6 +24,7 @@ class BacklightModule extends BarModule {
       final entries = backlightDir.listSync();
       if (entries.isEmpty) {
         _display = 'N/A';
+        output = _display;
         return;
       }
       final dir = entries.first.path;
@@ -37,19 +37,16 @@ class BacklightModule extends BarModule {
 
       if (brightness == null || maxBrightness == null || maxBrightness == 0) {
         _display = 'N/A';
+        output = _display;
         return;
       }
 
       final percent = brightness / maxBrightness * 100;
       _display = _format.replaceAll('{percent}', percent.toStringAsFixed(0));
+      output = _display;
     } catch (_) {
       _display = 'N/A';
+      output = _display;
     }
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    painter.drawText(_display, Offset(x, y));
-    return painter.measureText(_display).width;
   }
 }

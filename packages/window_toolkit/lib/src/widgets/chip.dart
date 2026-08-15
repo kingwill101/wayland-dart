@@ -6,6 +6,7 @@ import '../metrics.dart';
 import '../mixins/hoverable.dart';
 import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
+import '../style.dart';
 import '../widget.dart';
 import 'label.dart';
 
@@ -56,38 +57,35 @@ class Chip extends Widget with Hoverable, HoverAnimated {
 
   @override
   void measure(Painter painter) {
-    final font = Font.ui(pixelSize: fontSize);
+    final style = resolvedStyle();
+    final font = Font.ui(pixelSize: style.fontSize);
     final adv = painter.measureTextFont(label, font);
     final metrics = painter.fontMetrics(font);
-    width = adv.ceil() + paddingH * 2;
-    height = metrics.height.ceil().clamp(fontSize.ceil(), 100) + paddingV * 2;
-    if (height < fontSize.ceil() + paddingV * 2) {
-      height = fontSize.ceil() + paddingV * 2;
+    final padH = styledPaddingLeft(paddingH) + styledPaddingRight(paddingH);
+    final padV = styledPaddingTop(paddingV) + styledPaddingBottom(paddingV);
+    width = adv.ceil() + padH;
+    height = metrics.height.ceil().clamp(style.fontSize.ceil(), 100) + padV;
+    if (height < style.fontSize.ceil() + padV) {
+      height = style.fontSize.ceil() + padV;
     }
   }
 
   @override
-  void draw(Painter canvas) {
-    final rect = Rect.fromLTWH(
-      x.toDouble(),
-      y.toDouble(),
-      width.toDouble(),
-      height.toDouble(),
-    );
-    canvas.drawRRect(rect, borderRadius, borderRadius, Paint()..color = _bg);
-    if (borderColor != null) {
-      canvas.drawRRect(
-        Rect.fromLTWH(x + 0.5, y + 0.5, width - 1.0, height - 1.0),
-        borderRadius,
-        borderRadius,
-        Paint()
-          ..color = borderColor!
-          ..style = PaintStyle.stroke
-          ..strokeWidth = 1,
-      );
-    }
+  Style styleRole() => Style(
+    color: _fg,
+    backgroundColor: _bg,
+    borderColor: borderColor ?? palette.mid,
+    borderWidth: borderColor == null ? 0 : 1,
+    borderRadius: borderRadius,
+    fontSize: fontSize,
+  );
 
-    final text = Label(label, color: _fg, fontSize: fontSize);
+  @override
+  void draw(Painter canvas) {
+    final style = resolvedStyle();
+    drawStyledBox(canvas, style: style);
+
+    final text = Label(label, color: style.color, fontSize: style.fontSize);
     text.measure(canvas);
     text.x = x + (width - text.width) ~/ 2;
     text.y = y + (height - text.height) ~/ 2;

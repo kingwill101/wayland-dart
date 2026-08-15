@@ -61,6 +61,13 @@ class _GlesShared {
   /// Pre-allocated quad vertex buffer (16 floats) — reused for all textured quads.
   final Float32List _quadVerts = Float32List(16);
 
+  /// Text textures belong to the shared EGL context, not to a frame painter.
+  /// Keeping this cache here prevents every new SHM frame painter from
+  /// rasterizing and uploading the entire bar's text again.
+  static const int _maxTextCache = 128;
+  final Map<String, _TextCacheEntry> _textCache = {};
+  final List<String> _textCacheOrder = [];
+
   _GlesShared()
     : gl = GL.create(width: 1, height: 1),
       rectProgram = _buildRectProgram(),
@@ -69,6 +76,22 @@ class _GlesShared {
       imageProgram = _buildImageProgram(),
       gradProgram = _buildGradProgram() {
     rectProgram.use();
+  }
+
+  _TextCacheEntry? cachedText(String text, double size, String font) {
+    return _textCache['$font|${size.toStringAsFixed(1)}|$text'];
+  }
+
+  void cacheText(String text, double size, String font, _TextCacheEntry entry) {
+    final key = '$font|${size.toStringAsFixed(1)}|$text';
+    final previous = _textCache[key];
+    if (previous != null) previous.tex.dispose();
+    if (_textCache.length >= _maxTextCache) {
+      final oldest = _textCacheOrder.removeAt(0);
+      _textCache.remove(oldest)?.tex.dispose();
+    }
+    _textCache[key] = entry;
+    _textCacheOrder.add(key);
   }
 
   static Program _buildRectProgram() {
@@ -320,42 +343,6 @@ class GlesPainter implements Painter {
     c.a / 255.0,
   ];
 
-  // ── Text texture cache ───────────────────────────────────────────
-  // Cache rendered text textures so repeated strings (clock, module
-  // labels) don't create a new SkSurface + GL texture every frame.
-  static const int _maxTextCache = 128;
-  final Map<String, _TextCacheEntry> _textCache = {};
-  final List<String> _textCacheOrder = [];
-
-  _TextCacheEntry? _cachedText(String text, double size, String font) {
-    final key = '$font|${size.toStringAsFixed(1)}|$text';
-    return _textCache[key];
-  }
-
-  void _cacheText(
-    String text,
-    double size,
-    String font,
-    _TextCacheEntry entry,
-  ) {
-    final key = '$font|${size.toStringAsFixed(1)}|$text';
-    if (_textCache.length >= _maxTextCache) {
-      final oldest = _textCacheOrder.removeAt(0);
-      _textCache.remove(oldest)?.tex.dispose();
-    }
-    _textCache[key] = entry;
-    _textCacheOrder.add(key);
-  }
-
-  /// Clear the text cache (call when font configuration changes).
-  void clearTextCache() {
-    for (final e in _textCache.values) {
-      e.tex.dispose();
-    }
-    _textCache.clear();
-    _textCacheOrder.clear();
-  }
-
   /// Returns true if this painter's GL context is still usable.
   /// Call after catching GL errors to decide whether to fall back.
   bool get isHealthy => !_failed && !_disposed && _gles != null;
@@ -599,8 +586,7 @@ class GlesPainter implements Painter {
     final c = _glColor(color ?? const Color(255, 255, 255));
 
     // Check cache first.
-    final cacheKey = '$fontFamily|${size.toStringAsFixed(1)}|$text';
-    final cached = _textCache[cacheKey];
+    final cached = g.cachedText(text, size, fontFamily);
     if (cached != null) {
       _drawTexturedQuad(
         cached.tex,
@@ -635,7 +621,12 @@ class GlesPainter implements Painter {
       color: const Color(255, 255, 255),
     );
     final tex = img.toTexture();
-    _textCache[cacheKey] = _TextCacheEntry(tex, tw.toDouble(), th.toDouble());
+    g.cacheText(
+      text,
+      size,
+      fontFamily,
+      _TextCacheEntry(tex, tw.toDouble(), th.toDouble()),
+    );
 
     final px = position.dx.roundToDouble();
     final py = position.dy.roundToDouble();
@@ -675,7 +666,8 @@ class GlesPainter implements Painter {
     tex.bind();
     _applyScissor();
     vbo.drawArrays(GL_TRIANGLE_FAN, 0, 4);
-    tex.dispose();
+    // Textures are owned by _GlesShared's bounded cache and may be reused by
+    // later frame painters. Do not dispose them after a draw.
   }
 
   @override

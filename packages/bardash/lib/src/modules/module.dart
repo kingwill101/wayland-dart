@@ -80,6 +80,7 @@ abstract class BarModule {
       iconFont: Font.icon(pixelSize: BarMetrics.current.iconFontSize),
       color: cssForeground,
       runSpacing: BarMetrics.current.iconTextGap.toDouble(),
+      splitPrivateUse: true,
     );
   }
 
@@ -92,6 +93,7 @@ abstract class BarModule {
       textFont: Font.ui(pixelSize: m.fontSize),
       iconFont: Font.icon(pixelSize: m.iconFontSize),
       runSpacing: m.iconTextGap.toDouble(),
+      splitPrivateUse: true,
     );
     return m.textContentWidth(w);
   }
@@ -175,17 +177,52 @@ abstract class BarModule {
   /// config-driven; text drawn by the module may use this to stay themed.
   Color? cssForeground;
 
+  /// Complete CSS style resolved for this module's legacy graphics fallback.
+  ///
+  /// Ordinary text and composite modules are rendered by toolkit widgets. A
+  /// few genuine graphics modules still expose a painter callback for their
+  /// chart/image pixels; this concrete style lets that fallback consume the
+  /// same CSS surface/foreground/border values without importing Bardash
+  /// policy into the toolkit.
+  Style? cssStyle;
+
+  /// Apply the module's resolved CSS opacity to a painter-owned color.
+  /// Genuine graphics may still paint pixels directly, but their colors must
+  /// use the same concrete style as toolkit widgets.
+  Color cssColor(
+    Color fallback, {
+    Color? explicit,
+    bool border = false,
+    bool background = false,
+  }) {
+    final style = cssStyle;
+    final color =
+        explicit ??
+        (border ? style?.borderColor : null) ??
+        (background ? style?.backgroundColor : null) ??
+        style?.color ??
+        cssForeground ??
+        fallback;
+    final opacity = style?.opacity ?? 1.0;
+    return Color(
+      color.r,
+      color.g,
+      color.b,
+      (color.a * opacity.clamp(0.0, 1.0)).round().clamp(0, 255),
+    );
+  }
+
   /// Whether this module needs the live layer connection to spawn its own
   /// overlay surfaces (tray menu, audio panel, ...). When true, the bar
   /// calls [attachPopupOverlay] on first paint (and after reconnects) with
-  /// the connection and bar geometry. Modules opt in with a flag; the bar
+  /// the toolkit popup host and bar geometry. Modules opt in with a flag; the bar
   /// has no per-module type checks.
   bool get needsPopupOverlay => false;
 
   /// Called by the bar when [needsPopupOverlay] is true. Override to stash
-  /// the connection / geometry and open overlays on click.
+  /// the popup host / geometry and open overlays on click.
   void attachPopupOverlay(
-    WaylandConnection connection, {
+    LayerPopupHost popupHost, {
     int parentWidth = 0,
     int parentHeight = 0,
     bool openUpward = true,

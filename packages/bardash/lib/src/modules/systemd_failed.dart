@@ -1,6 +1,3 @@
-import 'package:window_toolkit/window_toolkit.dart';
-
-import '../metrics.dart';
 import '../native/systemd_client.dart';
 import 'module.dart';
 
@@ -61,25 +58,5 @@ class SystemdFailedModule extends BarModule {
       _lastOut = output;
       requestRepaint?.call();
     }
-  }
-
-  @override
-  double measure(Painter painter) {
-    if (output.isEmpty) return 0;
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    return painter.measureTextFont(output, font);
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    if (output.isEmpty) return 0;
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    painter.drawTextFont(
-      output,
-      Offset(x, y),
-      font: font,
-      color: const Color(255, 200, 60),
-    );
-    return painter.measureTextFont(output, font);
   }
 }

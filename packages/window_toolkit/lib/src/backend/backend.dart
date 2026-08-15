@@ -1,6 +1,6 @@
 import '../painter/painter.dart';
+import '../platform/platform.dart';
 import '../widget.dart';
-import 'connection.dart';
 
 abstract class Backend {
   bool get isRunning;
@@ -13,7 +13,11 @@ abstract class Backend {
   Function()? get onClose;
   set onClose(Function()? callback);
 
-  WaylandConnection get connection;
+  /// The platform event source used by this backend.
+  PlatformConnection get platformConnection;
+
+  /// The native surface owned by this backend.
+  PlatformSurface get platformSurface;
 
   void dispatchEvents();
   void destroy();

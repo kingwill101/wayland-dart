@@ -3,6 +3,7 @@ import '../interaction.dart';
 import '../mixins/hoverable.dart';
 import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
+import '../style.dart';
 import '../widget.dart';
 
 class RangeSlider extends Widget with Hoverable, HoverAnimated {
@@ -50,6 +51,15 @@ class RangeSlider extends Widget with Hoverable, HoverAnimated {
   bool get acceptsFocus => true;
 
   @override
+  Style styleRole() => Style(
+    color: fillColor,
+    backgroundColor: trackColor,
+    borderColor: thumbColor,
+    borderWidth: 0,
+    borderRadius: thumbRadius.toDouble(),
+  );
+
+  @override
   void onMouseDown(int x, int y, int button) {
     if (button != 272 || width <= 0) return;
     final fraction = ((x - this.x) / width).clamp(0.0, 1.0);
@@ -88,43 +98,58 @@ class RangeSlider extends Widget with Hoverable, HoverAnimated {
 
   @override
   void draw(Painter canvas) {
+    final style = resolvedStyle();
     final trackY = y + (height - trackHeight) ~/ 2;
     final cy = y + height ~/ 2;
     final lx = (x + (width * _lowerFraction).round()).toDouble();
     final ux = (x + (width * _upperFraction).round()).toDouble();
 
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        trackY.toDouble(),
-        width.toDouble(),
-        trackHeight.toDouble(),
-      ),
-      Paint()..color = trackColor,
+    final track = Rect.fromLTWH(
+      x.toDouble(),
+      trackY.toDouble(),
+      width.toDouble(),
+      trackHeight.toDouble(),
     );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        lx,
-        trackY.toDouble(),
-        (ux - lx).toDouble(),
-        trackHeight.toDouble(),
-      ),
-      Paint()..color = fillColor,
+    final filled = Rect.fromLTWH(
+      lx,
+      trackY.toDouble(),
+      (ux - lx).toDouble(),
+      trackHeight.toDouble(),
+    );
+    canvas.drawRRect(
+      track,
+      style.borderRadius,
+      style.borderRadius,
+      Paint()..color = styledColor(style.backgroundColor!, style),
+    );
+    canvas.drawRRect(
+      filled,
+      style.borderRadius,
+      style.borderRadius,
+      Paint()..color = styledColor(style.color, style),
     );
 
     final hoveredThumb = transitionHover(
-      thumbColor,
-      Color.blend(thumbColor, const Color(255, 255, 255, 28)),
+      style.borderColor,
+      Color.blend(style.borderColor, const Color(255, 255, 255, 28)),
     );
     canvas.drawCircle(
       Offset(lx, cy.toDouble()),
       thumbRadius.toDouble(),
-      Paint()..color = _draggingLower ? activeThumbColor : hoveredThumb,
+      Paint()
+        ..color = styledColor(
+          _draggingLower ? style.color : hoveredThumb,
+          style,
+        ),
     );
     canvas.drawCircle(
       Offset(ux, cy.toDouble()),
       thumbRadius.toDouble(),
-      Paint()..color = _draggingUpper ? activeThumbColor : hoveredThumb,
+      Paint()
+        ..color = styledColor(
+          _draggingUpper ? style.color : hoveredThumb,
+          style,
+        ),
     );
   }
 }

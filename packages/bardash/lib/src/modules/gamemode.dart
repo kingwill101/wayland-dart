@@ -1,6 +1,3 @@
-import 'package:window_toolkit/window_toolkit.dart';
-
-import '../metrics.dart';
 import '../native/gamemode_client.dart';
 import 'module.dart';
 
@@ -41,9 +38,7 @@ class GamemodeModule extends BarModule {
     }
 
     final active = _snap.active;
-    final fmt = active
-        ? resolveFormat(config, format, 'active')
-        : format;
+    final fmt = active ? resolveFormat(config, format, 'active') : format;
     final icon = '\u{F11B}';
 
     output = fmt
@@ -60,23 +55,5 @@ class GamemodeModule extends BarModule {
       _lastOut = output;
       requestRepaint?.call();
     }
-  }
-
-  @override
-  double measure(Painter painter) {
-    if (output.isEmpty) return 0;
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    return painter.measureTextFont(output, font);
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    if (output.isEmpty) return 0;
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    final color = _snap.active
-        ? const Color(0x00, 0xff, 0x00)
-        : const Color(0x80, 0x80, 0x80);
-    painter.drawTextFont(output, Offset(x, y), font: font, color: color);
-    return painter.measureTextFont(output, font);
   }
 }

@@ -45,12 +45,14 @@ void main() {
     frame.draw(painter);
 
     final rects = painter.commands.ofType<DrawRectCommand>().toList();
-    expect(rects, hasLength(5));
+    // Frame delegates its surface to the shared styled-box renderer: one
+    // filled rect and one stroked rect for the border.
+    expect(rects, hasLength(2));
     expect(rects.first.rect.left, 1);
     expect(rects.first.rect.top, 2);
     expect(rects.first.rect.right, 41);
     expect(rects.first.rect.bottom, 32);
-    expect(rects.first.paint.color, frame.color);
+    expect(rects.first.paint.color.toArgb8888(), frame.color.toArgb8888());
     expect(frame.hitTest(12, 13), isTrue);
     expect(frame.hitTest(3, 4), isFalse);
   });

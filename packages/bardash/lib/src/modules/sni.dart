@@ -677,7 +677,7 @@ class SniModule extends BarModule {
   bool _connecting = false;
   bool _connected = false;
   int _maxIcons = 8;
-  WaylandConnection? _connection;
+  LayerPopupHost? _popupHost;
   int _parentWidth = 1920;
   int _parentHeight = 30;
   bool _openUpward = true;
@@ -687,12 +687,12 @@ class SniModule extends BarModule {
   /// Called by the bar once the layer surface exists.
   @override
   void attachPopupOverlay(
-    WaylandConnection connection, {
+    LayerPopupHost popupHost, {
     int parentWidth = 1920,
     int parentHeight = 30,
     bool openUpward = true,
   }) {
-    _connection = connection;
+    _popupHost = popupHost;
     _parentWidth = parentWidth;
     _parentHeight = parentHeight;
     _openUpward = openUpward;
@@ -1146,7 +1146,8 @@ class SniModule extends BarModule {
       }
 
       // 1) Prefer com.canonical.dbusmenu (1Password, Blueman, …).
-      if (item.menuPath.isNotEmpty && _connection != null) {
+      final popupHost = _popupHost;
+      if (item.menuPath.isNotEmpty && popupHost != null) {
         // Prefer absolute bar X from the click (hoverX), not estimated module origin.
         final menuX = hoverX >= 0
             ? hoverX.round()
@@ -1154,7 +1155,7 @@ class SniModule extends BarModule {
         final gen = ++_openGen;
         try {
           await TrayMenuController.open(
-            connection: _connection!,
+            popupHost: popupHost,
             bus: _bus!,
             service: item.busName,
             menuPath: item.menuPath,

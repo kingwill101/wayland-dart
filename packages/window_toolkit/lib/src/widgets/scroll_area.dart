@@ -6,6 +6,8 @@ import '../animation/simulation.dart';
 import '../drawing/color.dart';
 import '../mixins/event.dart';
 import '../painter/painter.dart';
+import '../style.dart';
+import '../style/style_patch.dart';
 import '../widget.dart';
 
 /// Scrollable area backed by [le.RenderViewport] and [le.ViewportScrollController].
@@ -82,6 +84,15 @@ class ScrollArea extends Widget {
   }
 
   int get maxScrollX => 0;
+
+  @override
+  Style styleRole() => Style(
+    color: scrollbarColor,
+    backgroundColor: scrollbarBg,
+    borderColor: scrollbarColor,
+    borderWidth: 0,
+    borderRadius: (scrollbarWidth / 2).toDouble(),
+  );
 
   bool isOnScrollbar(int px, int py) {
     if (showVertical && maxScrollY > 0) {
@@ -293,27 +304,39 @@ class ScrollArea extends Widget {
 
     // Vertical scrollbar.
     if (showVertical && maxScrollY > 0 && height > 0) {
+      final style = resolvedStyle();
+      final hovered = resolvedStyleOn(const [
+        'hover',
+      ], local: StylePatch(color: scrollbarHoverColor));
       final tX = (x + width - scrollbarWidth).toDouble();
-      canvas.drawRect(
+      canvas.drawRRect(
         Rect.fromLTWH(
           tX,
           y.toDouble(),
           scrollbarWidth.toDouble(),
           height.toDouble(),
         ),
-        Paint()..color = scrollbarBg,
+        style.borderRadius,
+        style.borderRadius,
+        Paint()..color = styledColor(style.backgroundColor!, style),
       );
       final thumbH = _thumbHeight();
       final thumbY = (_controller.offset * (height - thumbH) ~/ maxScrollY)
           .clamp(0, height - thumbH);
-      canvas.drawRect(
+      canvas.drawRRect(
         Rect.fromLTWH(
           tX,
           (y + thumbY).toDouble(),
           scrollbarWidth.toDouble(),
           thumbH.toDouble(),
         ),
-        Paint()..color = _dragAxis == 1 ? scrollbarHoverColor : scrollbarColor,
+        style.borderRadius,
+        style.borderRadius,
+        Paint()
+          ..color = styledColor(
+            _dragAxis == 1 ? hovered.color : style.color,
+            _dragAxis == 1 ? hovered : style,
+          ),
       );
     }
   }

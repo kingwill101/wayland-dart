@@ -82,28 +82,25 @@ class Switch extends Widget with Hoverable, HoverAnimated {
     final trackColor = base.backgroundColor!;
     final fill = transitionHover(trackColor, hover.backgroundColor!);
 
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        y.toDouble(),
-        width.toDouble(),
-        height.toDouble(),
+    drawStyledBox(
+      canvas,
+      style: base.overlay(
+        StylePatch(
+          backgroundColor: fill,
+          borderTopLeftRadius: base.borderRadius == 0
+              ? (height / 2).toDouble()
+              : null,
+          borderTopRightRadius: base.borderRadius == 0
+              ? (height / 2).toDouble()
+              : null,
+          borderBottomLeftRadius: base.borderRadius == 0
+              ? (height / 2).toDouble()
+              : null,
+          borderBottomRightRadius: base.borderRadius == 0
+              ? (height / 2).toDouble()
+              : null,
+        ),
       ),
-      Paint()..color = fill,
-    );
-
-    canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), 1),
-      Paint()..color = base.borderColor,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        (y + height - 1).toDouble(),
-        width.toDouble(),
-        1,
-      ),
-      Paint()..color = base.borderColor,
     );
 
     final knobRadius = (height / 2) - 2;
@@ -112,7 +109,7 @@ class Switch extends Widget with Hoverable, HoverAnimated {
     canvas.drawCircle(
       Offset(knobCenterX.toDouble(), knobCenterY.toDouble()),
       knobRadius.toDouble(),
-      Paint()..color = base.color,
+      Paint()..color = styledColor(base.color, base),
     );
   }
 }

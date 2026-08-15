@@ -1,6 +1,8 @@
 import 'dart:math';
 
 import 'package:window_toolkit/window_toolkit.dart';
+import '../font/font.dart';
+import '../style.dart';
 
 /// A fixed-size speedometer gauge.
 ///
@@ -48,8 +50,17 @@ class Speedometer extends Widget {
   }
 
   @override
+  Style styleRole() => Style(
+    color: textColor,
+    backgroundColor: trackColor,
+    borderColor: fillColor,
+    borderWidth: 0,
+  );
+
+  @override
   void draw(Painter canvas) {
     final painter = canvas;
+    final style = resolvedStyle();
     final x = this.x.toDouble();
     final y = this.y.toDouble();
     final w = (width > 0 ? width : preferredWidth).toDouble();
@@ -67,6 +78,10 @@ class Speedometer extends Widget {
     final oval = Rect.fromLTWH(cx - r, cy - r, r * 2, r * 2);
     final fill = value.clamp(0.0, 1.0);
 
+    final track = style.backgroundColor ?? trackColor;
+    final fillColor = style.borderColor;
+    final foreground = style.color;
+
     // Track arc.
     painter.drawArc(
       oval,
@@ -74,7 +89,7 @@ class Speedometer extends Widget {
       sweepAngle,
       useCenter,
       Paint()
-        ..color = trackColor
+        ..color = styledColor(track, style)
         ..style = PaintStyle.stroke
         ..strokeWidth = 16,
     );
@@ -94,7 +109,10 @@ class Speedometer extends Widget {
           segmentSweep,
           useCenter,
           Paint()
-            ..color = _lerpColor(const Color(42, 207, 255), fillColor, t)
+            ..color = styledColor(
+              _lerpColor(const Color(42, 207, 255), fillColor, t),
+              style,
+            )
             ..style = PaintStyle.stroke
             ..strokeWidth = 16,
         );
@@ -112,11 +130,14 @@ class Speedometer extends Widget {
         Offset(cx + innerR * cos(angle), cy + innerR * sin(angle)),
         Offset(cx + outerR * cos(angle), cy + outerR * sin(angle)),
         Paint()
-          ..color = Color(
-            textColor.r.toInt(),
-            textColor.g.toInt(),
-            textColor.b.toInt(),
-            isMajor ? 200 : 90,
+          ..color = styledColor(
+            Color(
+              foreground.r.toInt(),
+              foreground.g.toInt(),
+              foreground.b.toInt(),
+              isMajor ? 200 : 90,
+            ),
+            style,
           )
           ..strokeWidth = isMajor ? 2.5 : 1.2,
       );
@@ -128,25 +149,31 @@ class Speedometer extends Widget {
     for (var i = 0; i < scaleValues.length; i++) {
       final angle = startAngle + i / 2 * sweepAngle;
       final text = scaleValues[i].round().toString();
-      final bounds = painter.measureTextBounds(
+      final bounds = measureStyledText(
+        painter,
         text,
-        size: 11,
-        fontFamily: 'sans',
+        style: style,
+        fallback: const Font(pixelSize: 11),
       );
       final labelR = r - 34;
-      painter.drawText(
+      drawStyledText(
+        painter,
         text,
         Offset(
           cx + labelR * cos(angle) - bounds.width / 2,
           cy + labelR * sin(angle) - bounds.height / 2,
         ),
-        color: Color(
-          textColor.r.toInt(),
-          textColor.g.toInt(),
-          textColor.b.toInt(),
-          190,
+        style: style,
+        color: styledColor(
+          Color(
+            foreground.r.toInt(),
+            foreground.g.toInt(),
+            foreground.b.toInt(),
+            190,
+          ),
+          style,
         ),
-        size: 11,
+        fallback: const Font(pixelSize: 11),
       );
     }
 
@@ -171,47 +198,61 @@ class Speedometer extends Widget {
         cy + needleLen * sin(needleAngle),
       ),
       Paint()
-        ..color = needleColor
+        ..color = styledColor(foreground, style)
         ..strokeWidth = 3,
     );
 
     // Center cap.
-    painter.drawCircle(Offset(cx, cy), 11, Paint()..color = needleColor);
-    painter.drawCircle(Offset(cx, cy), 7, Paint()..color = trackColor);
+    painter.drawCircle(
+      Offset(cx, cy),
+      11,
+      Paint()..color = styledColor(foreground, style),
+    );
+    painter.drawCircle(
+      Offset(cx, cy),
+      7,
+      Paint()..color = styledColor(track, style),
+    );
 
     // Put the readout below the dial, where it cannot obscure the needle or
     // scale marks.
     final valueSize = 24.0;
     final displayValue = valueText ?? _formatValue(value * maxValue);
-    final valueBounds = painter.measureTextBounds(
+    final valueBounds = measureStyledText(
+      painter,
       displayValue,
-      size: valueSize,
-      fontFamily: 'sans',
+      style: style,
+      fallback: Font(pixelSize: valueSize),
     );
-    painter.drawText(
+    drawStyledText(
+      painter,
       displayValue,
       Offset(cx - valueBounds.width / 2, y + h - 47),
-      color: textColor,
-      size: valueSize,
+      style: style,
+      color: foreground,
+      fallback: Font(pixelSize: valueSize),
     );
 
     // Label.
     if (label.isNotEmpty) {
-      final labelBounds = painter.measureTextBounds(
+      final labelBounds = measureStyledText(
+        painter,
         label,
-        size: 14,
-        fontFamily: 'sans',
+        style: style,
+        fallback: const Font(pixelSize: 14),
       );
-      painter.drawText(
+      drawStyledText(
+        painter,
         label,
         Offset(cx - labelBounds.width / 2, y + h - 19),
+        style: style,
         color: Color(
-          textColor.r.toInt(),
-          textColor.g.toInt(),
-          textColor.b.toInt(),
+          foreground.r.toInt(),
+          foreground.g.toInt(),
+          foreground.b.toInt(),
           160,
         ),
-        size: 14,
+        fallback: const Font(pixelSize: 14),
       );
     }
   }

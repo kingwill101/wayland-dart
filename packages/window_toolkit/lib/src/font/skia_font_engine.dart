@@ -18,6 +18,8 @@ class SkiaFontEngine extends FontEngineBase {
   final SkiaTextEngine _text;
   SkFontMgr? _mgr;
   final Map<String, SkTypeface> _faces = {};
+  final Map<String, String> _resolvedFamilies = {};
+  final Map<Font, FontMetrics> _metricsCache = {};
 
   /// Families registered via [addApplicationFont] (path → family name).
   final Map<String, String> _appFonts = {};
@@ -101,7 +103,41 @@ class SkiaFontEngine extends FontEngineBase {
   }
 
   String _resolveFamilyName(Font request) {
-    if (request.family.isNotEmpty) return request.family;
+    final cacheKey =
+        '${request.family}|${request.weight}|${request.italic}|${request.styleHint}';
+    final cached = _resolvedFamilies[cacheKey];
+    if (cached != null) return cached;
+
+    final resolved = _resolveFamilyNameUncached(request);
+    _resolvedFamilies[cacheKey] = resolved;
+    return resolved;
+  }
+
+  String _resolveFamilyNameUncached(Font request) {
+    if (request.family.isNotEmpty) {
+      final candidates = request.family
+          .split(',')
+          .map((part) => part.trim())
+          .where((part) => part.isNotEmpty)
+          .map((part) {
+            if (part.length >= 2 &&
+                ((part.startsWith('"') && part.endsWith('"')) ||
+                    (part.startsWith("'") && part.endsWith("'")))) {
+              return part.substring(1, part.length - 1).trim();
+            }
+            return part;
+          });
+      for (final family in candidates) {
+        final face = _fontMgr.matchFamilyStyle(family, _skStyle(request));
+        if (face != null && face.glyphCount > 0) {
+          final resolved = face.familyName;
+          face.dispose();
+          return resolved.isNotEmpty ? resolved : family;
+        }
+        face?.dispose();
+      }
+      return request.family.split(',').first.trim();
+    }
     switch (request.styleHint) {
       case FontStyleHint.serif:
         return 'serif';
@@ -146,6 +182,9 @@ class SkiaFontEngine extends FontEngineBase {
 
   @override
   FontMetrics metrics(Font request) {
+    final cached = _metricsCache[request];
+    if (cached != null) return cached;
+
     final family = _resolveFamilyName(request);
     final size = request.pixelSize;
     final face = _typeface(request);
@@ -178,7 +217,7 @@ class SkiaFontEngine extends FontEngineBase {
 
     skFont.dispose();
 
-    return FontMetrics(
+    final result = FontMetrics(
       font: request.copyWith(family: family),
       ascent: ascent,
       descent: descent,
@@ -187,14 +226,25 @@ class SkiaFontEngine extends FontEngineBase {
       averageCharWidth: avg,
       maxCharWidth: maxW,
       fixedPitch: isFixedPitch(family),
-      horizontalAdvance: (text) =>
-          _text.measureTextAdvance(text, size: size, fontFamily: family),
+      horizontalAdvance: (text) => _text.measureTextAdvance(
+        text,
+        size: size,
+        fontFamily: request.family.isNotEmpty ? request.family : family,
+      ),
       // Shaped-blob bounds (line-top origin) — required for drawText v-center.
-      boundingRect: (text) =>
-          _text.measureTextBounds(text, size: size, fontFamily: family),
-      tightBoundingRect: (text) =>
-          _text.measureTextBounds(text, size: size, fontFamily: family),
+      boundingRect: (text) => _text.measureTextBounds(
+        text,
+        size: size,
+        fontFamily: request.family.isNotEmpty ? request.family : family,
+      ),
+      tightBoundingRect: (text) => _text.measureTextBounds(
+        text,
+        size: size,
+        fontFamily: request.family.isNotEmpty ? request.family : family,
+      ),
     );
+    _metricsCache[request] = result;
+    return result;
   }
 
   @override
@@ -209,6 +259,8 @@ class SkiaFontEngine extends FontEngineBase {
       // Keep face alive under a stable key so matchFamilyStyle can find it
       // after registration — also insert into cache for direct use.
       _faces['$name|${FontWeight.normal}|false'] = face;
+      _resolvedFamilies.clear();
+      _metricsCache.clear();
       _familyCache = null;
       return name;
     } catch (_) {
@@ -222,6 +274,8 @@ class SkiaFontEngine extends FontEngineBase {
       f.dispose();
     }
     _faces.clear();
+    _resolvedFamilies.clear();
+    _metricsCache.clear();
     _appFonts.clear();
     _familyCache = null;
     _mgr?.dispose();

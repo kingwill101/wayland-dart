@@ -55,7 +55,8 @@ class Spinner extends Widget {
   @override
   void draw(Painter canvas) {
     if (!active) return;
-    final baseColor = resolvedStyle().color;
+    final style = resolvedStyle();
+    final baseColor = style.color;
 
     final cx = x + width ~/ 2;
     final cy = y + height ~/ 2;
@@ -65,7 +66,10 @@ class Spinner extends Widget {
       final angle = (i / dotCount) * 3.14159 * 2;
       final offset = ((i + frame) % dotCount) / dotCount;
       final alpha = (255 * offset).round();
-      final dotColor = Color(baseColor.r, baseColor.g, baseColor.b, alpha);
+      final dotColor = styledColor(
+        Color(baseColor.r, baseColor.g, baseColor.b, alpha),
+        style,
+      );
       final dx = (cx + (radius * cos(angle)).round()).toDouble();
       final dy = (cy + (radius * sin(angle)).round()).toDouble();
       canvas.drawCircle(

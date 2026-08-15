@@ -15,6 +15,7 @@ import 'package:wayland/wayland.dart';
 
 import 'backend/connection.dart';
 import 'backend/layer.dart' show Anchor;
+import 'debug.dart';
 import 'drawing/color.dart';
 import 'font/text_layout.dart';
 import 'painter/painter.dart';
@@ -482,9 +483,11 @@ class TooltipOverlay {
     final maxLeft = (pw - _w).clamp(0, pw);
     final left = parentX.clamp(0, maxLeft);
     final right = (pw - left - _w).clamp(0, pw);
-    stderr.writeln(
-      '[tooltip] _applyPlacement on-top anchor=$barAnchor ph=$ph gap=$gap left=$left right=$right w=$_w h=$_h parentX=$parentX',
-    );
+    if (toolkitDebugLogs) {
+      stderr.writeln(
+        '[tooltip] _applyPlacement on-top anchor=$barAnchor ph=$ph gap=$gap left=$left right=$right w=$_w h=$_h parentX=$parentX',
+      );
+    }
 
     switch (barAnchor) {
       case Anchor.bottom:

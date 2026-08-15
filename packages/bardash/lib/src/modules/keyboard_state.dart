@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:window_toolkit/window_toolkit.dart';
-
 import 'module.dart';
 
 class KeyboardStateModule extends BarModule {
@@ -41,17 +39,8 @@ class KeyboardStateModule extends BarModule {
     output = parts.join(' ');
   }
 
-  @override
-  double draw(Painter painter, double x, double y) {
-    if (output.isEmpty) return 0;
-    painter.drawText(output, Offset(x, y));
-    return painter.measureText(output).width;
-  }
-
   String _resolveFormat(String name) {
-    return format
-        .replaceAll('{name}', name)
-        .replaceAll('{icon}', '\u{25C9}');
+    return format.replaceAll('{name}', name).replaceAll('{icon}', '\u{25C9}');
   }
 
   bool _readBrightness(String type) {

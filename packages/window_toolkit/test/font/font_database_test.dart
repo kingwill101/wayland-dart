@@ -65,4 +65,9 @@ void main() {
     db.useBitmapEngine();
     expect(db.engineId, 'bitmap');
   });
+
+  test('metrics are reused for an unchanged resolved font request', () {
+    const font = Font(family: 'bitmap', pixelSize: 16);
+    expect(identical(db.metrics(font), db.metrics(font)), isTrue);
+  });
 }

@@ -5,13 +5,15 @@ import 'package:wayland/wayland.dart';
 import '../painter/painter.dart' hide Size;
 import '../painter/raw_painter.dart';
 import '../painter/skia_painter.dart';
+import '../platform/platform.dart';
 import '../widget.dart';
 import 'backend.dart';
 import 'connection.dart';
+import 'wayland_surface.dart';
 
 class PopupBackend implements Backend {
-  @override
   final WaylandConnection connection;
+  late final WaylandSurface _platformSurface;
   final XdgSurface parentSurface;
   int _width = 0;
   int _height = 0;
@@ -20,6 +22,12 @@ class PopupBackend implements Backend {
   late WlSurface wlSurface;
   late XdgSurface xdgSurface;
   late XdgPopup popup;
+
+  @override
+  PlatformConnection get platformConnection => connection;
+
+  @override
+  PlatformSurface get platformSurface => _platformSurface;
 
   WlShmPool? _pool;
   int _poolSize = 0;
@@ -58,6 +66,7 @@ class PopupBackend implements Backend {
       stderr.writeln('[popup] createSurface failed: $e');
       return WlSurface(ctx);
     });
+    _platformSurface = WaylandSurface(connection, wlSurface);
 
     xdgSurface = wmBase.getXdgSurface(wlSurface).getOrElse((e) {
       stderr.writeln('[popup] getXdgSurface failed: $e');
@@ -94,7 +103,7 @@ class PopupBackend implements Backend {
       onDismiss?.call();
     });
 
-    wlSurface.commit();
+    _platformSurface.commit();
   }
 
   @override
@@ -111,7 +120,7 @@ class PopupBackend implements Backend {
   set height(int value) => _height = value;
 
   @override
-  bool get canPaint => !_bufferBusy;
+  bool get canPaint => !_bufferBusy && platformConnection.isConnected;
 
   @override
   void requestPaint() {
@@ -155,7 +164,7 @@ class PopupBackend implements Backend {
     _bufferBusy = true;
     wlSurface.attach(_buffer!, 0, 0);
     wlSurface.damageBuffer(0, 0, _width, _height);
-    wlSurface.commit();
+    _platformSurface.commit();
     return true;
   }
 
@@ -181,7 +190,7 @@ class PopupBackend implements Backend {
   }
 
   @override
-  void dispatchEvents() => connection.dispatch();
+  void dispatchEvents() => platformConnection.dispatch();
 
   @override
   Future<void> init() async {}
@@ -195,6 +204,7 @@ class PopupBackend implements Backend {
   void destroy() {
     _buffer?.destroy();
     _pool?.destroy();
+    _platformSurface.destroy();
     closeFd(_fd);
     _running = false;
   }

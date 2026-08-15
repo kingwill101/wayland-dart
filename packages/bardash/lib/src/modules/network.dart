@@ -1,7 +1,6 @@
 import 'package:window_toolkit/window_toolkit.dart';
 
 import '../command.dart';
-import '../metrics.dart';
 import '../native/network_manager.dart';
 import '../net_speed.dart';
 import '../network_popup.dart';
@@ -16,8 +15,8 @@ import 'module.dart';
 /// Formats: format, format-wifi, format-ethernet, format-disconnected
 ///
 /// Left-click opens the network popup (details + live throughput) unless
-/// `on_click` is set; the popup is also reachable on right-click when no
-/// `on-click-right` is configured.
+/// `on_click` is set. Right-click remains available for an explicit
+/// `on-click-right` command, matching Waybar's button mapping.
 class NetworkModule extends BarModule {
   @override
   String get name => 'network';
@@ -25,11 +24,10 @@ class NetworkModule extends BarModule {
   @override
   bool get needsPopupOverlay => true;
 
-  Color _color = const Color(180, 180, 180);
   NmSnapshot _snap = NmSnapshot.disconnected;
   void Function(NmSnapshot)? _listener;
   String _lastOutput = '';
-  WaylandConnection? _connection;
+  LayerPopupHost? _popupHost;
   int _parentWidth = 1920;
   int _parentHeight = 30;
   bool _openUpward = true;
@@ -40,9 +38,6 @@ class NetworkModule extends BarModule {
     format = resolveFormat(config, '{ipaddr}', '');
     // Signals drive updates; long interval as safety net.
     interval = parseInt(config, 'interval', 30);
-    if (config.containsKey('color')) {
-      _color = parseColor(config['color']!);
-    }
     _listener = (s) {
       _snap = s;
       _apply();
@@ -53,12 +48,12 @@ class NetworkModule extends BarModule {
   /// Called by the bar once the layer surface exists (needsPopupOverlay).
   @override
   void attachPopupOverlay(
-    WaylandConnection connection, {
+    LayerPopupHost popupHost, {
     int parentWidth = 1920,
     int parentHeight = 30,
     bool openUpward = true,
   }) {
-    _connection = connection;
+    _popupHost = popupHost;
     _parentWidth = parentWidth;
     _parentHeight = parentHeight;
     _openUpward = openUpward;
@@ -143,35 +138,22 @@ class NetworkModule extends BarModule {
   }
 
   @override
-  double measure(Painter painter) {
-    final font = Font.icon(pixelSize: BarMetrics.current.fontSize);
-    return painter.measureTextFont(output, font);
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    final font = Font.icon(pixelSize: BarMetrics.current.fontSize);
-    painter.drawTextFont(output, Offset(x, y), font: font, color: _color);
-    return painter.measureTextFont(output, font);
-  }
-
-  @override
   void onClick(double x, double y, {int button = 0x110}) {
-    final conn = _connection;
+    final host = _popupHost;
     // Left-click: configured command wins, else the network popup.
     if (button == 0x110) {
       if (onClickCmd.isNotEmpty) {
         runBarCommand(onClickCmd);
         return;
       }
-      if (conn != null) {
+      if (host != null) {
         NetSpeed.activeIface = _snap.ifname;
         NetSpeed.sample();
         if (NetworkPopupController.isOpen) {
           NetworkPopupController.close();
         } else {
           NetworkPopupController.open(
-            connection: conn,
+            popupHost: host,
             anchorX: hoverX.round(),
             parentWidth: _parentWidth,
             parentHeight: _parentHeight,
@@ -182,16 +164,6 @@ class NetworkModule extends BarModule {
       }
       runBarCommand('nm-connection-editor');
       return;
-    }
-    // Right-click with no on-click-right → same popup.
-    if (onClickRightCmd.isEmpty && conn != null) {
-      NetworkPopupController.open(
-        connection: conn,
-        anchorX: hoverX.round(),
-        parentWidth: _parentWidth,
-        parentHeight: _parentHeight,
-        openUpward: _openUpward,
-      );
     }
   }
 }

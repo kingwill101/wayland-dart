@@ -1,18 +1,37 @@
 import 'package:window_toolkit/window_toolkit.dart';
 
 import '../calendar_tooltip.dart';
-import '../metrics.dart';
 import 'module.dart';
 
 const _weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const _weekdaysShort = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 const _months = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 const _monthsFull = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 class ClockModule extends BarModule {
@@ -22,9 +41,9 @@ class ClockModule extends BarModule {
   /// The clock tooltip is a calendar; render it as a widget through the
   /// toolkit's widget + style system.
   @override
-  Widget? get tooltipContent => buildCalendarTooltip(DateTime.now(), fontSize: 12);
+  Widget? get tooltipContent =>
+      buildCalendarTooltip(DateTime.now(), fontSize: 12);
 
-  Color _color = const Color(0xc8, 0xc8, 0xc8);
   bool _calendarInTooltip = true;
 
   @override
@@ -32,9 +51,6 @@ class ClockModule extends BarModule {
     super.init(config);
     format = resolveFormat(config, '%H:%M', '');
     interval = 1;
-    if (config.containsKey('color')) {
-      _color = parseColor(config['color']!);
-    }
     _calendarInTooltip = config['calendar'] != 'false';
   }
 
@@ -48,7 +64,8 @@ class ClockModule extends BarModule {
       tip = _expandDateTokens(tip, n);
       tooltip = tip;
     } else if (_calendarInTooltip) {
-      final header = '${_weekdays[n.weekday % 7]} ${n.day} '
+      final header =
+          '${_weekdays[n.weekday % 7]} ${n.day} '
           '${_monthsFull[n.month - 1]} ${n.year}\n'
           '${n.hour.toString().padLeft(2, '0')}:'
           '${n.minute.toString().padLeft(2, '0')}:'
@@ -106,19 +123,6 @@ class ClockModule extends BarModule {
     }
     if (col != 0) out.writeln();
     return out.toString().trimRight();
-  }
-
-  @override
-  double measure(Painter painter) {
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    return painter.measureTextFont(output, font);
-  }
-
-  @override
-  double draw(Painter painter, double x, double y) {
-    final font = Font.ui(pixelSize: BarMetrics.current.fontSize);
-    painter.drawTextFont(output, Offset(x, y), font: font, color: _color);
-    return painter.measureTextFont(output, font);
   }
 
   String _formatTime(DateTime dt, String fmt) {

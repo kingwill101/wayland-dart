@@ -1,4 +1,5 @@
 import '../drawing/color.dart';
+import '../font/font.dart';
 import '../mixins/hoverable.dart';
 import '../mixins/hover_animated.dart';
 import '../painter/painter.dart';
@@ -36,6 +37,7 @@ class DialogButton extends Widget with Hoverable, HoverAnimated {
     color: textColor,
     backgroundColor: backgroundColor,
     borderColor: backgroundColor,
+    borderWidth: 0,
   );
 
   @override
@@ -45,23 +47,20 @@ class DialogButton extends Widget with Hoverable, HoverAnimated {
       'hover',
     ], local: StylePatch(backgroundColor: hoverColor));
     final fill = transitionHover(base.backgroundColor!, hover.backgroundColor!);
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        y.toDouble(),
-        width.toDouble(),
-        height.toDouble(),
-      ),
-      Paint()..color = fill,
+    drawStyledBox(
+      canvas,
+      style: base.overlay(StylePatch(backgroundColor: fill)),
     );
-    canvas.drawText(
+    drawStyledText(
+      canvas,
       label,
       Offset(
         (x + (width - label.length * 8) ~/ 2).toDouble(),
-        (y + 4).toDouble(),
+        (y + styledPaddingTop(4)).toDouble(),
       ),
+      fallback: const Font(pixelSize: 16),
       color: base.color,
-      size: 16,
+      style: base,
     );
   }
 }
@@ -103,43 +102,11 @@ class Dialog extends Widget {
   @override
   void draw(Painter canvas) {
     final style = resolvedStyle();
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        y.toDouble(),
-        width.toDouble(),
-        height.toDouble(),
-      ),
-      Paint()..color = style.backgroundColor!,
-    );
-
-    // Border
-    canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), width.toDouble(), 1),
-      Paint()..color = style.borderColor,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        x.toDouble(),
-        (y + height - 1).toDouble(),
-        width.toDouble(),
-        1,
-      ),
-      Paint()..color = style.borderColor,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(x.toDouble(), y.toDouble(), 1, height.toDouble()),
-      Paint()..color = style.borderColor,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        (x + width - 1).toDouble(),
-        y.toDouble(),
-        1,
-        height.toDouble(),
-      ),
-      Paint()..color = style.borderColor,
-    );
+    final padL = styledPaddingLeft(padding);
+    final padR = styledPaddingRight(padding);
+    final padT = styledPaddingTop(padding);
+    final padB = styledPaddingBottom(padding);
+    drawStyledBox(canvas, style: style);
 
     if (title != null) {
       canvas.drawRect(
@@ -149,32 +116,36 @@ class Dialog extends Widget {
           (width - 2).toDouble(),
           titleBarHeight.toDouble(),
         ),
-        Paint()..color = const Color(45, 45, 45),
+        Paint()..color = style.backgroundColor ?? const Color(45, 45, 45),
       );
-      canvas.drawText(
+      drawStyledText(
+        canvas,
         title!,
         Offset(
-          (x + padding).toDouble(),
+          (x + padL).toDouble(),
           (y + (titleBarHeight - 16) ~/ 2).toDouble(),
         ),
+        style: style,
         color: style.color,
-        size: 16,
+        fallback: const Font(pixelSize: 16),
       );
     }
 
-    final textY = y + (title != null ? titleBarHeight + padding : padding);
-    canvas.drawText(
+    final textY = y + (title != null ? titleBarHeight + padT : padT);
+    drawStyledText(
+      canvas,
       message,
-      Offset((x + padding).toDouble(), textY.toDouble()),
+      Offset((x + padL).toDouble(), textY.toDouble()),
+      style: style,
       color: style.color,
-      size: 16,
+      fallback: const Font(pixelSize: 16),
     );
 
-    var bx = x + width - padding;
+    var bx = x + width - padR;
     for (final btn in buttons.reversed) {
       bx -= btn.width + 8;
       btn.x = bx;
-      btn.y = y + height - padding - btn.height;
+      btn.y = y + height - padB - btn.height;
       btn.draw(canvas);
     }
   }
